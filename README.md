@@ -8,3 +8,5 @@ kube-trigger watch kubernetes object event and trigger an event inspired by [kub
 3. More TO Types
 4. App Type: compose of Namespace; Labels; Name
 5. README
+6. To execute velaql
+7. From VelaQL
