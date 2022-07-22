@@ -1,10 +1,11 @@
 package api
 
-type WatchKind struct {
+type Source struct {
 	Kind       string `json:"kind" yaml:"kind"`
 	ApiVersion string `json:"apiVersion" yaml:"apiVersion"`
 	Namespace  string `json:"namespace" yaml:"namespace"`
 }
+
 type Label struct {
 	Key   string `json:"key" yaml:"key"`
 	Value string `json:"value" yaml:"value"`
@@ -19,7 +20,7 @@ type App struct {
 	Labels    []Label `json:"labels" yaml:"labels"`
 }
 type Trigger struct {
-	WatchKind WatchKind `json:"watch" yaml:"watch_kind"`
-	Filters   []Filter  `json:"filters" yaml:"filters"`
-	To        App       `json:"to" yaml:"to"`
+	WatchKind Source   `json:"watch" yaml:"watch_kind"`
+	Filters   []Filter `json:"filters" yaml:"filters"`
+	To        App      `json:"to" yaml:"to"`
 }

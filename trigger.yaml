@@ -2,5 +2,6 @@ watch:
   apiVersion: "v1"
   kind: "ConfigMap"
 To:
-  name: "myapp"
-  namespace: "default"
+  app:
+    name: "myapp"
+    namespace: "default"
