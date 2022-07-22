@@ -1,43 +1,37 @@
 package controller
 
-
 import (
-"context"
-"fmt"
-"os"
-"os/signal"
-"strings"
-"syscall"
-"time"
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
 
-"k8s.io/apimachinery/pkg/runtime/schema"
-"k8s.io/client-go/dynamic"
-"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-ctrl "sigs.k8s.io/controller-runtime"
+	"github.com/kubevela/kube-trigger/pkg/api"
+	"github.com/kubevela/kube-trigger/pkg/event"
+	"github.com/kubevela/kube-trigger/pkg/handler"
+	"github.com/kubevela/kube-trigger/pkg/utils"
+	"github.com/kubevela/kube-trigger/pkg/workqueue"
 
-"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-"github.com/bitnami-labs/kubewatch/config"
-"github.com/bitnami-labs/kubewatch/pkg/event"
-"github.com/bitnami-labs/kubewatch/pkg/handlers"
-"github.com/bitnami-labs/kubewatch/pkg/utils"
-"github.com/sirupsen/logrus"
-
-apps_v1 "k8s.io/api/apps/v1"
-batch_v1 "k8s.io/api/batch/v1"
-api_v1 "k8s.io/api/core/v1"
-ext_v1beta1 "k8s.io/api/extensions/v1beta1"
-rbac_v1beta1 "k8s.io/api/rbac/v1beta1"
-meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-"k8s.io/apimachinery/pkg/runtime"
-utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-"k8s.io/apimachinery/pkg/util/wait"
-"k8s.io/apimachinery/pkg/watch"
-"k8s.io/client-go/kubernetes"
-"k8s.io/client-go/rest"
-"k8s.io/client-go/tools/cache"
-"k8s.io/client-go/util/workqueue"
+	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/sirupsen/logrus"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 const maxRetries = 5
@@ -58,59 +52,65 @@ type Controller struct {
 	clientset    kubernetes.Interface
 	queue        workqueue.RateLimitingInterface
 	informer     cache.SharedIndexInformer
-	eventHandler handlers.Handler
+	eventHandler handler.Trigger
+
+	triggerConf *api.Trigger
+}
+
+func init() {
+	v1beta1.AddToScheme(scheme.Scheme)
 }
 
 // Start prepares watchers and run their controllers, then waits for process termination signals
-func Start(conf *config.Config, eventHandler handlers.Handler) {
-	var kubeClient kubernetes.Interface
-
-	if _, err := rest.InClusterConfig(); err != nil {
-		kubeClient = utils.GetClientOutOfCluster()
-	} else {
-		kubeClient = utils.GetClient()
-	}
+func Start(tr *api.Trigger) {
+	conf := ctrl.GetConfigOrDie()
 	ctx := context.Background()
-	mapper, err := apiutil.NewDiscoveryRESTMapper(ctrl.GetConfigOrDie())
+	mapper, err := apiutil.NewDiscoveryRESTMapper(conf)
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	if conf.CRD != nil {
-		gv, err := schema.ParseGroupVersion(conf.CRD.APIVersion)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		gvk := gv.WithKind(conf.CRD.Kind)
-
-		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gv.Version)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		dynamicClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		informer := cache.NewSharedIndexInformer(
-			&cache.ListWatch{
-				ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
-					return dynamicClient.Resource(mapping.Resource).List(ctx, options)
-				},
-				WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
-					return dynamicClient.Resource(mapping.Resource).Watch(ctx, options)
-				},
-			},
-			&unstructured.Unstructured{},
-			0, //Skip resync
-			cache.Indexers{},
-		)
-
-		c := newResourceController(kubeClient, eventHandler, informer, conf.CRD.Kind)
-		stopCh := make(chan struct{})
-		defer close(stopCh)
-
-		go c.Run(stopCh)
+	kubeClient, err := kubernetes.NewForConfig(conf)
+	if err != nil {
+		logrus.Fatalf("Can not create kubernetes client: %v", err)
 	}
+	cc, err := client.New(conf, client.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		logrus.Fatalf("Can not create kubernetes client: %v", err)
+	}
+	gv, err := schema.ParseGroupVersion(tr.WatchKind.ApiVersion)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	gvk := gv.WithKind(tr.WatchKind.Kind)
 
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gv.Version)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	dynamicClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	informer := cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+				return dynamicClient.Resource(mapping.Resource).List(ctx, options)
+			},
+			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+				return dynamicClient.Resource(mapping.Resource).Watch(ctx, options)
+			},
+		},
+		&unstructured.Unstructured{},
+		0, //Skip resync
+		cache.Indexers{},
+	)
+
+	c := newResourceController(kubeClient, &handler.AppTrigger{Filters: tr.Filters, To: tr.To, Client: cc}, informer, tr.WatchKind.Kind)
+	c.triggerConf = tr
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	go c.Run(stopCh)
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
@@ -118,7 +118,7 @@ func Start(conf *config.Config, eventHandler handlers.Handler) {
 	<-sigterm
 }
 
-func newResourceController(client kubernetes.Interface, eventHandler handlers.Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
+func newResourceController(client kubernetes.Interface, eventHandler handler.Trigger, informer cache.SharedIndexInformer, resourceType string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent Event
 	var err error
@@ -127,7 +127,7 @@ func newResourceController(client kubernetes.Interface, eventHandler handlers.Ha
 			newEvent.key, err = cache.MetaNamespaceKeyFunc(obj)
 			newEvent.eventType = "create"
 			newEvent.resourceType = resourceType
-			logrus.WithField("pkg", "kubewatch-"+resourceType).Infof("Processing add to %v: %s", resourceType, newEvent.key)
+			logrus.WithField("pkg", "kube-trigger-"+resourceType).Debugf("Processing add to %v: %s", resourceType, newEvent.key)
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -136,7 +136,7 @@ func newResourceController(client kubernetes.Interface, eventHandler handlers.Ha
 			newEvent.key, err = cache.MetaNamespaceKeyFunc(old)
 			newEvent.eventType = "update"
 			newEvent.resourceType = resourceType
-			logrus.WithField("pkg", "kubewatch-"+resourceType).Infof("Processing update to %v: %s", resourceType, newEvent.key)
+			logrus.WithField("pkg", "kube-trigger-"+resourceType).Debugf("Processing update to %v: %s", resourceType, newEvent.key)
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -145,8 +145,8 @@ func newResourceController(client kubernetes.Interface, eventHandler handlers.Ha
 			newEvent.key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			newEvent.eventType = "delete"
 			newEvent.resourceType = resourceType
-			newEvent.namespace = utils.GetObjectMetaData(obj).Namespace
-			logrus.WithField("pkg", "kubewatch-"+resourceType).Infof("Processing delete to %v: %s", resourceType, newEvent.key)
+			newEvent.namespace = utils.GetObjectMetaData(obj).GetNamespace()
+			logrus.WithField("pkg", "kube-trigger-"+resourceType).Debugf("Processing delete to %v: %s", resourceType, newEvent.key)
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -154,7 +154,7 @@ func newResourceController(client kubernetes.Interface, eventHandler handlers.Ha
 	})
 
 	return &Controller{
-		logger:       logrus.WithField("pkg", "kubewatch-"+resourceType),
+		logger:       logrus.WithField("pkg", "kube-trigger-"+resourceType),
 		clientset:    client,
 		informer:     informer,
 		queue:        queue,
@@ -162,12 +162,12 @@ func newResourceController(client kubernetes.Interface, eventHandler handlers.Ha
 	}
 }
 
-// Run starts the kubewatch controller
+// Run starts the kube-trigger controller
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	c.logger.Info("Starting kubewatch controller")
+	c.logger.Info("Starting kube-trigger controller")
 	serverStartTime = time.Now().Local()
 
 	go c.informer.Run(stopCh)
@@ -177,7 +177,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	c.logger.Info("Kubewatch controller synced and ready")
+	c.logger.Info("kube-trigger controller synced and ready")
 
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
@@ -222,28 +222,25 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-/* TODOs
-- Enhance event creation using client-side cacheing machanisms - pending
-- Enhance the processItem to classify events - done
-- Send alerts correspoding to events - done
-*/
-
 func (c *Controller) processItem(newEvent Event) error {
 	obj, _, err := c.informer.GetIndexer().GetByKey(newEvent.key)
 	if err != nil {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", newEvent.key, err)
 	}
-	// get object's metedata
+	// get object's metadata
 	objectMeta := utils.GetObjectMetaData(obj)
 
 	// hold status type for default critical alerts
 	var status string
 
-	// namespace retrived from event key incase namespace value is empty
+	// namespace retrieved from event key in case namespace value is empty
 	if newEvent.namespace == "" && strings.Contains(newEvent.key, "/") {
 		substring := strings.Split(newEvent.key, "/")
 		newEvent.namespace = substring[0]
 		newEvent.key = substring[1]
+	}
+	if c.triggerConf.WatchKind.Namespace != "" && c.triggerConf.WatchKind.Namespace != newEvent.namespace {
+		return nil
 	}
 
 	// process events based on its type
@@ -251,7 +248,7 @@ func (c *Controller) processItem(newEvent Event) error {
 	case "create":
 		// compare CreationTimestamp and serverStartTime and alert only on latest events
 		// Could be Replaced by using Delta or DeltaFIFO
-		if objectMeta.CreationTimestamp.Sub(serverStartTime).Seconds() > 0 {
+		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
 			switch newEvent.resourceType {
 			case "NodeNotReady":
 				status = "Danger"
@@ -265,19 +262,17 @@ func (c *Controller) processItem(newEvent Event) error {
 				status = "Normal"
 			}
 			kbEvent := event.Event{
-				Name:      objectMeta.Name,
+				Name:      objectMeta.GetName(),
 				Namespace: newEvent.namespace,
 				Kind:      newEvent.resourceType,
-				Status:    status,
-				Reason:    "Created",
+				Info:      status,
+				Obj:       objectMeta,
 			}
 			c.eventHandler.Handle(kbEvent)
 			return nil
 		}
 	case "update":
-		/* TODOs
-		- enahace update event processing in such a way that, it send alerts about what got changed.
-		*/
+
 		switch newEvent.resourceType {
 		case "Backoff":
 			status = "Danger"
@@ -288,8 +283,8 @@ func (c *Controller) processItem(newEvent Event) error {
 			Name:      newEvent.key,
 			Namespace: newEvent.namespace,
 			Kind:      newEvent.resourceType,
-			Status:    status,
-			Reason:    "Updated",
+			Info:      status,
+			Obj:       objectMeta,
 		}
 		c.eventHandler.Handle(kbEvent)
 		return nil
@@ -298,8 +293,8 @@ func (c *Controller) processItem(newEvent Event) error {
 			Name:      newEvent.key,
 			Namespace: newEvent.namespace,
 			Kind:      newEvent.resourceType,
-			Status:    "Danger",
-			Reason:    "Deleted",
+			Info:      "Deleted",
+			Obj:       objectMeta,
 		}
 		c.eventHandler.Handle(kbEvent)
 		return nil

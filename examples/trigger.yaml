@@ -1,0 +1,9 @@
+watch:
+  apiVersion: "v1"
+  kind: "ConfigMap"
+  namespace: default
+filters:
+  - name: first-app-cm
+To:
+  name: "first-app"
+  namespace: "default"

@@ -1,0 +1,37 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: first-app
+  namespace: default
+spec:
+  components:
+    - type: ref-objects
+      name: configmap
+      properties:
+        objects:
+          - resource: configmap
+            name: first-app-cm
+            namespace: default
+            cluster: local
+  policies:
+    - name: topology-local
+      type: topology
+      properties:
+        clusters:
+          - local
+        namespace: "first-app-cm"
+  workflow:
+    steps:
+      - name: deploy-local
+        properties:
+          policies:
+            - topology-local
+        type: deploy
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name:  first-app-cm
+  namespace: default
+data:
+  key1: value1
