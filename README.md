@@ -1,6 +1,6 @@
 # kube-trigger
 
-> This project is still in development.
+> This project is in its early stage. Don't expect to be able to use it yet.
 
 kube-trigger can list and watch kubernetes object event and trigger an event to destination. The project is inspired by [kubewatch](https://github.com/vmware-archive/kubewatch).
 
@@ -27,7 +27,8 @@ But the usage of kube-trigger is more than that, actually it's a lightweight eve
 ```
 
 ## TODO:
-- [ ] Dockerfile, Makefile, linter, GitHub Actions
+- [x] Basic build infrastructure
+- [ ] linters, GitHub Actions
 - [ ] Make it run as Addon, build component definition, and examples
 - [ ] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README

@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+	// TODO(charlie0129): use a proper way to start
 	logrus.SetLevel(logrus.DebugLevel)
 	registry.RegisterBuiltinFilters()
 

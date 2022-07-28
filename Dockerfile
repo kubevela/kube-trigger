@@ -12,24 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.17 as builder
+ARG BUILD_IMAGE=golang:1.17
+ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
+
+FROM ${BUILD_IMAGE} as builder
 
 WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
+
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY}
 RUN go mod download
 
-COPY main.go main.go
+ARG ARCH
+ENV ARCH=${ARCH:-amd64}
+ARG OS
+ENV OS=${OS:-linux}
+ARG VERSION
+ENV VERSION=${VERSION}
+ARG GOFLAGS
+ENV GOFLAGS=${GOFLAGS}
+
+COPY build/ build/
+COPY cmd/ cmd/
 COPY pkg/ pkg/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build \
-    -a \
-    -ldflags "-s -w"\
-    -o kube-trigger \
-    cmd/kubetrigger/main.go
+RUN ARCH=${ARCH}                \
+        OS=${OS}                \
+        OUTPUT=kube-trigger     \
+        VERSION=${VERSION}      \
+        GOFLAGS=${GOFLAGS}      \
+        /bin/sh build/build.sh  \
+        cmd/kubetrigger/main.go \
 
-FROM gcr.io/distroless/static:nonroot
+FROM ${BASE_IMAGE}
 WORKDIR /
 COPY --from=builder /workspace/kube-trigger .
 USER 65532:65532
