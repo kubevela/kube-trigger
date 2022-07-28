@@ -16,6 +16,8 @@
 
 set -o errexit
 set -o nounset
+# This will not work in POSIX sh
+# set -o pipefail
 
 if [ -z "${OS:-}" ]; then
   echo "OS must be set"
@@ -48,18 +50,21 @@ echo -e "# target: ${OS}/${ARCH}\tversion: ${VERSION}\toutput: ${OUTPUT}"
 LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-}"
 
 if [ -z "${DIRTY_BUILD:-}" ]; then
+  # If user don't want dirty build, remove all unnecessary info from binary.
   LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-} -s -w"
+  # No cache.
   export GOFLAGS="${GOFLAGS:-} -a "
   echo -n "# Clean "
 else
   echo -n "# Dirty "
 fi
 
+# Set some version info.
 GO_LDFLAGS="${LDFLAGS_EXTRA} -X $(go list -m)/pkg/version.Version=${VERSION}"
 
 echo "building... "
 
-go build \
+go build                   \
   -ldflags "${GO_LDFLAGS}" \
-  -o "${OUTPUT}" \
+  -o "${OUTPUT}"           \
   "$@"

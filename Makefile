@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Set this to 1 to enable debugging output.
 DBG_MAKEFILE ?=
 ifeq ($(DBG_MAKEFILE),1)
     $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
@@ -21,14 +22,19 @@ else
     MAKEFLAGS += -s
 endif
 
+# No, we don't want builtin rules.
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --warn-undefined-variables
+# Get rid of .PHONY everywhere.
 MAKEFLAGS += --always-make
 
+# Binary targets that we support.
+# When doing all-build, these targets will be built.
 ALL_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
-OS := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
-ARCH := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+# If user has not defined target, set some default value, same as host machine.
+OS      := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
+ARCH    := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 # Use git tags to set the version string
 VERSION ?= $(shell git describe --tags --always --dirty)
 
@@ -37,17 +43,24 @@ ifeq ($(OS), windows)
   BIN_EXTENSION := .exe
 endif
 
-BIN := kube-trigger
-_OUT := $(BIN)$(BIN_EXTENSION)
-_VER_OUT := $(BIN)-$(VERSION)-$(OS)-$(ARCH)$(BIN_EXTENSION)
-# If the user set FULL_NAME, we will output the binary with detailed info.
+# Binary basename, without extension
+BIN          := kube-trigger
+# Binary basename
+_OUT         := $(BIN)$(BIN_EXTENSION)
+# Binary basename with version and target
+_VER_OUT     := $(BIN)-$(VERSION)-$(OS)-$(ARCH)$(BIN_EXTENSION)
+# If the user set FULL_NAME, we will use the basename with version and target.
 # e.g. kube-trigger-v0.0.1-linux-amd64
 BIN_FULLNAME := $(if $(FULL_NAME),$(_VER_OUT),$(_OUT))
-OUTPUT := bin/$(BIN_FULLNAME)
-ENTRY := cmd/kubetrigger/main.go
+# Full output relative path
+OUTPUT       := bin/$(BIN_FULLNAME)
+# CLI entry file
+ENTRY        := cmd/kubetrigger/main.go
 
+# Registry to push to
 REGISTRY ?= ghcr.io/oam-dev
-IMG ?= $(REGISTRY)/$(BIN):$(VERSION)
+# Docker image tag
+IMG      ?= $(REGISTRY)/$(BIN):$(VERSION)
 
 GOFLAGS ?=
 GOPROXY ?=
@@ -57,7 +70,7 @@ SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
 all: build
 
-build: # @HELP clean-build binary locally
+build: # @HELP build binary locally
 build:
 	ARCH=$(ARCH)                     \
 	    OS=$(OS)                     \
@@ -66,7 +79,7 @@ build:
 	    GOFLAGS=$(GOFLAGS)           \
 	    bash build/build.sh $(ENTRY)
 
-all-build: # @HELP builds binaries for all platforms, binary names will use full name
+all-build: # @HELP build binaries for all platforms with target included in the filename
 all-build: $(addprefix build-, $(subst /,_, $(ALL_PLATFORMS)))
 
 build-%:
@@ -96,23 +109,23 @@ docker-build:
 	    --build-arg "GOPROXY=$(GOPROXY)" \
 	    -t $(IMG) .
 
-docker-push: # @HELP pushes the container to the defined registry
+docker-push: # @HELP push the image to the defined registry
 docker-push: docker-build
 	docker push $(IMG)
 
-clean: # @HELP clean build artifacts
+clean: # @HELP remove build artifacts
 clean:
 	rm -rf bin
 
-version: # @HELP outputs the version string
+version: # @HELP output the version string
 version:
 	echo $(VERSION)
 
-binary-name: # @HELP outputs the output binary name
+binary-name: # @HELP output the binary name
 binary-name:
 	echo $(BIN_FULLNAME)
 
-help: # @HELP prints this message
+help: # @HELP print this message
 help:
 	echo "VARIABLES:"
 	echo "  OUTPUT           $(OUTPUT)"
@@ -132,4 +145,4 @@ help:
 	    '
 	echo
 	echo "NOTES:"
-	echo "  set \$$FULL_NAME to output binary with detailed name"
+	echo "  set \$$FULL_NAME to include target string in binary name"
