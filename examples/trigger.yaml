@@ -1,9 +1,13 @@
 watch:
   apiVersion: "v1"
   kind: "ConfigMap"
-  namespace: default
+  namespace: vela-system
 filters:
-  - name: first-app-cm
+  - type: "cue-validator"
+    properties:
+      cue:
+        template: |
+          metadata: name: "cm-name"
 To:
   name: "first-app"
   namespace: "default"

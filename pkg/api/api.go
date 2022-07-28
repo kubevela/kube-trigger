@@ -11,8 +11,8 @@ type Label struct {
 	Value string `json:"value" yaml:"value"`
 }
 type Filter struct {
-	Labels []Label `json:"labels" yaml:"labels"`
-	Name   string  `json:"name" yaml:"name"`
+	Type       string                 `json:"type"`
+	Properties map[string]interface{} `json:"properties"`
 }
 type App struct {
 	Namespace string  `json:"namespace" yaml:"namespace"`

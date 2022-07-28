@@ -1,7 +1,0 @@
-watch:
-  apiVersion: "v1"
-  kind: "ConfigMap"
-To:
-  app:
-    name: "myapp"
-    namespace: "default"

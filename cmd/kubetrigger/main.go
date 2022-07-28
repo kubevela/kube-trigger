@@ -9,11 +9,14 @@ import (
 
 	"github.com/kubevela/kube-trigger/pkg/api"
 	"github.com/kubevela/kube-trigger/pkg/controller"
+	"github.com/kubevela/kube-trigger/pkg/filter/registry"
 )
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
+	registry.RegisterBuiltinFilters()
 
-	triggerPath := flag.String("config", "trigger.yaml", "specify the config path of the trigger")
+	triggerPath := flag.String("config", "examples/trigger.yaml", "specify the config path of the trigger")
 	flag.Parse()
 
 	data, err := ioutil.ReadFile(*triggerPath)

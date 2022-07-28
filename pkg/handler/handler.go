@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kubevela/kube-trigger/pkg/filter/registry"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,7 +45,7 @@ func (d *AppTrigger) Init() error {
 func (d *AppTrigger) Handle(e event.Event) {
 	rand.Seed(time.Now().UnixNano())
 	id := strconv.FormatInt(rand.Int63(), 10)
-	logrus.Infof("[%s] got message: %s", id, e.Message())
+	// logrus.Infof("[%s] got message: %s", id, e.Message())
 	ctx := context.WithValue(context.Background(), "id", id)
 
 	var err error
@@ -55,9 +56,28 @@ func (d *AppTrigger) Handle(e event.Event) {
 	}()
 
 	for _, f := range d.Filters {
-		if f.Name != "" && e.Obj.GetName() != f.Name {
+		// TODO(charlie0129): instead of new Filters everytime, use a cache
+		fr, ok := registry.TypeRegistry.Find(f.Type)
+		if !ok {
+			// TODO(charlie0129): make this return an error instead of log here
+			logrus.Errorf("filter type %s not found", f.Type)
 			return
 		}
+		fi := fr.New()
+		err := fi.Init(f.Properties)
+		if err != nil {
+			logrus.Errorf("%v", err)
+			return
+		}
+		keep, err := fi.ApplyToObject(e.Obj)
+		if err != nil {
+			logrus.Errorf("%v", err)
+		}
+		if !keep {
+			logrus.Debugf("filtered out: %s", e.Message())
+			return
+		}
+		logrus.Debugf("kept: %s", e.Message())
 	}
 
 	if d.To.Name != "" {

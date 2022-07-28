@@ -225,7 +225,7 @@ func (c *Controller) processNextItem() bool {
 func (c *Controller) processItem(newEvent Event) error {
 	obj, _, err := c.informer.GetIndexer().GetByKey(newEvent.key)
 	if err != nil {
-		return fmt.Errorf("Error fetching object with key %s from store: %v", newEvent.key, err)
+		return fmt.Errorf("error fetching object with key %s from store: %v", newEvent.key, err)
 	}
 	// get object's metadata
 	objectMeta := utils.GetObjectMetaData(obj)
