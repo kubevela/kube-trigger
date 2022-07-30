@@ -31,13 +31,19 @@ architecture can be:
     +--------------------+          +---------------------+          +---------------------+ 
 ```
 
+
+How the various components interact with each other under the hood:
+
+![kube-trigger-architecture](https://user-images.githubusercontent.com/55270174/181994442-9281b7ae-5c5e-4630-971f-a21bd7f37ebc.png)
+
+
 ## TODO:
 
 - [x] Basic build infrastructure
 - [x] Complete a basic proof-of-concept sample
 - [ ] linters, GitHub Actions
 - [ ] **Add tests. No tests currently, this is terrible.**
-- [ ] **Organize code. Make it elegant. It really sucks now.**
+- [ ] **Make code elegant. Adhere to a good standard.** I don't have time to do it yet.
 - [ ] Make it run as Addon, build component definition, and examples
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README
