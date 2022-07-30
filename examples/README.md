@@ -7,21 +7,14 @@ In `sample.yaml`, we have:
 - two ConfigMaps
 - two Applications
 
-Although the Applications are empty, let's pretend they have used some ConfigMaps inside. It doesn't matter.
-
 ### What we want to achieve?
 
-- Once the two ConfigMaps are updated, the Applications are updated as well.
+- Once any of the two ConfigMaps are updated, both Applications will be updated as well.
 
 ### Try out
 
-Apply `sample.yaml`
-
-`kubectl apply -f examples/sample.yaml`
-
-Run kube-trigger (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with cli flags.
-It is just full of testing code right now).
-
-Edit the two ConfigMaps.
-
-You should see the two Application all have updated: `app.oam.dev/publishVersion: 'xxx'`
+- Apply `sample.yaml`
+- Run kube-trigger (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with CLI
+  flags. It is just full of testing code right now).
+- Edit any of the two ConfigMaps.
+- You should see the two Application all have updated: `app.oam.dev/publishVersion: '2/3/4...'`
