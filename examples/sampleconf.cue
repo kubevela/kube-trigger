@@ -33,9 +33,9 @@ watchers: [
 		// You can add multiple actions.
 		actions: [
 			{
-				// Update Kubernetes objects (update a whole list of objects).
+				// Patch Kubernetes objects (update a whole list of objects).
 				// This is a builtin one (and the only one currently).
-				type: "update-k8s-objects"
+				type: "patch-k8s-objects"
 				// Use these clues to list objects.
 				properties: {
 					patchTarget: {

@@ -24,7 +24,7 @@ const (
 	outputFieldName           = "output"
 )
 const (
-	typeName = "update-k8s-objects"
+	typeName = "patch-k8s-objects"
 )
 
 type Properties struct {
