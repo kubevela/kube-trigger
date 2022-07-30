@@ -12,17 +12,17 @@ import (
 )
 
 type Config struct {
-	Watch   []WatchMeta
-	Actions []actiontype.ActionMeta
+	Watchers []WatchMeta
 }
 
 type WatchMeta struct {
 	Source  sourcetype.SourceMeta
 	Filters []filtertype.FilterMeta
+	Actions []actiontype.ActionMeta
 }
 
 const (
-	WatchFieldName   = "watch"
+	WatchesFieldName = "watchers"
 	SourceFieldName  = "source"
 	FiltersFieldName = "filters"
 	ActionsFieldName = "actions"
@@ -41,22 +41,12 @@ func (c *Config) Parse(confStr string) error {
 		return err
 	}
 
-	vWatches := vConf.LookupPath(cue.ParsePath(WatchFieldName))
+	vWatches := vConf.LookupPath(cue.ParsePath(WatchesFieldName))
 	if vWatches.Err() != nil {
 		return vWatches.Err()
 	}
 
-	c.Watch, err = parseWatches(vWatches)
-	if err != nil {
-		return err
-	}
-
-	vActions := vConf.LookupPath(cue.ParsePath(ActionsFieldName))
-	if vActions.Err() != nil {
-		return vActions.Err()
-	}
-
-	c.Actions, err = parseActions(vActions)
+	c.Watchers, err = parseWatchers(vWatches)
 	if err != nil {
 		return err
 	}
@@ -64,7 +54,7 @@ func (c *Config) Parse(confStr string) error {
 	return nil
 }
 
-func parseWatches(vWatches cue.Value) ([]WatchMeta, error) {
+func parseWatchers(vWatches cue.Value) ([]WatchMeta, error) {
 	var ret []WatchMeta
 
 	vWatchList, err := vWatches.List()
@@ -72,9 +62,9 @@ func parseWatches(vWatches cue.Value) ([]WatchMeta, error) {
 		return nil, err
 	}
 	for i := 0; vWatchList.Next(); i++ {
-		watch, err := parseWatch(vWatchList.Value())
+		watch, err := parseWatcher(vWatchList.Value())
 		if err != nil {
-			return nil, errors.Wrapf(err, "error when parsing %s[%d]", WatchFieldName, i)
+			return nil, errors.Wrapf(err, "error when parsing %s[%d]", WatchesFieldName, i)
 		}
 		ret = append(ret, watch)
 	}
@@ -82,7 +72,7 @@ func parseWatches(vWatches cue.Value) ([]WatchMeta, error) {
 	return ret, nil
 }
 
-func parseWatch(vWatch cue.Value) (WatchMeta, error) {
+func parseWatcher(vWatch cue.Value) (WatchMeta, error) {
 	var err error
 	ret := WatchMeta{}
 
@@ -102,6 +92,16 @@ func parseWatch(vWatch cue.Value) (WatchMeta, error) {
 	}
 
 	ret.Filters, err = parseFilters(vFilters)
+	if err != nil {
+		return ret, err
+	}
+
+	vActions := vWatch.LookupPath(cue.ParsePath(ActionsFieldName))
+	if vActions.Err() != nil {
+		return ret, vActions.Err()
+	}
+
+	ret.Actions, err = parseActions(vActions)
 	if err != nil {
 		return ret, err
 	}

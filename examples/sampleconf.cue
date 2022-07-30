@@ -1,5 +1,5 @@
 // Watch what event?
-watch: [
+watchers: [
 	{
 		source: {
 			// Kubernetes object info
@@ -25,37 +25,28 @@ watch: [
 				}
 			},
 		]
-	},
-]
+		// What to do when the events above happen?
+		actions: [
+			{
+				// Update Kubernetes objects
+				type: "update-k8s-object"
+				properties: {
+					patchTarget: {
+						apiVersion: "v1"
+						kind:       "ConfigMap"
+						namespace:  "default"
+						name:       "my-cm-2"
+					}
+					// context.sourceObject, context.patchTarget
+					// is filled automatically
+					// output is deep merged with context.sourceObject
+					patch: {
+						data: somecontent: context.sourceObject.data.somecontent
+					}
+					allowConcurrent: false
+				}
+			},
+		]
 
-// What to do when the events above happen?
-actions: [
-	{
-		// Update Kubernetes objects
-		type: "update-k8s-object"
-		properties: {
-			patchTarget: {
-				apiVersion: "v1"
-				kind:       "ConfigMap"
-				namespace:  "default"
-				name:       "my-cm-2"
-			}
-			// context.sourceObject, context.patchTarget is filled automatically
-			// output is deep merged with context.obj
-			patch: {
-				data: somecontent: context.sourceObject.data.somecontent
-			}
-
-			allowConcurrent: false
-		}
 	},
-	// {
-	//  // Execute a command
-	//  type: "execute"
-	//  properites: {
-	//   path: "bash"
-	//   args: ["-c"]
-	//   timeout: "10s"
-	//  }
-	// },
 ]

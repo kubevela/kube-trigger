@@ -54,19 +54,43 @@ func (j *Job) Run(ctx context.Context) error {
 type Executor struct {
 	jobChan         chan Job
 	wg              sync.WaitGroup
+	lock            sync.RWMutex
 	maxConcurrency  int
 	shutdownTimeout time.Duration
+	runningJobs     map[string]bool
 	logger          *logrus.Entry
 }
 
 func New(queueSize int, maxConcurrency int, shutdownTimeout time.Duration) *Executor {
 	e := &Executor{}
+	e.lock = sync.RWMutex{}
+	e.runningJobs = make(map[string]bool)
 	e.maxConcurrency = maxConcurrency
 	e.shutdownTimeout = shutdownTimeout
 	e.jobChan = make(chan Job, queueSize)
 	e.logger = logrus.WithField("executor", "action")
 	e.logger.Debugf("new executor created with queueSize=%d, maxConcurrency=%d, shutdownTimeout=%v", queueSize, maxConcurrency, shutdownTimeout)
 	return e
+}
+
+func (e *Executor) setJobStatus(j Job, status bool) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	e.runningJobs[j.action.Type()] = status
+}
+
+func (e *Executor) setJobRunning(j Job) {
+	e.setJobStatus(j, true)
+}
+
+func (e *Executor) setJobNotRunning(j Job) {
+	e.setJobStatus(j, false)
+}
+
+func (e *Executor) getJobStatus(j Job) bool {
+	e.lock.RLock()
+	defer e.lock.RUnlock()
+	return e.runningJobs[j.action.Type()]
 }
 
 func (e *Executor) AddJob(j Job) bool {
@@ -88,9 +112,19 @@ func (e *Executor) runJob(ctx context.Context) {
 			return
 		case j := <-e.jobChan:
 			e.logger.Debugf("running job: actionType=%s", j.action.Type())
+			// This job not allow concurrent runs, and it is already running.
+			// Requeue it to run it later.
+			if !j.action.AllowConcurrent() && e.getJobStatus(j) {
+				e.AddJob(j)
+				return
+			}
+			e.setJobRunning(j)
 			err := j.Run(ctx)
+			e.setJobNotRunning(j)
 			if err != nil {
 				e.logger.Errorf("job: actionType=%s failed: %s", j.action.Type(), err.Error())
+			} else {
+				e.logger.Infof("job: actionType=%s succeed", j.action.Type())
 			}
 			// Make sure it exits, after at most one last job
 			if ctx.Err() != nil {

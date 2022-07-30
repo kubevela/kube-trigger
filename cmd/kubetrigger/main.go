@@ -49,7 +49,7 @@ func main() {
 
 	var sources []types.Source
 
-	for _, w := range conf.Watch {
+	for _, w := range conf.Watchers {
 		s, exist := sourceReg.GetType(w.Source)
 		if !exist {
 			os.Exit(1)
@@ -64,7 +64,7 @@ func main() {
 			return
 		}
 
-		for _, a := range conf.Actions {
+		for _, a := range w.Actions {
 			newSource.AddEventHandler(executor.NewSourceEventHandler(exe, actionReg, a))
 		}
 

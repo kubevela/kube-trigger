@@ -29,9 +29,10 @@ But the usage of kube-trigger is more than that, actually it's a lightweight eve
 ## TODO:
 
 - [x] Basic build infrastructure
+- [x] Complete a basic proof-of-concept sample
 - [ ] linters, GitHub Actions
 - [ ] Add tests. Currently no tests, this is terrible.
-- [ ] Organize code. Make it easier to read and put some comments in it.
+- [ ] Organize code. It sucks now. Make it easier to read and put some comments in it.
 - [ ] Make it run as Addon, build component definition, and examples
 - [ ] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README
