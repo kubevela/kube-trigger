@@ -35,6 +35,7 @@ func main() {
 	conf := &config.Config{}
 	err = conf.Parse(string(data))
 	if err != nil {
+		os.Exit(1)
 		return
 	}
 

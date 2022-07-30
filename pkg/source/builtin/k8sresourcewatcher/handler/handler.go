@@ -1,5 +1,7 @@
 package handler
 
+// TODO: delete this file, should be fine, code in unused
+
 import (
 	"math/rand"
 	"strconv"

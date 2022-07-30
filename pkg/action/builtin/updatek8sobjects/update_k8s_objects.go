@@ -1,4 +1,4 @@
-package updatek8sobject
+package updatek8sobjects
 
 import (
 	"context"
@@ -18,25 +18,27 @@ import (
 )
 
 const (
-	patchFieldName           = "patch"
-	patchTargetFieldName     = "patchTarget"
-	allowConcurrentFieldName = "allowConcurrent"
+	patchFieldName            = "patch"
+	patchTargetFieldName      = "patchTarget"
+	allowConcurrencyFieldName = "allowConcurrency"
+	outputFieldName           = "output"
 )
 const (
-	typeName = "update-k8s-object"
+	typeName = "update-k8s-objects"
 )
 
 type Properties struct {
-	PatchTarget     PatchTarget
-	Patch           string
-	AllowConcurrent bool
+	PatchTarget      PatchTarget
+	Patch            string
+	AllowConcurrency bool
 }
 
 type PatchTarget struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Namespace  string `json:"namespace"`
-	Name       string `json:"name"`
+	APIVersion     string            `json:"apiVersion"`
+	Kind           string            `json:"kind"`
+	Namespace      string            `json:"namespace"`
+	Name           string            `json:"name"`
+	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 
 // TODO: use cue to validate
@@ -48,7 +50,7 @@ func (p *Properties) parse(v cue.Value) error {
 		return vPatch.Err()
 	}
 
-	p.Patch, err = utilcue.Marshal(vPatch)
+	p.Patch, err = vPatch.String()
 	if err != nil {
 		return err
 	}
@@ -67,10 +69,10 @@ func (p *Properties) parse(v cue.Value) error {
 		return err
 	}
 
-	vAllowConcurrent := v.LookupPath(cue.ParsePath(allowConcurrentFieldName))
-	p.AllowConcurrent, err = vAllowConcurrent.Bool()
+	vAllowConcurrent := v.LookupPath(cue.ParsePath(allowConcurrencyFieldName))
+	p.AllowConcurrency, err = vAllowConcurrent.Bool()
 	if err != nil {
-		p.AllowConcurrent = false
+		p.AllowConcurrency = false
 	}
 
 	return nil
@@ -104,30 +106,62 @@ func (u *UpdateK8sObject) Run(ctx context.Context, sourceType string, event inte
 
 	gvk := gv.WithKind(u.prop.PatchTarget.Kind)
 
-	unstructuredObj := unstructured.Unstructured{}
-	unstructuredObj.SetGroupVersionKind(gvk)
+	unstructuredObjList := unstructured.UnstructuredList{}
+	unstructuredObjList.SetGroupVersionKind(gvk)
 
-	err = u.c.Get(ctx, client.ObjectKey{
-		Name:      u.prop.PatchTarget.Name,
-		Namespace: u.prop.PatchTarget.Namespace,
-	}, &unstructuredObj)
+	var listOptions []client.ListOption
+	if u.prop.PatchTarget.Namespace != "" {
+		listOptions = append(listOptions, client.InNamespace(u.prop.PatchTarget.Namespace))
+	}
+	if len(u.prop.PatchTarget.LabelSelectors) > 0 {
+		selector := client.MatchingLabels{}
+		for k, v := range u.prop.PatchTarget.LabelSelectors {
+			selector[k] = v
+		}
+		listOptions = append(listOptions, selector)
+	}
+
+	err = u.c.List(ctx, &unstructuredObjList, listOptions...)
 	if err != nil {
 		return err
 	}
 
-	jsonByte, err := json.Marshal(unstructuredObj.Object)
-	if err != nil {
+	var objList []unstructured.Unstructured
+
+	for _, un := range unstructuredObjList.Items {
+		targetName := u.prop.PatchTarget.Name
+		if targetName != "" && un.GetName() != targetName {
+			continue
+		}
+		objList = append(objList, un)
+	}
+
+	for _, un := range objList {
+		err = u.updateObject(ctx, contextStr, un)
+		if err != nil {
+			return err
+		}
+	}
+
+	u.logger.Debugf("finished successfully")
+
+	return nil
+}
+
+func (u *UpdateK8sObject) updateObject(ctx context.Context, contextStr string, un unstructured.Unstructured) error {
+	jsonByte, err := json.Marshal(un.Object)
+	if err == nil {
 		u.logger.Debugf("added context.patchTarget: %s", string(jsonByte))
 		contextStr += fmt.Sprintf("context:{patchTarget:%s}\n", string(jsonByte))
 	}
 
 	cueCtx := cuecontext.New()
 	// context+patch string
-	v := cueCtx.CompileString(contextStr + patchFieldName + ":" + u.prop.Patch)
+	v := cueCtx.CompileString(u.prop.Patch + "\n" + contextStr)
 	if v.Err() != nil {
 		return v.Err()
 	}
-	vPatch := v.LookupPath(cue.ParsePath(patchFieldName))
+	vPatch := v.LookupPath(cue.ParsePath(outputFieldName))
 
 	patchOut := make(map[string]interface{})
 
@@ -136,22 +170,21 @@ func (u *UpdateK8sObject) Run(ctx context.Context, sourceType string, event inte
 		return err
 	}
 
-	err = mergo.Merge(&unstructuredObj.Object, patchOut, mergo.WithOverride)
+	err = mergo.Merge(&un.Object, patchOut, mergo.WithOverride)
 	if err != nil {
 		return err
 	}
 
-	u.logger.Debugf("merged with patch, ready to update: %v", unstructuredObj.Object)
+	u.logger.Debugf("merged with patch, ready to update: %v", un.Object)
 
-	err = u.c.Update(ctx, &unstructuredObj)
+	err = u.c.Update(ctx, &un)
 	if err != nil {
 		return err
 	}
-
-	u.logger.Debugf("finished successfully")
 
 	return nil
 }
+
 func (u *UpdateK8sObject) Init(c types.Common, properties cue.Value) error {
 	var err error
 
@@ -179,5 +212,5 @@ func (u *UpdateK8sObject) New() types.Action {
 }
 
 func (u *UpdateK8sObject) AllowConcurrent() bool {
-	return u.prop.AllowConcurrent
+	return u.prop.AllowConcurrency
 }

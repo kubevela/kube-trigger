@@ -2,11 +2,16 @@
 
 > This project is in its early stage as a proof-of-concept. Don't expect to be able to use it yet.
 
-kube-trigger can list and watch kubernetes object event and trigger an event to destination. The project is inspired by [kubewatch](https://github.com/vmware-archive/kubewatch).
+Check out `examples` for some examples on what it does.
 
-Currently, the basic usage of kube-trigger is to watch any kind of Kubernetes CRD and trigger update of Application. It can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
+kube-trigger can list and watch kubernetes object event and trigger an event to destination. The project is inspired
+by [kubewatch](https://github.com/vmware-archive/kubewatch).
 
-But the usage of kube-trigger is more than that, actually it's a lightweight event-trigger in Kubernetes world. The architecture can be:
+Currently, the basic usage of kube-trigger is to watch any kind of Kubernetes CRD and trigger update of Application. It
+can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
+
+But the usage of kube-trigger is more than that, actually it's a lightweight event-trigger in Kubernetes world. The
+architecture can be:
 
 ```                                                                                                                                                                                    
        Kubernetes Events                                              Operations on Kubernetes or any API
@@ -16,14 +21,14 @@ But the usage of kube-trigger is more than that, actually it's a lightweight eve
     |                    |          |                     |          |                     | 
     |      Sources       ----------->       Filters       ----------->     Destinations    | 
     |                    |          |                     |          |                     | 
-    +--------------------+          +---------------------+          +---------------------+                                                                                              
-                                                                                                                                                                                          
+    +--------------------+          +---------------------+          +---------------------+ 
+                                                                                            
                                                                                              
     +--------------------+          +---------------------+          +---------------------+ 
     |                    |          |                     |          |                     | 
     |      Sources       ----------->       Filters       ---------->-     Destinations    | 
     |                    |          |                     |          |                     | 
-    +--------------------+          +---------------------+          +---------------------+                                                                                                                                                                                                                                                                                        
+    +--------------------+          +---------------------+          +---------------------+ 
 ```
 
 ## TODO:
@@ -34,7 +39,7 @@ But the usage of kube-trigger is more than that, actually it's a lightweight eve
 - [ ] Add tests. Currently no tests, this is terrible.
 - [ ] Organize code. It sucks now. Make it easier to read and put some comments in it.
 - [ ] Make it run as Addon, build component definition, and examples
-- [ ] Notification for more than one app: selector from compose of Namespace; Labels; Name
+- [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README
 - [ ] More Source types
 - [ ] More Destination Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
