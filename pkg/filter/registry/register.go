@@ -1,11 +1,17 @@
 package registry
 
-import "github.com/kubevela/kube-trigger/pkg/filter/builtin/cuevalidator"
+import (
+	"github.com/kubevela/kube-trigger/pkg/filter/builtin/cuevalidator"
+	"github.com/kubevela/kube-trigger/pkg/filter/types"
+)
 
-func RegisterBuiltinFilters() error {
+func RegisterBuiltinFilters(reg *Registry) {
+
 	// Register cue-validator
 	cv := &cuevalidator.CUEValidator{}
-	TypeRegistry.Register(cv.Type(), cv)
+	cvMeta := types.FilterMeta{
+		Type: cv.Type(),
+	}
+	reg.RegisterType(cvMeta, cv)
 
-	return nil
 }

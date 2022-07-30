@@ -4,34 +4,34 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kubevela/kube-trigger/pkg/filter/types"
+	"github.com/kubevela/kube-trigger/pkg/action/types"
+	"github.com/kubevela/kube-trigger/pkg/utils"
 )
 
-// Registry stores all instantiated filters to improve performance.
 type Registry struct {
-	reg  map[string]types.Filter
+	reg  map[string]types.Action
 	lock sync.RWMutex
 }
 
-func NewWithBuiltinFilters() *Registry {
+func NewWithBuiltinActions() *Registry {
 	ret := New()
-	RegisterBuiltinFilters(ret)
+	RegisterBuiltinActions(ret)
 	return ret
 }
 
 func New() *Registry {
 	r := Registry{}
-	r.reg = make(map[string]types.Filter)
+	r.reg = make(map[string]types.Action)
 	r.lock = sync.RWMutex{}
 	return &r
 }
 
 func (r *Registry) ResetToBuiltinOnes() {
-	newReg := NewWithBuiltinFilters()
+	newReg := NewWithBuiltinActions()
 	r.reg = newReg.reg
 }
 
-func (r *Registry) RegisterExistingInstance(meta types.FilterMeta, instance types.Filter) error {
+func (r *Registry) RegisterExistingInstance(meta types.ActionMeta, instance types.Action) error {
 	if meta.Raw == "" {
 		return fmt.Errorf("filter meta raw info is empty")
 	}
@@ -40,8 +40,7 @@ func (r *Registry) RegisterExistingInstance(meta types.FilterMeta, instance type
 	r.reg[meta.Raw] = instance
 	return nil
 }
-
-func (r *Registry) CreateOrGetInstance(meta types.FilterMeta) (types.Filter, error) {
+func (r *Registry) CreateOrGetInstance(meta types.ActionMeta) (types.Action, error) {
 	if meta.Raw == "" {
 		return nil, fmt.Errorf("filter meta raw info is empty")
 	}
@@ -52,7 +51,11 @@ func (r *Registry) CreateOrGetInstance(meta types.FilterMeta) (types.Filter, err
 	instance, ok := r.GetInstance(meta)
 	if !ok {
 		newInstance := initial.New()
-		err := newInstance.Init(meta.Properties)
+		c, err := utils.GetClient()
+		if err != nil {
+			return nil, err
+		}
+		err = newInstance.Init(types.Common{Client: *c}, meta.Properties)
 		if err != nil {
 			return nil, err
 		}
@@ -62,20 +65,20 @@ func (r *Registry) CreateOrGetInstance(meta types.FilterMeta) (types.Filter, err
 	return instance, nil
 }
 
-func (r *Registry) GetInstance(meta types.FilterMeta) (types.Filter, bool) {
+func (r *Registry) GetInstance(meta types.ActionMeta) (types.Action, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	f, ok := r.reg[meta.Raw]
 	return f, ok
 }
 
-func (r *Registry) RegisterType(meta types.FilterMeta, initial types.Filter) {
+func (r *Registry) RegisterType(meta types.ActionMeta, initial types.Action) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.reg[meta.Type] = initial
 }
 
-func (r *Registry) GetType(meta types.FilterMeta) (types.Filter, bool) {
+func (r *Registry) GetType(meta types.ActionMeta) (types.Action, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	f, ok := r.reg[meta.Type]

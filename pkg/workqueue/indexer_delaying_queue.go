@@ -2,11 +2,12 @@ package workqueue
 
 import (
 	"container/heap"
+	"sync"
+	"time"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
-	"sync"
-	"time"
 )
 
 const (

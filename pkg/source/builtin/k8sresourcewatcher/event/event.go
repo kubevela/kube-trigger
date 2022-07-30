@@ -18,3 +18,11 @@ type Event struct {
 func (e *Event) Message() (msg string) {
 	return "apiVersion: " + e.ApiVersion + ", kind: " + e.Kind + ", namespace: " + e.Namespace + ", name: " + e.Name + ", info: " + e.Info
 }
+
+// InformerEvent indicate the informerEvent
+type InformerEvent struct {
+	Key          string
+	EventType    string
+	Namespace    string
+	ResourceType string
+}

@@ -15,11 +15,11 @@
 # Set this to 1 to enable debugging output.
 DBG_MAKEFILE ?=
 ifeq ($(DBG_MAKEFILE),1)
-    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
-    $(warning ***** $(shell date))
+  $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
+  $(warning ***** $(shell date))
 else
-    # If we're not debugging the Makefile, don't echo recipes.
-    MAKEFLAGS += -s
+  # If we're not debugging the Makefile, don't echo recipes.
+  MAKEFLAGS += -s
 endif
 
 # No, we don't want builtin rules.
@@ -104,7 +104,7 @@ docker-build:
 	docker build                         \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
-        --build-arg "VERSION=$(VERSION)" \
+	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
 	    --build-arg "GOPROXY=$(GOPROXY)" \
 	    -t $(IMG) .
