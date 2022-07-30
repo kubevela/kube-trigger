@@ -36,8 +36,8 @@ watchers: [
 				// Update Kubernetes objects (update a whole list of objects).
 				// This is a builtin one (and the only one currently).
 				type: "update-k8s-objects"
+				// Use these clues to list objects.
 				properties: {
-					// Use these clues to list objects.
 					patchTarget: {
 						apiVersion: "core.oam.dev/v1beta1"
 						kind:       "Application"
@@ -47,17 +47,18 @@ watchers: [
 							"my-label": "my-value"
 						}
 					}
-					// Apply the patch to each object and update each one.
+					// Patch will apply the patch to each object and update each one.
+					// **For example, we are bumping "app.oam.dev/publishVersion" here.**
 					// We have builtin context that you can use:
 					// - context.sourceObject (object from "k8s-resource-watcher", will be ConfigMap here)
 					// - context.patchTarget (object from patchTarget above, will be Application here)
 					patch: """
-					import "strconv"
-					// This will bump publishVersion by 1
-					output: metadata: annotations: {
-						"app.oam.dev/publishVersion": strconv.FormatInt(strconv.ParseInt(context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"], 10, 64)+1, 10)
-					}
-					"""
+						import "strconv"
+						// This will bump publishVersion by 1
+						output: metadata: annotations: {
+							"app.oam.dev/publishVersion": strconv.FormatInt(strconv.ParseInt(context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"], 10, 64)+1, 10)
+						}
+						"""
 					// This action will not be running concurrently.
 					// For this one, this is disabled by default.
 					// For other types of actions, they can run concurrently if you want.

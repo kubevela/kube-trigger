@@ -36,8 +36,8 @@ architecture can be:
 - [x] Basic build infrastructure
 - [x] Complete a basic proof-of-concept sample
 - [ ] linters, GitHub Actions
-- [ ] Add tests. Currently no tests, this is terrible.
-- [ ] Organize code. It sucks now. Make it easier to read and put some comments in it.
+- [ ] **Add tests. No tests currently, this is terrible.**
+- [ ] **Organize code. Make it elegant. It really sucks now.**
 - [ ] Make it run as Addon, build component definition, and examples
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README
