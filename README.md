@@ -13,9 +13,9 @@ can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
 But the usage of kube-trigger is more than that, actually it's a lightweight event-trigger in Kubernetes world. The
 architecture can be:
 
-```                                                                                                                                                                                    
+```                                                                                         
        Kubernetes Events                                              Operations on Kubernetes or any API
-       Cron by time                     Conditions                      Notifications                                                                                           
+       Cron by time                     Conditions                      Notifications        
                                                                                              
     +--------------------+          +---------------------+          +---------------------+ 
     |                    |          |                     |          |                     | 

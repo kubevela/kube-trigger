@@ -1,5 +1,4 @@
-Described in issue https://github.com/kubevela/kubevela/issues/4418 ,
-sometimes we want to trigger Application update.
+Described in issue https://github.com/kubevela/kubevela/issues/4418 , sometimes we want to trigger Application update.
 
 This can already do that. Let's see an example.
 
@@ -20,7 +19,8 @@ Apply `sample.yaml`
 
 `kubectl apply -f examples/sample.yaml`
 
-Run kube-trigger.
+Run kube-trigger (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with cli flags.
+It is just full of testing code right now).
 
 Edit the two ConfigMaps.
 
