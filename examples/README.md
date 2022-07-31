@@ -1,4 +1,5 @@
-Described in issue https://github.com/kubevela/kubevela/issues/4418 , sometimes we want to trigger Application update.
+Described in issue https://github.com/kubevela/kubevela/issues/4418 , sometimes we want k8s event to trigger an
+Application update.
 
 Current kube-trigger can already do that. Let's see an example.
 
@@ -13,10 +14,33 @@ In `sample.yaml`, we have:
 
 ### Try out
 
-- Apply `sample.yaml`
-- Run kube-trigger (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with CLI
-  flags. It is just full of testing code right now).
-- Edit any of the two ConfigMaps.
-- You should see the two Application all have updated: `app.oam.dev/publishVersion: '2/3/4...'`
+1. **Apply `sample.yaml`**
 
-Please read `sampleconf.cue` for details.
+```shell
+kubectl apply sample.yaml
+```
+
+2. **Run kube-trigger** (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with CLI
+   flags. It is just full of testing code right now).
+
+```shell
+make run
+```
+
+3. **Watch ApplicationRevision changes** so that you can see what it does.
+
+```shell
+kubectl get apprev --watch
+```
+
+4. **Edit any of the two ConfigMaps** (do this in another terminal)
+
+```shell
+kubectl edit cm this-will-trigger-update-1
+```
+
+Immediately, you should see the two new ApplicationRevision created.
+
+Specifically, Applications all have updated with annotation: `app.oam.dev/publishVersion: '2/3/4...'`
+
+Please read `sampleconf.cue` for more details.

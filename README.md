@@ -1,8 +1,9 @@
 # kube-trigger
 
-> This project is in its early stage as a proof-of-concept. Don't expect to be able to use it yet.
-
-Check out `examples` for some examples on what it does.
+> This project is in its early stage as a proof-of-concept. Don't expect to be able to use it in production any time
+> soon.
+>
+> **You can check out `examples/` to see what it can do now.** The overall architectural design is almost done.
 
 kube-trigger can list and watch kubernetes object event and trigger an event to destination. The project is inspired
 by [kubewatch](https://github.com/vmware-archive/kubewatch).

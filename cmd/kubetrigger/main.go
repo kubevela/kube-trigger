@@ -39,7 +39,7 @@ import (
 func main() {
 	// TODO(charlie0129): use a proper way to start. Currently, it is a disaster, full of testing code.
 
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	triggerPath := flag.String("config", "examples/sampleconf.cue", "specify the config path of the trigger")
 	flag.Parse()
