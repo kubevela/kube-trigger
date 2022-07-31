@@ -47,6 +47,9 @@ export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
 echo -e "# target: ${OS}/${ARCH}\tversion: ${VERSION}\toutput: ${OUTPUT}"
 
+echo "# Generating code..."
+go generate ./...
+
 LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-}"
 
 if [ -z "${DIRTY_BUILD:-}" ]; then
