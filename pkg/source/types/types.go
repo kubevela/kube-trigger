@@ -20,9 +20,7 @@ import (
 	"context"
 
 	"cuelang.org/go/cue"
-	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
-	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 )
 
 const (
@@ -36,14 +34,9 @@ type Source interface {
 	// New returns a new uninitialized instance.
 	New() Source
 
-	// Init initializes this instance using user-provided properties and filters.
-	// These filters are attached to this source. You should filter events
-	// using these provided filters.
-	Init(properties cue.Value, filters []filtertypes.FilterMeta, filterRegistry *filterregistry.Registry) error
-
-	// AddEventHandlers will be called to give you all the EventHandlers that
-	// you should call when an event happened (after filtering).
-	AddEventHandlers(ehs eventhandler.Store)
+	// Init initializes this instance using user-provided properties.
+	// Call the EventHandler when an event happened.
+	Init(properties cue.Value, eh eventhandler.EventHandler) error
 
 	// Run starts this Source. You should handle the context so that you can
 	// know when to exit.

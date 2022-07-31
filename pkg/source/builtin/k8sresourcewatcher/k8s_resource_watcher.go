@@ -21,12 +21,10 @@ import (
 	"fmt"
 
 	"cuelang.org/go/cue"
-	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
-	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
 	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -41,10 +39,7 @@ func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	return &K8sResourceWatcher{}
 }
 
-func (w *K8sResourceWatcher) Init(properties cue.Value,
-	filters []filtertypes.FilterMeta,
-	filterRegistry *filterregistry.Registry,
-) error {
+func (w *K8sResourceWatcher) Init(properties cue.Value, eh eventhandler.EventHandler) error {
 	var err error
 
 	ctrlConf := &config.Config{}
@@ -53,20 +48,12 @@ func (w *K8sResourceWatcher) Init(properties cue.Value,
 		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
 	}
 
-	w.resourceController = controller.Setup(
-		*ctrlConf,
-		filters,
-		filterRegistry,
-	)
+	w.resourceController = controller.Setup(*ctrlConf, eh)
 
 	w.logger = logrus.WithField("source", krwtypes.TypeName)
 
 	w.logger.Debugf("initialized")
 	return nil
-}
-
-func (w *K8sResourceWatcher) AddEventHandlers(ehs eventhandler.Store) {
-	w.resourceController.AddEventHandlers(ehs)
 }
 
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {

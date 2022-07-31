@@ -28,9 +28,9 @@ import (
 
 	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
 	"github.com/kubevela/kube-trigger/pkg/config"
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/executor"
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 	"github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/sirupsen/logrus"
@@ -39,7 +39,7 @@ import (
 func main() {
 	// TODO(charlie0129): use a proper way to start. Currently, it is a disaster, full of testing code.
 
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	triggerPath := flag.String("config", "examples/sampleconf.cue", "specify the config path of the trigger")
 	flag.Parse()
@@ -69,7 +69,9 @@ func main() {
 
 	var sources []types.Source
 
+	// Initialize all watchers (sources)
 	for _, w := range conf.Watchers {
+		// Check if this source type exists
 		s, exist := sourceReg.Get(w.Source)
 		if !exist {
 			//nolint
@@ -79,18 +81,23 @@ func main() {
 
 		newSource := s.New()
 
-		err = newSource.Init(w.Source.Properties, w.Filters, filterReg)
+		// Add filers and actions to event handlers
+		eh := eventhandler.New().
+			WithFilters(w.Filters, filterReg).
+			WithActions(exe, w.Actions, actionReg)
+
+		// Initialize source and add event handlers to it
+		err = newSource.Init(w.Source.Properties, eh)
 		if err != nil {
 			//nolint
 			fmt.Println(err)
 			return
 		}
 
-		newSource.AddEventHandlers(eventhandler.NewStoreWithActionExecutors(exe, actionReg, w.Actions...))
-
 		sources = append(sources, newSource)
 	}
 
+	// Run sources
 	for _, s := range sources {
 		s := s
 		go func() {

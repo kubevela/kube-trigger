@@ -18,18 +18,21 @@ package cuevalidator
 
 import (
 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/encoding/gocode/gocodec"
 	"github.com/kubevela/kube-trigger/pkg/filter/types"
 	utilscue "github.com/kubevela/kube-trigger/pkg/utils/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type CUEValidator struct {
-	r      *cue.Runtime
-	v      *cue.Value
-	c      *gocodec.Codec
-	logger *logrus.Entry
+	r       *cue.Runtime
+	v       *cue.Value
+	c       *gocodec.Codec
+	tmplStr string
+	logger  *logrus.Entry
 }
 
 const (
@@ -54,9 +57,26 @@ func (c *CUEValidator) ApplyToObject(obj interface{}) (bool, error) {
 
 	c.logger.Debugf("applying to object %v", obj)
 
+	// This validation method is faster. Filter out unneeded events first.
+	// But this may not be enough. If c.v have a field that is not in
+	// obj, this will still succeed. Because it is just making sure obj
+	// satisfies the constraints defined by c.v.
+	// We need to make sure obj have c.v as well later.
 	err = c.c.Validate(*c.v, obj)
 	if err != nil {
-		c.logger.Debugf("object is filtered out")
+		c.logger.Debugf("object is filtered out by stage 1: %s", err)
+		return false, nil
+	}
+
+	// Event is kept. Do further filter.
+	jsonBytes, err := json.Marshal(obj)
+	if err != nil {
+		return false, err
+	}
+	cueCtx := cuecontext.New()
+	_, err = cueCtx.CompileString(c.tmplStr + "\n" + string(jsonBytes)).MarshalJSON()
+	if err != nil {
+		c.logger.Debugf("object is filtered out by stage 2: %s", err)
 		return false, nil
 	}
 
@@ -73,12 +93,12 @@ func (c *CUEValidator) Init(properties cue.Value) error {
 
 	c.r = &cue.Runtime{}
 
-	cueStr, err := utilscue.Marshal(prop.Template)
+	c.tmplStr, err = utilscue.Marshal(prop.Template)
 	if err != nil {
 		return err
 	}
 
-	instance, err := c.r.Compile("validator", cueStr)
+	instance, err := c.r.Compile("validator", c.tmplStr)
 	if err != nil {
 		return err
 	}

@@ -22,15 +22,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
 	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
-	filterutils "github.com/kubevela/kube-trigger/pkg/filter/utils"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
 	workqueue2 "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/workqueue"
-	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,12 +58,12 @@ type Controller struct {
 	queue     workqueue2.RateLimitingInterface
 	informer  cache.SharedIndexInformer
 
-	eventHandlerStore eventhandler.Store
-	sourceConf        config.Config
-	filterRegistry    *filterregistry.Registry
-	filters           []filtertypes.FilterMeta
-	listenEvents      map[string]bool
-	controllerType    string
+	eventHandler   eventhandler.EventHandler
+	sourceConf     config.Config
+	filterRegistry *filterregistry.Registry
+	filters        []filtertypes.FilterMeta
+	listenEvents   map[string]bool
+	controllerType string
 }
 
 func init() {
@@ -72,7 +71,7 @@ func init() {
 }
 
 // Setup prepares controllers
-func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegistry *filterregistry.Registry) *Controller {
+func Setup(ctrlConf config.Config, eh eventhandler.EventHandler) *Controller {
 	conf := ctrl.GetConfigOrDie()
 	ctx := context.Background()
 	mapper, err := apiutil.NewDiscoveryRESTMapper(conf)
@@ -117,8 +116,7 @@ func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegis
 		ctrlConf.Kind,
 	)
 	c.sourceConf = ctrlConf
-	c.filters = filters
-	c.filterRegistry = filterRegistry
+	c.eventHandler = eh
 
 	listenEvents := make(map[string]bool)
 	for _, e := range c.sourceConf.Events {
@@ -294,7 +292,7 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 				Obj:       objectMeta,
 			}
 			c.logger.Debugf("add create event: %s", kbEvent.Message())
-			c.doFilteringAndCallHandlers(kbEvent)
+			c.callEventHandler(kbEvent)
 			return nil
 		}
 	case "update":
@@ -312,7 +310,7 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 			Obj:       objectMeta,
 		}
 		c.logger.Debugf("add update event: %s", kbEvent.Message())
-		c.doFilteringAndCallHandlers(kbEvent)
+		c.callEventHandler(kbEvent)
 		return nil
 	case "delete":
 		kbEvent := event.Event{
@@ -323,32 +321,12 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 			Obj:       objectMeta,
 		}
 		c.logger.Debugf("add create event: %s", kbEvent.Message())
-		c.doFilteringAndCallHandlers(kbEvent)
+		c.callEventHandler(kbEvent)
 		return nil
 	}
 	return nil
 }
 
-func (c *Controller) doFilteringAndCallHandlers(event event.Event) {
-	c.logger.Debugf("applying filters to event name %s", event.Name)
-
-	// Apply filters.
-	kept, err := filterutils.ApplyFilters(event.Obj, c.filters, c.filterRegistry)
-	if err != nil {
-		c.logger.Errorf("applying filters failed: %s", err.Error())
-		return
-	}
-	if !kept {
-		c.logger.Debugf("event name %s filtered out by filters", event.Name)
-		return
-	}
-
-	c.logger.Infof("event %s happened, calling event handlers", event.Name)
-
-	// Currently, we only pass Object
-	c.eventHandlerStore.Call(c.controllerType, event)
-}
-
-func (c *Controller) AddEventHandlers(h eventhandler.Store) {
-	c.eventHandlerStore = h
+func (c *Controller) callEventHandler(e event.Event) {
+	_ = c.eventHandler(c.controllerType, e.Obj)
 }

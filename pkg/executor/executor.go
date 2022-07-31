@@ -35,6 +35,13 @@ type Executor struct {
 	logger         *logrus.Entry
 }
 
+// Job is an Action to be executed by the workers in the Executor.
+type Job interface {
+	Type() string
+	Run(ctx context.Context) error
+	AllowConcurrency() bool
+}
+
 // New creates a new Executor with a queue size, number of workers,
 // and a job-running or shutdown timeout.
 func New(queueSize int, maxConcurrency int, timeout time.Duration) *Executor {
@@ -55,7 +62,7 @@ func New(queueSize int, maxConcurrency int, timeout time.Duration) *Executor {
 func (e *Executor) setJobStatus(j Job, status bool) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
-	e.runningJobs[j.Action.Type()] = status
+	e.runningJobs[j.Type()] = status
 }
 
 func (e *Executor) setJobRunning(j Job) {
@@ -69,17 +76,17 @@ func (e *Executor) setJobNotRunning(j Job) {
 func (e *Executor) getJobStatus(j Job) bool {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
-	return e.runningJobs[j.Action.Type()]
+	return e.runningJobs[j.Type()]
 }
 
 // AddJob adds a job to the queue.
 func (e *Executor) AddJob(j Job) bool {
 	select {
 	case e.jobChan <- j:
-		e.logger.Infof("added job to executor: %s", j.Action.Type())
+		e.logger.Infof("added job to executor: %s", j.Type())
 		return true
 	default:
-		e.logger.Errorf("job queue full, add failed: %s", j.Action.Type())
+		e.logger.Errorf("job queue full, add failed: %s", j.Type())
 		return false
 	}
 }
@@ -95,14 +102,13 @@ func (e *Executor) runJob(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			if j.Action == nil {
-				e.logger.Debugf("empty job skipped")
+			if j == nil {
 				return
 			}
-			e.logger.Infof("job picked up by a worker, running job: %s", j.Action.Type())
+			e.logger.Infof("job picked up by a worker, running job: %s", j.Type())
 			// This job does not allow concurrent runs, and it is already running.
 			// Requeue it to run it later.
-			if !j.Action.AllowConcurrency() && e.getJobStatus(j) {
+			if !j.AllowConcurrency() && e.getJobStatus(j) {
 				e.AddJob(j)
 				return
 			}
@@ -112,9 +118,9 @@ func (e *Executor) runJob(ctx context.Context) {
 			err := j.Run(timeoutCtx)
 			e.setJobNotRunning(j)
 			if err == nil && timeoutCtx.Err() == nil {
-				e.logger.Infof("job %s finished", j.Action.Type())
+				e.logger.Infof("job %s finished", j.Type())
 			} else {
-				e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Action.Type(), err, timeoutCtx.Err())
+				e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Type(), err, timeoutCtx.Err())
 			}
 			// Avoid context leak.
 			cancel()
