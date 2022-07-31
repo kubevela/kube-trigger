@@ -113,6 +113,10 @@ docker-push: # @HELP push the image to the defined registry
 docker-push: docker-build
 	docker push $(IMG)
 
+lint: # @HELP run linter
+lint:
+	bash build/lint.sh
+
 clean: # @HELP remove build artifacts
 clean:
 	rm -rf bin
