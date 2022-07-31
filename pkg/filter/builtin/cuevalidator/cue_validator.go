@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The KubeVela Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cuevalidator
 
 import (
@@ -7,9 +23,6 @@ import (
 	utilscue "github.com/kubevela/kube-trigger/pkg/utils/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type CUEValidator struct {
@@ -20,11 +33,15 @@ type CUEValidator struct {
 }
 
 const (
-	typeName = "cue-validator"
+	typeName          = "cue-validator"
+	TemplateFieldName = "template"
 )
 
+type Properties struct {
+	Template cue.Value
+}
+
 func (c *CUEValidator) parseProperties(properties cue.Value) (Properties, error) {
-	// TODO(charlie0129): use a CUE to validate properties and provide default values
 	v := properties.LookupPath(cue.ParsePath(TemplateFieldName))
 	if v.Err() != nil {
 		return Properties{}, v.Err()
@@ -32,24 +49,19 @@ func (c *CUEValidator) parseProperties(properties cue.Value) (Properties, error)
 	return Properties{Template: v}, nil
 }
 
-func (c *CUEValidator) ApplyToObject(obj metav1.Object) (bool, error) {
+func (c *CUEValidator) ApplyToObject(obj interface{}) (bool, error) {
 	var err error
 
-	u := unstructured.Unstructured{}
-	u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return false, err
-	}
-
-	c.logger.Debugf("applying to object name %s", u.GetName())
+	c.logger.Debugf("applying to object %v", obj)
 
 	err = c.c.Validate(*c.v, obj)
 	if err != nil {
-		c.logger.Debugf("object with name %s filtered out", u.GetName())
+		c.logger.Debugf("object is filtered out")
 		return false, nil
 	}
 
-	c.logger.Debugf("object with name %s kept", u.GetName())
+	c.logger.Debugf("object is kept")
+
 	return true, nil
 }
 

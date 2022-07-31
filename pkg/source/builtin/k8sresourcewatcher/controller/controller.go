@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The KubeVela Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package controller
 
 import (
@@ -8,12 +24,13 @@ import (
 
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
 	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
+	filterutils "github.com/kubevela/kube-trigger/pkg/filter/utils"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
-	"github.com/kubevela/kube-trigger/pkg/source/types"
-	"github.com/kubevela/kube-trigger/pkg/workqueue"
+	workqueue2 "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/workqueue"
+	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,22 +56,22 @@ var serverStartTime time.Time
 type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
-	queue     workqueue.RateLimitingInterface
+	queue     workqueue2.RateLimitingInterface
 	informer  cache.SharedIndexInformer
 
-	eventHandlers  []types.EventHandler
-	sourceConf     config.Config
-	filterRegistry *filterregistry.Registry
-	filters        []filtertypes.FilterMeta
-	listenEvents   map[string]bool
-	controllerType string
+	eventHandlerStore eventhandler.Store
+	sourceConf        config.Config
+	filterRegistry    *filterregistry.Registry
+	filters           []filtertypes.FilterMeta
+	listenEvents      map[string]bool
+	controllerType    string
 }
 
 func init() {
 	v1beta1.AddToScheme(scheme.Scheme)
 }
 
-// Start prepares watchers and run their controllers, then waits for process termination signals
+// Setup prepares controllers
 func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegistry *filterregistry.Registry) *Controller {
 	conf := ctrl.GetConfigOrDie()
 	ctx := context.Background()
@@ -66,10 +83,6 @@ func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegis
 	if err != nil {
 		logrus.WithField("source", krwtypes.TypeName).Fatalf("Can not create kubernetes client: %v", err)
 	}
-	//cc, err := client.New(conf, client.Options{Scheme: scheme.Scheme})
-	//if err != nil {
-	//		logrus.WithField("source", krwtypes.TypeName).Fatalf("Can not create kubernetes client: %v", err)
-	//}
 	gv, err := schema.ParseGroupVersion(ctrlConf.APIVersion)
 	if err != nil {
 		logrus.WithField("source", krwtypes.TypeName).Fatal(err)
@@ -94,7 +107,7 @@ func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegis
 			},
 		},
 		&unstructured.Unstructured{},
-		0, //Skip resync
+		0, // Skip resync
 		cache.Indexers{},
 	)
 
@@ -115,16 +128,6 @@ func Setup(ctrlConf config.Config, filters []filtertypes.FilterMeta, filterRegis
 
 	c.controllerType = krwtypes.TypeName
 
-	//stopCh := make(chan struct{})
-	//defer close(stopCh)
-	//
-	//go c.Run(stopCh)
-	//
-	//sigterm := make(chan os.Signal, 1)
-	//signal.Notify(sigterm, syscall.SIGTERM)
-	//signal.Notify(sigterm, syscall.SIGINT)
-	//<-sigterm
-
 	return c
 }
 
@@ -133,7 +136,7 @@ func newResourceController(
 	informer cache.SharedIndexInformer,
 	resourceType string,
 ) *Controller {
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	queue := workqueue2.NewRateLimitingQueue(workqueue2.DefaultControllerRateLimiter())
 	var newEvent event.InformerEvent
 	var err error
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -213,11 +216,11 @@ func (c *Controller) runWorker() {
 
 func (c *Controller) processNextItem() bool {
 	newEvent, quit := c.queue.Get()
-
 	if quit {
 		return false
 	}
 	defer c.queue.Done(newEvent)
+
 	err := c.processItem(newEvent.(event.InformerEvent))
 	if err == nil {
 		// No error, reset the ratelimit counters
@@ -236,16 +239,16 @@ func (c *Controller) processNextItem() bool {
 }
 
 func (c *Controller) processItem(newEvent event.InformerEvent) error {
-	// Ignore exists, we want deleting event as well
+	// Ignore if it exists, we want deleting event as well.
 	obj, _, err := c.informer.GetIndexer().GetByKey(newEvent.Key)
 	if err != nil {
 		return fmt.Errorf("error fetching object with key %s from store: %v", newEvent.Key, err)
 	}
-	// get object's metadata
-	objectMeta := utils.GetObjectMetaData(obj)
-	c.logger.Tracef("processong object %v", objectMeta)
 
-	// hold status type for default critical alerts
+	// Get object's metadata
+	objectMeta := utils.GetObjectMetaData(obj)
+
+	// Hold status type for default critical alerts
 	var status string
 
 	// namespace retrieved from event key in case namespace value is empty
@@ -256,7 +259,7 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 	}
 
 	if c.sourceConf.Namespace != "" && c.sourceConf.Namespace != newEvent.Namespace {
-		c.logger.Debugf("object %s filtered out because of different namespaces: %s!=%s", newEvent.Key, c.sourceConf.Namespace, newEvent.Namespace)
+		c.logger.Debugf("object %s filtered out because of different namespaces: %s!=%s", newEvent.Key, newEvent.Namespace, c.sourceConf.Namespace)
 		return nil
 	}
 
@@ -265,10 +268,10 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 		return nil
 	}
 
-	// process events based on its type
+	// Process events based on its type
 	switch newEvent.EventType {
 	case "create":
-		// compare CreationTimestamp and serverStartTime and alert only on latest events
+		// Compare CreationTimestamp and serverStartTime and alert only on latest events
 		// Could be Replaced by using Delta or DeltaFIFO
 		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
 			switch newEvent.ResourceType {
@@ -292,11 +295,9 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 			}
 			c.logger.Debugf("add create event: %s", kbEvent.Message())
 			c.doFilteringAndCallHandlers(kbEvent)
-
 			return nil
 		}
 	case "update":
-
 		switch newEvent.ResourceType {
 		case "Backoff":
 			status = "Danger"
@@ -330,26 +331,24 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 
 func (c *Controller) doFilteringAndCallHandlers(event event.Event) {
 	c.logger.Debugf("applying filters to event name %s", event.Name)
-	// apply filters
-	for _, f := range c.filters {
-		fInstance, err := c.filterRegistry.CreateOrGetInstance(f)
-		if err != nil {
-			return
-		}
-		kept, err := fInstance.ApplyToObject(event.Obj)
-		if err != nil || !kept {
-			c.logger.Debugf("event name %s filtered out by filter %s", event.Message(), fInstance.Type())
-			return
-		}
+
+	// Apply filters.
+	kept, err := filterutils.ApplyFilters(event.Obj, c.filters, c.filterRegistry)
+	if err != nil {
+		c.logger.Errorf("applying filters failed: %s", err.Error())
+		return
+	}
+	if !kept {
+		c.logger.Debugf("event name %s filtered out by filters", event.Name)
+		return
 	}
 
-	c.logger.Debugf("calling event handlers by event name %s", event.Name)
-	for _, h := range c.eventHandlers {
-		h(c.controllerType, event)
-	}
+	c.logger.Infof("event %s happened, calling event handlers", event.Name)
+
+	// Currently, we only pass Object
+	c.eventHandlerStore.Call(c.controllerType, event)
 }
 
-func (c *Controller) AddEventHandler(h types.EventHandler) {
-	c.eventHandlers = append(c.eventHandlers, h)
-	c.logger.Debugf("add event handler %d", len(c.eventHandlers))
+func (c *Controller) AddEventHandlers(h eventhandler.Store) {
+	c.eventHandlerStore = h
 }

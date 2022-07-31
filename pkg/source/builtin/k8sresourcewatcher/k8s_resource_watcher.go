@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The KubeVela Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package k8sresourcewatcher
 
 import (
@@ -10,7 +26,9 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
+	"github.com/kubevela/kube-trigger/pkg/source/eventhandler"
 	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,7 +50,7 @@ func (w *K8sResourceWatcher) Init(properties cue.Value,
 	ctrlConf := &config.Config{}
 	err = ctrlConf.Parse(properties)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
 	}
 
 	w.resourceController = controller.Setup(
@@ -47,8 +65,8 @@ func (w *K8sResourceWatcher) Init(properties cue.Value,
 	return nil
 }
 
-func (w *K8sResourceWatcher) AddEventHandler(eh sourcetypes.EventHandler) {
-	w.resourceController.AddEventHandler(eh)
+func (w *K8sResourceWatcher) AddEventHandlers(ehs eventhandler.Store) {
+	w.resourceController.AddEventHandlers(ehs)
 }
 
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {

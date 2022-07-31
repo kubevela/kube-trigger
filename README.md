@@ -41,12 +41,12 @@ How the various components interact with each other under the hood:
 
 - [x] Basic build infrastructure
 - [x] Complete a basic proof-of-concept sample
-- [ ] linters, GitHub Actions
+- [x] linters, license checker
+- [ ] GitHub Actions
 - [ ] **Add tests. No tests currently, this is terrible.**
-- [ ] **Make code elegant. Adhere to a good standard.** I don't have time to do it yet.
 - [ ] Make it run as Addon, build component definition, and examples
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
-- [ ] Refine README
+- [ ] Refine README, quick starts, contribution guide
 - [ ] More Source types
 - [ ] More Destination Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
   CUE and K8s operations)

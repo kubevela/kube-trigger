@@ -117,6 +117,10 @@ lint: # @HELP run linter
 lint:
 	bash build/lint.sh
 
+checklicense: # @HELP check license headers
+checklicense:
+	bash hack/verify-boilerplate.sh
+
 clean: # @HELP remove build artifacts
 clean:
 	rm -rf bin

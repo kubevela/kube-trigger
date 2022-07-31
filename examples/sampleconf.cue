@@ -11,8 +11,8 @@ watchers: [
 				apiVersion: "v1"
 				kind:       "ConfigMap"
 				namespace:  "default"
-				// Event type: update, create, delete, or ""
-				event: "update"
+				// Event type: update, create, delete, leave empty to listen to all events
+				events: ["update"]
 			}
 		}
 		// Filter the events above.

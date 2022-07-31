@@ -1,6 +1,6 @@
 Described in issue https://github.com/kubevela/kubevela/issues/4418 , sometimes we want to trigger Application update.
 
-This can already do that. Let's see an example.
+Current kube-trigger can already do that. Let's see an example.
 
 In `sample.yaml`, we have:
 

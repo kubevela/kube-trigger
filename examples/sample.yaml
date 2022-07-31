@@ -22,7 +22,7 @@ kind: Application
 metadata:
   annotations:
     # notice changes here after you update the CM above
-    app.oam.dev/publishVersion: "1"
+    app.oam.dev/publishVersion: "2"
   name: this-will-be-updated-1
   labels:
     my-label: my-value
@@ -37,8 +37,10 @@ kind: Application
 metadata:
   annotations:
     # notice changes here after you update the CM above
-    app.oam.dev/publishVersion: "1"
+    app.oam.dev/publishVersion: "2"
   name: this-will-be-updated-2
+  labels:
+    my-label: my-value
   namespace: default
 spec:
   components: [ ]

@@ -14,8 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+package config
+
+import (
+	actiontype "github.com/kubevela/kube-trigger/pkg/action/types"
+	filtertype "github.com/kubevela/kube-trigger/pkg/filter/types"
+	sourcetype "github.com/kubevela/kube-trigger/pkg/source/types"
+)
+
+type Config struct {
+	Watchers []WatchMeta
+}
+
+type WatchMeta struct {
+	Source  sourcetype.SourceMeta
+	Filters []filtertype.FilterMeta
+	Actions []actiontype.ActionMeta
+}
 
 const (
-	TypeName = "k8s-resource-watcher"
+	WatchesFieldName = "watchers"
+	SourceFieldName  = "source"
+	FiltersFieldName = "filters"
+	ActionsFieldName = "actions"
 )

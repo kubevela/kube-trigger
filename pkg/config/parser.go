@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The KubeVela Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package config
 
 import (
@@ -11,27 +27,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Config struct {
-	Watchers []WatchMeta
-}
-
-type WatchMeta struct {
-	Source  sourcetype.SourceMeta
-	Filters []filtertype.FilterMeta
-	Actions []actiontype.ActionMeta
-}
-
-const (
-	WatchesFieldName = "watchers"
-	SourceFieldName  = "source"
-	FiltersFieldName = "filters"
-	ActionsFieldName = "actions"
-)
+var logger = logrus.WithField("config", "parser")
 
 func (c *Config) Parse(confStr string) error {
 	var err error
-
-	confStr = "context: _\n" + confStr
 
 	cueCtx := cuecontext.New()
 	vConf := cueCtx.CompileString(confStr)
@@ -51,6 +50,9 @@ func (c *Config) Parse(confStr string) error {
 		return err
 	}
 
+	logger.Infof("configuration parsed")
+	logger.Debugf("configuration parsed: %v", c.Watchers)
+
 	return nil
 }
 
@@ -62,6 +64,7 @@ func parseWatchers(vWatches cue.Value) ([]WatchMeta, error) {
 		return nil, err
 	}
 	for i := 0; vWatchList.Next(); i++ {
+		//nolint:govet
 		watch, err := parseWatcher(vWatchList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", WatchesFieldName, i)
@@ -85,6 +88,8 @@ func parseWatcher(vWatch cue.Value) (WatchMeta, error) {
 	if err != nil {
 		return ret, err
 	}
+
+	logger.Debugf("parsed source: %v", vSource)
 
 	vFilters := vWatch.LookupPath(cue.ParsePath(FiltersFieldName))
 	if vFilters.Err() != nil {
@@ -128,7 +133,7 @@ func parseSource(vSource cue.Value) (sourcetype.SourceMeta, error) {
 	}
 	ret.Properties = vProperties
 
-	logrus.WithField("config", "parser").Debugf("parsed source: %s", ret.Type)
+	logger.Debugf("parsed source: %s", ret.Type)
 
 	return ret, nil
 }
@@ -141,6 +146,7 @@ func parseFilters(vFilters cue.Value) ([]filtertype.FilterMeta, error) {
 		return nil, err
 	}
 	for i := 0; vFilterList.Next(); i++ {
+		//nolint:govet
 		filter, err := parseFilter(vFilterList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", FiltersFieldName, i)
@@ -175,7 +181,7 @@ func parseFilter(vFilter cue.Value) (filtertype.FilterMeta, error) {
 	ret.Raw = rawStr
 	ret.Properties = vProperties
 
-	logrus.WithField("config", "parser").Debugf("parsed filter: %s", ret.Raw)
+	logger.Debugf("parsed filter: %s", ret.Raw)
 
 	return ret, nil
 }
@@ -188,6 +194,7 @@ func parseActions(vActions cue.Value) ([]actiontype.ActionMeta, error) {
 		return nil, err
 	}
 	for i := 0; vActionsList.Next(); i++ {
+		//nolint:govet
 		action, err := parseAction(vActionsList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", ActionsFieldName, i)
@@ -222,7 +229,7 @@ func parseAction(vAction cue.Value) (actiontype.ActionMeta, error) {
 	ret.Raw = rawStr
 	ret.Properties = vProperties
 
-	logrus.WithField("config", "parser").Debugf("parsed action: %s", ret.Raw)
+	logger.Debugf("parsed action: %s", ret.Raw)
 
 	return ret, nil
 }
