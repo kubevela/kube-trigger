@@ -41,7 +41,7 @@ type Action interface {
 
 	// Init initializes this instance using user-provided properties and common things.
 	// Typically, this will only be called once and the initialized instance
-	// will be cached.
+	// will be cached. Subsequent calls will use the Run() method in cached instances.
 	Init(c Common, properties cue.Value) error
 
 	// Run executes this Action. sourceType is the type of upstream event source.

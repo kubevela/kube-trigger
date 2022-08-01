@@ -21,6 +21,7 @@ import (
 
 	"github.com/kubevela/kube-trigger/pkg/action/registry"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
+	"github.com/kubevela/kube-trigger/pkg/executor"
 )
 
 type Job struct {
@@ -28,6 +29,8 @@ type Job struct {
 	sourceType string
 	event      interface{}
 }
+
+var _ executor.Job = &Job{}
 
 // New creates a new job. It will fetch cached Action instance from Registry
 // using provided ActionMeta. sourceType and event will be passed to the Action.Run

@@ -26,36 +26,35 @@ import (
 
 // Registry stores Actions, both uninitialized and cached ones.
 type Registry struct {
-	reg  map[string]types.Action
-	lock sync.RWMutex
+	reg         map[string]types.Action
+	lock        sync.RWMutex
+	maxCapacity int
 }
 
 // NewWithBuiltinActions return a Registry with builtin actions registered.
 // Ready for use.
-func NewWithBuiltinActions() *Registry {
-	ret := New()
+func NewWithBuiltinActions(capacity int) *Registry {
+	ret := New(capacity)
 	RegisterBuiltinActions(ret)
 	return ret
 }
 
 // New creates a new Registry.
-func New() *Registry {
+func New(capacity int) *Registry {
 	r := Registry{}
 	r.reg = make(map[string]types.Action)
 	r.lock = sync.RWMutex{}
+	r.maxCapacity = capacity
 	return &r
-}
-
-// ResetToBuiltinOnes resets Registry to only contain builtin Actions.
-func (r *Registry) ResetToBuiltinOnes() {
-	newReg := NewWithBuiltinActions()
-	r.reg = newReg.reg
 }
 
 // RegisterExistingInstance registers an existing initialized Action instance to Registry.
 func (r *Registry) RegisterExistingInstance(meta types.ActionMeta, instance types.Action) error {
 	if meta.Raw == "" {
 		return fmt.Errorf("action meta raw info is empty")
+	}
+	if len(r.reg) >= r.maxCapacity {
+		return fmt.Errorf("action registry max capacity exceed %d", r.maxCapacity)
 	}
 	r.lock.Lock()
 	defer r.lock.Unlock()

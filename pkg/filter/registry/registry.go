@@ -25,36 +25,35 @@ import (
 
 // Registry stores Filters, both uninitialized and cached ones.
 type Registry struct {
-	reg  map[string]types.Filter
-	lock sync.RWMutex
+	reg         map[string]types.Filter
+	lock        sync.RWMutex
+	maxCapacity int
 }
 
 // NewWithBuiltinFilters return a Registry with builtin filters registered.
 // Ready for use.
-func NewWithBuiltinFilters() *Registry {
-	ret := New()
+func NewWithBuiltinFilters(capacity int) *Registry {
+	ret := New(capacity)
 	RegisterBuiltinFilters(ret)
 	return ret
 }
 
 // New creates a new Registry.
-func New() *Registry {
+func New(capacity int) *Registry {
 	r := Registry{}
 	r.reg = make(map[string]types.Filter)
 	r.lock = sync.RWMutex{}
+	r.maxCapacity = capacity
 	return &r
-}
-
-// ResetToBuiltinOnes resets Registry to only contain builtin Filters.
-func (r *Registry) ResetToBuiltinOnes() {
-	newReg := NewWithBuiltinFilters()
-	r.reg = newReg.reg
 }
 
 // RegisterExistingInstance registers an existing initialized Filters instance to Registry.
 func (r *Registry) RegisterExistingInstance(meta types.FilterMeta, instance types.Filter) error {
 	if meta.Raw == "" {
 		return fmt.Errorf("filter meta raw info is empty")
+	}
+	if len(r.reg) >= r.maxCapacity {
+		return fmt.Errorf("filter registry max capacity exceed %d", r.maxCapacity)
 	}
 	r.lock.Lock()
 	defer r.lock.Unlock()

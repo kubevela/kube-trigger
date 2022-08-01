@@ -29,7 +29,6 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
-	workqueue2 "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/workqueue"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
@@ -55,7 +55,7 @@ var serverStartTime time.Time
 type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
-	queue     workqueue2.RateLimitingInterface
+	queue     workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
 
 	eventHandler   eventhandler.EventHandler
@@ -134,7 +134,7 @@ func newResourceController(
 	informer cache.SharedIndexInformer,
 	resourceType string,
 ) *Controller {
-	queue := workqueue2.NewRateLimitingQueue(workqueue2.DefaultControllerRateLimiter())
+	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent event.InformerEvent
 	var err error
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{

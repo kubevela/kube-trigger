@@ -23,9 +23,10 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/util/workqueue"
 )
 
-// Executor is a job queue with multiple workers that can run concurrently.
+// Executor is a work queue.
 type Executor struct {
 	jobChan        chan Job
 	wg             sync.WaitGroup
@@ -34,6 +35,7 @@ type Executor struct {
 	timeout        time.Duration
 	runningJobs    map[string]bool
 	logger         *logrus.Entry
+	queue          workqueue.RateLimitingInterface
 }
 
 // Job is an Action to be executed by the workers in the Executor.
@@ -52,6 +54,7 @@ func New(queueSize int, maxConcurrency int, timeout time.Duration) *Executor {
 	e.maxConcurrency = maxConcurrency
 	e.timeout = timeout
 	e.jobChan = make(chan Job, queueSize)
+	e.queue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	e.logger = logrus.WithField("executor", "action-job-executor")
 	e.logger.Infof("new executor created, %d queue size, %d concurrnt workers, %v timeout",
 		queueSize,
@@ -110,6 +113,8 @@ func (e *Executor) runJob(ctx context.Context) {
 			// This job does not allow concurrent runs, and it is already running.
 			// Requeue it to run it later.
 			if !j.AllowConcurrency() && e.getJobStatus(j) {
+				// FIXME(charlie0129): this will cause constant requeue. Use rate limiters.
+				// Consider using workqueue in client-go.
 				err := e.AddJob(j)
 				if err != nil {
 					e.logger.Errorf("requeueing job %s failed: %s", j.Type(), err)

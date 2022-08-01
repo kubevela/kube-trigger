@@ -51,84 +51,84 @@ type PatchK8sObjects struct {
 	logger *logrus.Entry
 }
 
-func (u *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}) error {
+func (pko *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}) error {
 	var contextStr string
 
-	u.logger.Infof("running, event souce: %s", sourceType)
-	u.logger.Debugf("running with event %v from %s", event, sourceType)
+	pko.logger.Infof("running, event souce: %s", sourceType)
+	pko.logger.Debugf("running with event %v from %s", event, sourceType)
 
 	// Only if it is from k8s-resource-watcher, we add context.sourceObject
 	e, ok := event.(krwevent.Event)
 	if ok {
 		jsonByte, err := json.Marshal(e.Obj)
 		if err == nil {
-			u.logger.Debugf("added context.%s: %s", sourceObjectFieldName, string(jsonByte))
+			pko.logger.Debugf("added context.%s: %s", sourceObjectFieldName, string(jsonByte))
 			contextStr += fmt.Sprintf("context:{%s:%s}\n", sourceObjectFieldName, string(jsonByte))
 		}
 	} else {
-		u.logger.Infof("event is not a k8s-resource-watcher event, so context.%s available", sourceObjectFieldName)
+		pko.logger.Infof("event is not a k8s-resource-watcher event, so context.%s available", sourceObjectFieldName)
 	}
 
-	gv, err := schema.ParseGroupVersion(u.prop.PatchTarget.APIVersion)
+	gv, err := schema.ParseGroupVersion(pko.prop.PatchTarget.APIVersion)
 	if err != nil {
 		return err
 	}
 
-	gvk := gv.WithKind(u.prop.PatchTarget.Kind)
+	gvk := gv.WithKind(pko.prop.PatchTarget.Kind)
 
-	unstructuredObjList := unstructured.UnstructuredList{}
-	unstructuredObjList.SetGroupVersionKind(gvk)
+	uList := unstructured.UnstructuredList{}
+	uList.SetGroupVersionKind(gvk)
 
 	var listOptions []client.ListOption
-	if u.prop.PatchTarget.Namespace != "" {
-		listOptions = append(listOptions, client.InNamespace(u.prop.PatchTarget.Namespace))
+	if pko.prop.PatchTarget.Namespace != "" {
+		listOptions = append(listOptions, client.InNamespace(pko.prop.PatchTarget.Namespace))
 	}
-	if len(u.prop.PatchTarget.LabelSelectors) > 0 {
+	if len(pko.prop.PatchTarget.LabelSelectors) > 0 {
 		selector := client.MatchingLabels{}
-		for k, v := range u.prop.PatchTarget.LabelSelectors {
+		for k, v := range pko.prop.PatchTarget.LabelSelectors {
 			selector[k] = v
 		}
 		listOptions = append(listOptions, selector)
 	}
 
-	err = u.c.List(ctx, &unstructuredObjList, listOptions...)
+	err = pko.c.List(ctx, &uList, listOptions...)
 	if err != nil {
-		u.logger.Errorf("cannot list %v", u.prop.PatchTarget)
+		pko.logger.Errorf("cannot list %v", pko.prop.PatchTarget)
 		return err
 	}
 
 	var objList []unstructured.Unstructured
 
-	for _, un := range unstructuredObjList.Items {
+	for _, un := range uList.Items {
 		// Do name filtering.
-		targetName := u.prop.PatchTarget.Name
+		targetName := pko.prop.PatchTarget.Name
 		if targetName != "" && un.GetName() != targetName {
 			continue
 		}
 		objList = append(objList, un)
 	}
 
-	u.logger.Infof("found %d patch targets: %s", len(objList), gvk)
+	pko.logger.Infof("found %d patch targets: %s", len(objList), gvk)
 
 	// Patch each one.
 	for i, un := range objList {
-		u.logger.Infof("patching target %d: %s", i+1, un.GetName())
-		err = u.updateObject(ctx, contextStr, un)
+		pko.logger.Infof("patching target %d: %s", i+1, un.GetName())
+		err = pko.updateObject(ctx, contextStr, un)
 		if err != nil {
 			return err
 		}
-		u.logger.Infof("target %d patched: %s", i+1, un.GetName())
+		pko.logger.Infof("target %d patched: %s", i+1, un.GetName())
 	}
 
-	u.logger.Info("action finished successfully")
+	pko.logger.Info("action finished successfully")
 
 	return nil
 }
 
-func (u *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, un unstructured.Unstructured) error {
+func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, un unstructured.Unstructured) error {
 	jsonByte, err := json.Marshal(un.Object)
 	if err == nil {
-		u.logger.Debugf("added context.%s: %s", patchTargetFieldName, string(jsonByte))
+		pko.logger.Debugf("added context.%s: %s", patchTargetFieldName, string(jsonByte))
 		contextStr += fmt.Sprintf("context:{%s:%s}\n", patchTargetFieldName, string(jsonByte))
 	}
 
@@ -136,7 +136,7 @@ func (u *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, u
 	// context+patch string
 	// We can use a string builder to go faster, but I didn't bother here.
 	// This should not affect much.
-	v := cueCtx.CompileString(u.prop.Patch + "\n" + contextStr)
+	v := cueCtx.CompileString(pko.prop.Patch + "\n" + contextStr)
 	if v.Err() != nil {
 		return v.Err()
 	}
@@ -154,7 +154,7 @@ func (u *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, u
 		return err
 	}
 
-	u.logger.Debugf("parsed patch, going to apply: %v", patchOut)
+	pko.logger.Debugf("parsed patch, going to apply: %v", patchOut)
 
 	// Merge patch with object.
 	err = mergo.Merge(&un.Object, patchOut, mergo.WithOverride)
@@ -162,10 +162,10 @@ func (u *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, u
 		return err
 	}
 
-	u.logger.Debugf("merged with patch, ready to update: %v", un.Object)
+	pko.logger.Debugf("merged with patch, ready to update: %v", un.Object)
 
 	// Apply merged object.
-	err = u.c.Update(ctx, &un)
+	err = pko.c.Update(ctx, &un)
 	if err != nil {
 		return err
 	}
@@ -173,37 +173,37 @@ func (u *PatchK8sObjects) updateObject(ctx context.Context, contextStr string, u
 	return nil
 }
 
-func (u *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
+func (pko *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
 	var err error
 
-	u.logger = logrus.WithField("action", typeName)
+	pko.logger = logrus.WithField("action", typeName)
 
-	u.prop = Properties{}
+	pko.prop = Properties{}
 
 	// Parse properties.
-	err = u.prop.parse(properties)
+	err = pko.prop.parse(properties)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties")
 	}
-	u.logger.Debugf("parsed propertise: %v", u.prop)
+	pko.logger.Debugf("parsed propertise: %v", pko.prop)
 
-	u.c = c.Client
+	pko.c = c.Client
 
-	u.logger.Debugf("initialized")
+	pko.logger.Debugf("initialized")
 
 	return nil
 }
 
-func (u *PatchK8sObjects) Type() string {
+func (pko *PatchK8sObjects) Type() string {
 	return typeName
 }
 
-func (u *PatchK8sObjects) New() types.Action {
+func (pko *PatchK8sObjects) New() types.Action {
 	return &PatchK8sObjects{}
 }
 
-func (u *PatchK8sObjects) AllowConcurrency() bool {
-	return u.prop.AllowConcurrency
+func (pko *PatchK8sObjects) AllowConcurrency() bool {
+	return pko.prop.AllowConcurrency
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.

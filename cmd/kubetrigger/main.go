@@ -53,8 +53,10 @@ func main() {
 	exe := executor.New(20, 2, time.Second*5)
 
 	sourceReg := sourceregistry.NewWithBuiltinSources()
-	filterReg := filterregistry.NewWithBuiltinFilters()
-	actionReg := actionregistry.NewWithBuiltinActions()
+	//nolint:gomnd
+	filterReg := filterregistry.NewWithBuiltinFilters(10)
+	//nolint:gomnd
+	actionReg := actionregistry.NewWithBuiltinActions(10)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

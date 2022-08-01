@@ -63,7 +63,10 @@ func (e EventHandler) AddHandlerAfter(eh EventHandler) EventHandler {
 }
 
 // WithFilters applies filters to event before e is called.
-func (e EventHandler) WithFilters(filters []filtertypes.FilterMeta, reg *filterregistry.Registry) EventHandler {
+func (e EventHandler) WithFilters(
+	filters []filtertypes.FilterMeta,
+	reg *filterregistry.Registry,
+) EventHandler {
 	logger := logrus.WithField("eventhandler", "applyfilters")
 	return e.AddHandlerBefore(func(sourceType string, event interface{}) error {
 		kept, err := filterutils.ApplyFilters(event, filters, reg)
@@ -82,7 +85,8 @@ func (e EventHandler) WithFilters(filters []filtertypes.FilterMeta, reg *filterr
 }
 
 // WithActions adds jobs that will execute actions to Executor after e is called.
-func (e EventHandler) WithActions(exe *executor.Executor,
+func (e EventHandler) WithActions(
+	exe *executor.Executor,
 	actions []actiontypes.ActionMeta,
 	reg *actionregistry.Registry,
 ) EventHandler {
