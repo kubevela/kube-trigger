@@ -17,6 +17,10 @@ limitations under the License.
 package config
 
 import (
+	"fmt"
+	"io/ioutil"
+	"strings"
+
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	actiontype "github.com/kubevela/kube-trigger/pkg/action/types"
@@ -28,6 +32,19 @@ import (
 )
 
 var logger = logrus.WithField("config", "parser")
+
+func New() *Config {
+	return &Config{}
+}
+
+func NewFromFile(path string) (*Config, error) {
+	c := &Config{}
+	err := c.ParseFromFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
 
 func (c *Config) Parse(confStr string) error {
 	var err error
@@ -56,6 +73,18 @@ func (c *Config) Parse(confStr string) error {
 	return nil
 }
 
+func (c *Config) ParseFromFile(path string) error {
+	if !strings.HasSuffix(path, ".cue") {
+		return fmt.Errorf("config files shoule be CUE source")
+	}
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		logrus.Errorf("cannot load config %s. You should specify where your config resides.", path)
+		return err
+	}
+
+	return c.Parse(string(data))
+}
 func parseWatchers(vWatches cue.Value) ([]WatchMeta, error) {
 	var ret []WatchMeta
 
@@ -64,7 +93,7 @@ func parseWatchers(vWatches cue.Value) ([]WatchMeta, error) {
 		return nil, err
 	}
 	for i := 0; vWatchList.Next(); i++ {
-		//nolint:govet
+		//nolint:govet // this err-shadowing fine
 		watch, err := parseWatcher(vWatchList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", WatchesFieldName, i)
@@ -146,7 +175,7 @@ func parseFilters(vFilters cue.Value) ([]filtertype.FilterMeta, error) {
 		return nil, err
 	}
 	for i := 0; vFilterList.Next(); i++ {
-		//nolint:govet
+		//nolint:govet // this err-shadowing fine
 		filter, err := parseFilter(vFilterList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", FiltersFieldName, i)
@@ -194,7 +223,7 @@ func parseActions(vActions cue.Value) ([]actiontype.ActionMeta, error) {
 		return nil, err
 	}
 	for i := 0; vActionsList.Next(); i++ {
-		//nolint:govet
+		//nolint:govet // this err-shadowing fine
 		action, err := parseAction(vActionsList.Value())
 		if err != nil {
 			return nil, errors.Wrapf(err, "error when parsing %s[%d]", ActionsFieldName, i)

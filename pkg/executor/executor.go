@@ -28,8 +28,7 @@ import (
 )
 
 const (
-	maxRetryDelay    = 1200 * time.Second
-	qpsToWorkerRatio = 2
+	maxRetryDelay = 1200 * time.Second
 )
 
 // Executor is a rate-limited work queue with concurrent workers.
@@ -59,6 +58,7 @@ type Config struct {
 	MaxJobRetries        int
 	BaseRetryDelay       time.Duration
 	RetryJobAfterFailure bool
+	PerWorkerQPS         int
 	Timeout              time.Duration
 }
 
@@ -66,7 +66,7 @@ type Config struct {
 // and a job-running or shutdown timeout.
 func New(c Config) (*Executor, error) {
 	if c.QueueSize == 0 || c.Workers == 0 || c.MaxJobRetries == 0 ||
-		c.BaseRetryDelay == 0 || c.Timeout == 0 {
+		c.BaseRetryDelay == 0 || c.Timeout == 0 || c.PerWorkerQPS == 0 {
 		return nil, fmt.Errorf("invalid executor config")
 	}
 	e := &Executor{}
@@ -86,7 +86,7 @@ func New(c Config) (*Executor, error) {
 			&workqueue.BucketRateLimiter{
 				// Token Bucket limiter, with
 				// qps = workers * qpsToWorkerRatio, maxBurst = queueSize
-				Limiter: rate.NewLimiter(rate.Limit(c.Workers*qpsToWorkerRatio), c.QueueSize),
+				Limiter: rate.NewLimiter(rate.Limit(c.Workers*c.PerWorkerQPS), c.QueueSize),
 			},
 		),
 	)

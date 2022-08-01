@@ -17,14 +17,14 @@ In `sample.yaml`, we have:
 1. **Apply `sample.yaml`**
 
 ```shell
-kubectl apply sample.yaml
+kubectl apply examples/sample.yaml
 ```
 
-2. **Run kube-trigger** (will automatically load `examples/sampleconf.cue`. Of course, we will support loading with CLI
-   flags. It is just full of testing code right now).
+2. **Run kube-trigger**
 
 ```shell
-make run
+make dirty-build
+bin/kube-trigger --config examples/sampleconf.cue
 ```
 
 3. **Watch ApplicationRevision changes** so that you can see what it does.

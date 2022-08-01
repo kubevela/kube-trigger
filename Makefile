@@ -113,10 +113,6 @@ docker-push: # @HELP push the image to the defined registry
 docker-push: docker-build
 	docker push $(IMG)
 
-run: # @HELP run kube-trigger locally
-run: generate
-	go run cmd/kubetrigger/main.go
-
 lint: # @HELP run linter
 lint: generate
 	bash build/lint.sh

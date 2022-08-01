@@ -5,35 +5,34 @@
 >
 > **You can check out `examples/` to see what it can do now.** The overall architectural design is almost done.
 
-kube-trigger can list and watch kubernetes object event and trigger an event to destination. The project is inspired
+kube-trigger can list and watch kubernetes object events and run actions. The project is inspired
 by [kubewatch](https://github.com/vmware-archive/kubewatch).
 
-Currently, the basic usage of kube-trigger is to watch any kind of Kubernetes CRD and trigger update of Application. It
-can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
+It can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
 
-But the usage of kube-trigger is more than that, actually it's a lightweight event-trigger in Kubernetes world. The
+It's a lightweight event-trigger in Kubernetes world. The
 architecture can be:
 
 ```                                                                                         
-       Kubernetes Events                                              Operations on Kubernetes or any API
-       Cron by time                     Conditions                      Notifications        
+       Kubernetes Events                                             Operations on Kubernetes
+       Cron by time                     Conditions                   or any API Notifications
                                                                                              
     +--------------------+          +---------------------+          +---------------------+ 
     |                    |          |                     |          |                     | 
-    |      Sources       ----------->       Filters       ----------->     Destinations    | 
+    |      Sources       ----------->       Filters       ----------->       Actions       | 
     |                    |          |                     |          |                     | 
     +--------------------+          +---------------------+          +---------------------+ 
                                                                                             
                                                                                              
     +--------------------+          +---------------------+          +---------------------+ 
     |                    |          |                     |          |                     | 
-    |      Sources       ----------->       Filters       ---------->-     Destinations    | 
+    |      Sources       ----------->       Filters       ----------->       Actions       | 
     |                    |          |                     |          |                     | 
     +--------------------+          +---------------------+          +---------------------+ 
 ```
 
 We provide generic low-level filters/actions to users, and users can create customized filters/actions to wrap low-level
-ones using cue.
+ones using CUE.
 
 ## TODO:
 
@@ -46,7 +45,8 @@ ones using cue.
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [ ] Refine README, quick starts, contribution guide
 - [ ] More Source types
-- [ ] More Destination Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
+- [ ] More Action Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
   CUE and K8s operations)
+- [ ] Allow users to extend builtin filters/actions
 - [ ] Remove cache informer, make it with no catch but list watch events with unique queue.
 - [ ] Make the configuration as CRD, launch new process/pod for new watcher
