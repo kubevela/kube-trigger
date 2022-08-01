@@ -50,7 +50,20 @@ func main() {
 	}
 
 	//nolint
-	exe := executor.New(20, 2, time.Second*5)
+	exeConf := executor.Config{
+		QueueSize:            50,
+		Workers:              5,
+		MaxJobRetries:        5,
+		BaseRetryDelay:       time.Second * 3,
+		RetryJobAfterFailure: true,
+		Timeout:              time.Second * 5,
+	}
+	exe, err := executor.New(exeConf)
+	if err != nil {
+		//nolint
+		fmt.Println(err)
+		return
+	}
 
 	sourceReg := sourceregistry.NewWithBuiltinSources()
 	//nolint:gomnd

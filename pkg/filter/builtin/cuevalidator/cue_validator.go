@@ -21,7 +21,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/encoding/gocode/gocodec"
 	"github.com/kubevela/kube-trigger/pkg/filter/types"
-	utilscue "github.com/kubevela/kube-trigger/pkg/utils/cue"
+	utilscue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"

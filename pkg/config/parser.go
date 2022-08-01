@@ -22,7 +22,7 @@ import (
 	actiontype "github.com/kubevela/kube-trigger/pkg/action/types"
 	filtertype "github.com/kubevela/kube-trigger/pkg/filter/types"
 	sourcetype "github.com/kubevela/kube-trigger/pkg/source/types"
-	utilcue "github.com/kubevela/kube-trigger/pkg/utils/cue"
+	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

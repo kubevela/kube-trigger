@@ -23,19 +23,27 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"k8s.io/client-go/util/workqueue"
 )
 
-// Executor is a work queue.
+const (
+	maxRetryDelay    = 1200 * time.Second
+	qpsToWorkerRatio = 2
+)
+
+// Executor is a rate-limited work queue with concurrent workers.
 type Executor struct {
-	jobChan        chan Job
-	wg             sync.WaitGroup
-	lock           sync.RWMutex
-	maxConcurrency int
-	timeout        time.Duration
-	runningJobs    map[string]bool
-	logger         *logrus.Entry
-	queue          workqueue.RateLimitingInterface
+	workers      int
+	queueSize    int
+	maxRetries   int
+	allowRetries bool
+	lock         sync.RWMutex
+	wg           sync.WaitGroup
+	timeout      time.Duration
+	logger       *logrus.Entry
+	runningJobs  map[string]bool
+	queue        workqueue.RateLimitingInterface
 }
 
 // Job is an Action to be executed by the workers in the Executor.
@@ -45,22 +53,53 @@ type Job interface {
 	AllowConcurrency() bool
 }
 
+type Config struct {
+	QueueSize            int
+	Workers              int
+	MaxJobRetries        int
+	BaseRetryDelay       time.Duration
+	RetryJobAfterFailure bool
+	Timeout              time.Duration
+}
+
 // New creates a new Executor with a queue size, number of workers,
 // and a job-running or shutdown timeout.
-func New(queueSize int, maxConcurrency int, timeout time.Duration) *Executor {
+func New(c Config) (*Executor, error) {
+	if c.QueueSize == 0 || c.Workers == 0 || c.MaxJobRetries == 0 ||
+		c.BaseRetryDelay == 0 || c.Timeout == 0 {
+		return nil, fmt.Errorf("invalid executor config")
+	}
 	e := &Executor{}
-	e.lock = sync.RWMutex{}
+	e.workers = c.Workers
+	e.timeout = c.Timeout
+	e.queueSize = c.QueueSize
+	e.maxRetries = c.MaxJobRetries
+	e.allowRetries = c.RetryJobAfterFailure
+	e.wg = sync.WaitGroup{}
 	e.runningJobs = make(map[string]bool)
-	e.maxConcurrency = maxConcurrency
-	e.timeout = timeout
-	e.jobChan = make(chan Job, queueSize)
-	e.queue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	e.lock = sync.RWMutex{}
+	// Create a rate limited queue, with a token bucket for overall limiting,
+	// and exponential failure for per-item limiting.
+	e.queue = workqueue.NewRateLimitingQueue(
+		workqueue.NewMaxOfRateLimiter(
+			workqueue.NewItemExponentialFailureRateLimiter(c.BaseRetryDelay, maxRetryDelay),
+			&workqueue.BucketRateLimiter{
+				// Token Bucket limiter, with
+				// qps = workers * qpsToWorkerRatio, maxBurst = queueSize
+				Limiter: rate.NewLimiter(rate.Limit(c.Workers*qpsToWorkerRatio), c.QueueSize),
+			},
+		),
+	)
 	e.logger = logrus.WithField("executor", "action-job-executor")
-	e.logger.Infof("new executor created, %d queue size, %d concurrnt workers, %v timeout",
-		queueSize,
-		maxConcurrency,
-		timeout)
-	return e
+	e.logger.Infof("new executor created, %d queue size, %d concurrnt workers, %v timeout, "+
+		"allow retries %v, max %d retries",
+		e.queueSize,
+		e.workers,
+		e.timeout,
+		e.allowRetries,
+		e.maxRetries,
+	)
+	return e, nil
 }
 
 func (e *Executor) setJobStatus(j Job, status bool) {
@@ -83,76 +122,92 @@ func (e *Executor) getJobStatus(j Job) bool {
 	return e.runningJobs[j.Type()]
 }
 
-// AddJob adds a job to the queue.
-func (e *Executor) AddJob(j Job) error {
-	select {
-	case e.jobChan <- j:
-		e.logger.Infof("added job to executor: %s", j.Type())
-		return nil
-	default:
-		return fmt.Errorf("job queue full, cannot add job %s", j.Type())
+func (e *Executor) requeueJob(j Job) {
+	if e.queue.NumRequeues(j) < e.maxRetries {
+		e.queue.AddRateLimited(j)
+		return
 	}
+	e.logger.Errorf("requeue job %s failed, it failed %d times, too many retries", j.Type(), e.queue.NumRequeues(j))
+	e.queue.Forget(j)
 }
 
-//nolint:gocognit
-func (e *Executor) runJob(ctx context.Context) {
-	defer e.wg.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case j := <-e.jobChan:
-			// Make sure it exits when context is canceled, even if there are jobs left.
-			if ctx.Err() != nil {
-				return
-			}
-			if j == nil {
-				return
-			}
-			e.logger.Infof("job picked up by a worker, running job: %s", j.Type())
-			// This job does not allow concurrent runs, and it is already running.
-			// Requeue it to run it later.
-			if !j.AllowConcurrency() && e.getJobStatus(j) {
-				// FIXME(charlie0129): this will cause constant requeue. Use rate limiters.
-				// Consider using workqueue in client-go.
-				err := e.AddJob(j)
-				if err != nil {
-					e.logger.Errorf("requeueing job %s failed: %s", j.Type(), err)
-				}
-				return
-			}
-			e.setJobRunning(j)
-			// Add a job timeout
-			timeoutCtx, cancel := context.WithDeadline(ctx, time.Now().Add(e.timeout))
-			err := j.Run(timeoutCtx)
-			e.setJobNotRunning(j)
-			if err == nil && timeoutCtx.Err() == nil {
-				e.logger.Infof("job %s finished", j.Type())
-			} else {
-				e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Type(), err, timeoutCtx.Err())
-			}
-			// Avoid context leak.
-			cancel()
+// AddJob adds a job to the queue.
+func (e *Executor) AddJob(j Job) error {
+	if e.queue.Len() >= e.queueSize {
+		return fmt.Errorf("queue full with size %d, cannot add job %s", e.queue.Len(), j.Type())
+	}
+	e.queue.Add(j)
+	return nil
+}
+
+func (e *Executor) runJob(ctx context.Context) bool {
+	item, quit := e.queue.Get()
+	if quit {
+		return false
+	}
+
+	defer e.queue.Done(item)
+
+	j, ok := item.(Job)
+	if !ok {
+		return true
+	}
+	if j == nil {
+		return true
+	}
+
+	e.logger.Infof("job picked up by a worker, going running job: %s", j.Type())
+
+	// This job does not allow concurrent runs, and it is already running.
+	// Requeue it to run it later.
+	if !j.AllowConcurrency() && e.getJobStatus(j) {
+		e.logger.Infof("same job %s is already running, will run later", j.Type())
+		e.requeueJob(j)
+		return true
+	}
+
+	// Add a job timeout
+	timeoutCtx, cancel := context.WithDeadline(ctx, time.Now().Add(e.timeout))
+	defer cancel()
+
+	e.setJobRunning(j)
+	err := j.Run(timeoutCtx)
+	e.setJobNotRunning(j)
+
+	if err == nil && timeoutCtx.Err() == nil {
+		e.logger.Infof("job %s finished", j.Type())
+		e.queue.Forget(j)
+	} else {
+		e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Type(), err, timeoutCtx.Err())
+		if e.allowRetries {
+			e.logger.Infof("will retry job %s later", j.Type())
+			e.requeueJob(j)
 		}
 	}
+
+	return true
 }
 
 // RunJobs starts workers.
 func (e *Executor) RunJobs(ctx context.Context) {
-	e.wg.Add(e.maxConcurrency)
-	for i := 0; i < e.maxConcurrency; i++ {
-		go e.runJob(ctx)
+	e.wg.Add(e.workers)
+	for i := 0; i < e.workers; i++ {
+		go func() {
+			for e.runJob(ctx) {
+			}
+			e.wg.Done()
+		}()
 	}
 }
 
 // Shutdown stops workers.
 func (e *Executor) Shutdown() bool {
-	close(e.jobChan)
 	e.logger.Infof("shutting down executor")
 
 	// Wait for workers to end with a timeout.
 	ch := make(chan struct{})
 	go func() {
+		e.queue.ShutDown()
 		e.wg.Wait()
 		close(ch)
 	}()

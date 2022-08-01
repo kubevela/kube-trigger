@@ -25,7 +25,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
 	krwevent "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
-	utilcue "github.com/kubevela/kube-trigger/pkg/utils/cue"
+	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

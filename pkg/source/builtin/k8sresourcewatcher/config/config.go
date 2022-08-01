@@ -21,7 +21,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
-	utilcue "github.com/kubevela/kube-trigger/pkg/utils/cue"
+	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 )
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.

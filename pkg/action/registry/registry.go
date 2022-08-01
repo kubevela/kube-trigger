@@ -21,7 +21,7 @@ import (
 	"sync"
 
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	"github.com/kubevela/kube-trigger/pkg/utils/client"
+	"github.com/kubevela/kube-trigger/pkg/util/client"
 )
 
 // Registry stores Actions, both uninitialized and cached ones.
