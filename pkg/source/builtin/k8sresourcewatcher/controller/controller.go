@@ -328,5 +328,9 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 }
 
 func (c *Controller) callEventHandler(e event.Event) {
-	_ = c.eventHandler(c.controllerType, e.Obj)
+	c.logger.Infof("event \"%s\" happened, calling event handlers", e.Message())
+	err := c.eventHandler(c.controllerType, e.Obj)
+	if err != nil {
+		c.logger.Infof("calling event handler failed: %s", err)
+	}
 }

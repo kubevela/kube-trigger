@@ -54,9 +54,20 @@ watchers: [
 					// - context.patchTarget (object from patchTarget above, will be Application here)
 					patch: """
 						import "strconv"
-						// This will bump publishVersion by 1
+
+						previousRev: string
+
+						if context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"] != _|_ {
+							previousRev: context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"]
+						}
+
+						if context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"] == _|_ {
+							previousRev: "1"
+						}
+
 						output: metadata: annotations: {
-							"app.oam.dev/publishVersion": strconv.FormatInt(strconv.ParseInt(context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"], 10, 64)+1, 10)
+							// This will bump publishVersion by 1
+							"app.oam.dev/publishVersion": strconv.FormatInt(strconv.ParseInt(previousRev, 10, 64)+1, 10)
 						}
 						"""
 					// This action will not be running concurrently.

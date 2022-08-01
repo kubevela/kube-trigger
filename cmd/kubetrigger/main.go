@@ -39,7 +39,7 @@ import (
 func main() {
 	// TODO(charlie0129): use a proper way to start. Currently, it is a disaster, full of testing code.
 
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	triggerPath := flag.String("config", "examples/sampleconf.cue", "specify the config path of the trigger")
 	flag.Parse()
@@ -81,12 +81,14 @@ func main() {
 
 		newSource := s.New()
 
-		// Add filers and actions to event handlers
+		// New EventHandler, this is called when an event happens.
 		eh := eventhandler.New().
+			// Add filters to it.
 			WithFilters(w.Filters, filterReg).
+			// Add action jobs to executor.
 			WithActions(exe, w.Actions, actionReg)
 
-		// Initialize source and add event handlers to it
+		// Initialize source and add EventHandler to it
 		err = newSource.Init(w.Source.Properties, eh)
 		if err != nil {
 			//nolint

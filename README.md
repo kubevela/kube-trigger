@@ -32,11 +32,8 @@ architecture can be:
     +--------------------+          +---------------------+          +---------------------+ 
 ```
 
-
-How the various components interact with each other under the hood:
-
-![kube-trigger-architecture](https://user-images.githubusercontent.com/55270174/181994442-9281b7ae-5c5e-4630-971f-a21bd7f37ebc.png)
-
+We provide generic low-level filters/actions to users, and users can create customized filters/actions to wrap low-level
+ones using cue.
 
 ## TODO:
 

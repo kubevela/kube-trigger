@@ -114,17 +114,24 @@ docker-push: docker-build
 	docker push $(IMG)
 
 run: # @HELP run kube-trigger locally
-run:
-	go generate ./...
+run: generate
 	go run cmd/kubetrigger/main.go
 
 lint: # @HELP run linter
-lint:
+lint: generate
 	bash build/lint.sh
+
+generate: # @HELP run go generate
+generate:
+	go generate ./...
 
 checklicense: # @HELP check license headers
 checklicense:
 	bash hack/verify-boilerplate.sh
+
+reviewable: # @HELP do some checks before submitting code
+reviewable: generate checklicense lint
+
 
 clean: # @HELP remove build artifacts
 clean:

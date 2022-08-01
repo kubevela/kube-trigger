@@ -29,43 +29,76 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// EventHandler is given to Source to be called.
+// EventHandler is given to Source to be called. Source will put its type in
+// sourceType and what event happened in event, then call this.
 type EventHandler func(sourceType string, event interface{}) error
 
+// New create a new EventHandler that does nothing.
 func New() EventHandler {
 	return func(sourceType string, event interface{}) error {
 		return nil
 	}
 }
 
-func (e EventHandler) WithFilters(filters []filtertypes.FilterMeta, reg *filterregistry.Registry) EventHandler {
+// AddHandlerBefore adds a new EventHandler to be called before e is called.
+func (e EventHandler) AddHandlerBefore(eh EventHandler) EventHandler {
 	return func(sourceType string, event interface{}) error {
-		kept, err := filterutils.ApplyFilters(event, filters, reg)
+		err := eh(sourceType, event)
 		if err != nil {
-			// TODO(charlie0129): log something
 			return err
-		}
-		if !kept {
-			return fmt.Errorf("filtered out")
 		}
 		return e(sourceType, event)
 	}
 }
 
-func (e EventHandler) WithActions(exe *executor.Executor, actions []actiontypes.ActionMeta, reg *actionregistry.Registry) EventHandler {
+// AddHandlerAfter adds a new EventHandler to be called after e is called.
+func (e EventHandler) AddHandlerAfter(eh EventHandler) EventHandler {
 	return func(sourceType string, event interface{}) error {
 		err := e(sourceType, event)
 		if err != nil {
 			return err
 		}
+		return eh(sourceType, event)
+	}
+}
+
+// WithFilters applies filters to event before e is called.
+func (e EventHandler) WithFilters(filters []filtertypes.FilterMeta, reg *filterregistry.Registry) EventHandler {
+	logger := logrus.WithField("eventhandler", "applyfilters")
+	return e.AddHandlerBefore(func(sourceType string, event interface{}) error {
+		kept, err := filterutils.ApplyFilters(event, filters, reg)
+		if err != nil {
+			logger.Errorf("error when applying filters to event %v: %s", event, err)
+			return err
+		}
+		if !kept {
+			logger.Debugf("event %v is filtered out", event)
+			logger.Infof("event is filtered out")
+			return fmt.Errorf("event is filtered out")
+		}
+		logger.Infof("event passed filters")
+		return nil
+	})
+}
+
+// WithActions adds jobs that will execute actions to Executor after e is called.
+func (e EventHandler) WithActions(exe *executor.Executor,
+	actions []actiontypes.ActionMeta,
+	reg *actionregistry.Registry,
+) EventHandler {
+	logger := logrus.WithField("eventhandler", "newactionjob")
+	return e.AddHandlerAfter(func(sourceType string, event interface{}) error {
 		for _, act := range actions {
 			newJob, err := job.New(reg, act, sourceType, event)
 			if err != nil {
-				logrus.Errorf("error creating new job: %s", err)
+				logger.Errorf("error when creating new job: %s", err)
 				continue
 			}
-			_ = exe.AddJob(newJob)
+			err = exe.AddJob(newJob)
+			if err != nil {
+				logger.Errorf("error when adding job to executor: %s", err)
+			}
 		}
 		return nil
-	}
+	})
 }

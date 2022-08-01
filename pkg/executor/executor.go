@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -80,17 +81,17 @@ func (e *Executor) getJobStatus(j Job) bool {
 }
 
 // AddJob adds a job to the queue.
-func (e *Executor) AddJob(j Job) bool {
+func (e *Executor) AddJob(j Job) error {
 	select {
 	case e.jobChan <- j:
 		e.logger.Infof("added job to executor: %s", j.Type())
-		return true
+		return nil
 	default:
-		e.logger.Errorf("job queue full, add failed: %s", j.Type())
-		return false
+		return fmt.Errorf("job queue full, cannot add job %s", j.Type())
 	}
 }
 
+//nolint:gocognit
 func (e *Executor) runJob(ctx context.Context) {
 	defer e.wg.Done()
 	for {
@@ -109,7 +110,10 @@ func (e *Executor) runJob(ctx context.Context) {
 			// This job does not allow concurrent runs, and it is already running.
 			// Requeue it to run it later.
 			if !j.AllowConcurrency() && e.getJobStatus(j) {
-				e.AddJob(j)
+				err := e.AddJob(j)
+				if err != nil {
+					e.logger.Errorf("requeueing job %s failed: %s", j.Type(), err)
+				}
 				return
 			}
 			e.setJobRunning(j)
