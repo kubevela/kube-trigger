@@ -59,17 +59,20 @@ jobs:
       - name: Upload artifacts (linux-amd64)
         uses: actions/upload-artifact@v3
         with:
+          name: kube-trigger-${{ GITHUB_SHA }}-linux-amd64
           retention-days: 3
-          path: kube-trigger-*-linux-amd64
+          path: bin/kube-trigger-*-linux-amd64
 
       - name: Upload artifacts (darwin-amd64)
         uses: actions/upload-artifact@v3
         with:
+          name: kube-trigger-${{ GITHUB_SHA }}-darwin-amd64
           retention-days: 3
-          path: kube-trigger-*-darwin-amd64
+          path: bin/kube-trigger-*-darwin-amd64
 
       - name: Upload artifacts (darwin-arm64)
         uses: actions/upload-artifact@v3
         with:
+          name: kube-trigger-${{ GITHUB_SHA }}-darwin-arm64
           retention-days: 3
-          path: kube-trigger-*-darwin-arm64
+          path: bin/kube-trigger-*-darwin-arm64

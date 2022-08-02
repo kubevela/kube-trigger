@@ -46,7 +46,7 @@ ones using CUE.
 - [ ] Refine README, quick starts, contribution guide
 - [ ] More Source types
 - [ ] More Action Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
-  CUE and K8s operations)
+  CUE and K8s operations), metric (prometheus), storage (clickhouse)
 - [ ] Allow users to extend builtin filters/actions
 - [ ] Remove cache informer, make it with no catch but list watch events with unique queue.
 - [ ] Make the configuration as CRD, launch new process/pod for new watcher
