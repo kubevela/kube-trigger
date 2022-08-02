@@ -14,10 +14,11 @@
 
 ARG BUILD_IMAGE=golang:1.17
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
-ARG ARCH
 ARG OS
+ARG ARCH
 
-FROM --platform=${OS}/${ARCH} ${BUILD_IMAGE} as builder
+# Force use natice build platform, and cross-build.
+FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} as builder
 
 WORKDIR /workspace
 COPY go.mod go.mod
@@ -49,7 +50,7 @@ RUN ARCH=${ARCH}                \
         /bin/sh build/build.sh  \
         cmd/kubetrigger/main.go
 
-FROM ${BASE_IMAGE}
+FROM --platform=${OS}/${ARCH} ${BASE_IMAGE}
 WORKDIR /
 COPY --from=builder /workspace/kube-trigger .
 USER 65532:65532

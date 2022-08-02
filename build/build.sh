@@ -45,7 +45,7 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
-echo -e "# target: ${OS}/${ARCH}\tversion: ${VERSION}\toutput: ${OUTPUT}"
+echo "# target: ${OS}/${ARCH}\tversion: ${VERSION}\toutput: ${OUTPUT}"
 
 echo "# Generating code..."
 go generate ./...
@@ -57,15 +57,13 @@ if [ -z "${DIRTY_BUILD:-}" ]; then
   LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-} -s -w"
   # No cache.
   export GOFLAGS="${GOFLAGS:-} -a "
-  echo -n "# Clean "
+  echo "# Clean building..."
 else
-  echo -n "# Dirty "
+  echo "# Dirty building..."
 fi
 
 # Set some version info.
 GO_LDFLAGS="${LDFLAGS_EXTRA} -X $(go list -m)/pkg/version.Version=${VERSION}"
-
-echo "building... "
 
 go build                   \
   -ldflags "${GO_LDFLAGS}" \
