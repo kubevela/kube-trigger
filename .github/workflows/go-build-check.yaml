@@ -1,4 +1,4 @@
-name: Build and Run Go Checks
+name: Build Binaries and Run Go Checks
 on:
   push:
     branches:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   detect-noop:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
@@ -31,10 +31,10 @@ jobs:
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Generate
+      - name: Run Go Generate
         run: make generate
 
       - name: Check boilerplate
@@ -45,43 +45,43 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_VERSION }}
 
-      - name: Show make variables
+      - name: Show Make Variables
         run: make variables
 
-      - name: Build binaries for all platforms
+      - name: Build Binaries for All Platforms
         env:
           DIRTY_BUILD: true
         run: make all-build
 
-      - name: Upload artifacts (linux-amd64)
+      - name: Upload Artifacts (linux-amd64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-linux-amd64
           retention-days: 7
           path: bin/kube-trigger-*-linux-amd64
 
-      - name: Upload artifacts (linux-arm64)
+      - name: Upload Artifacts (linux-arm64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-linux-arm64
           retention-days: 7
           path: bin/kube-trigger-*-linux-arm64
 
-      - name: Upload artifacts (darwin-amd64)
+      - name: Upload Artifacts (darwin-amd64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-darwin-amd64
           retention-days: 7
           path: bin/kube-trigger-*-darwin-amd64
 
-      - name: Upload artifacts (darwin-arm64)
+      - name: Upload Artifacts (darwin-arm64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-darwin-arm64
           retention-days: 7
           path: bin/kube-trigger-*-darwin-arm64
 
-      - name: Upload artifacts (windows-amd64)
+      - name: Upload Artifacts (windows-amd64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-windows-amd64

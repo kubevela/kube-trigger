@@ -30,19 +30,19 @@ MAKEFLAGS += --always-make
 
 # Binary targets that we support.
 # When doing all-build, these targets will be built.
-BIN_PLATFORMS       := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+BIN_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 IMG_PLATFORMS := linux/amd64 linux/arm64
 
 # If user has not defined target, set some default value, same as host machine.
-OS      := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
-ARCH    := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+OS          := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
+ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 # Use git tags to set the version string
-VERSION ?= $(shell git describe --tags --always --dirty)
+VERSION     ?= $(shell git describe --tags --always --dirty)
 IMG_VERSION ?= $(shell bash -c "\
-if [[ ! $(VERSION) =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$$ ]]; then \
-  echo latest;                                                        \
-else                                                                  \
-  echo $(VERSION);                                                    \
+if [[ ! $(VERSION) =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$$ ]]; then \
+  echo latest;                                                                                    \
+else                                                                                              \
+  echo $(VERSION);                                                                                \
 fi")
 
 BIN_EXTENSION :=
@@ -51,9 +51,9 @@ ifeq ($(OS), windows)
 endif
 
 DIRTY_BUILD ?=
-FULL_NAME ?=
-GOFLAGS ?=
-GOPROXY ?=
+FULL_NAME   ?=
+GOFLAGS     ?=
+GOPROXY     ?=
 
 # Binary basename, without extension
 BIN          := kube-trigger
@@ -127,7 +127,7 @@ BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
 
 all-docker-build-push: # @HELP build and push images for all platforms
 all-docker-build-push:
-	echo -e "# building for $(BUILDX_PLATFORMS)"
+	echo -e "# Building and pushing images for $(IMG_PLATFORMS)"
 	docker buildx build --push           \
 	    --platform "$(BUILDX_PLATFORMS)" \
 	    --build-arg "VERSION=$(VERSION)" \
