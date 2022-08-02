@@ -120,7 +120,7 @@ all-docker-build: $(addprefix docker-build-, $(subst /,_, $(ALL_IMAGE_PLATFORMS)
 docker-build: # @HELP build docker image
 docker-build:
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)"
-	docker buildx build                  \
+	docker buildx build --load           \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
 	    --build-arg "VERSION=$(VERSION)" \

@@ -17,7 +17,7 @@ ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
 ARG OS
 ARG ARCH
 
-# Force use natice build platform, and cross-build.
+# Force natice build platform, and cross-build later.
 FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} as builder
 
 WORKDIR /workspace
