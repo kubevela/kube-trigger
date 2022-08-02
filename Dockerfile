@@ -14,11 +14,9 @@
 
 ARG BUILD_IMAGE=golang:1.17
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
-ARG OS
-ARG ARCH
 
-# Force natice build platform, and cross-build later.
-FROM --platform=$BUILDPLATFORM ${BUILD_IMAGE} as builder
+# Force native build platform, and cross-build to target platform later.
+FROM --platform=${BUILDPLATFORM:-linux/amd64} ${BUILD_IMAGE} as builder
 
 WORKDIR /workspace
 COPY go.mod go.mod
@@ -28,10 +26,14 @@ ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
 RUN go mod download
 
+ARG TARGETARCH
 ARG ARCH
-ENV ARCH=${ARCH:-amd64}
+# TARGETARCH in Docker BuildKit have higher priority.
+ENV ARCH=${TARGETARCH:-${ARCH:-amd64}}
+ARG TARGETOS
 ARG OS
-ENV OS=${OS:-linux}
+# TARGETOS in Docker BuildKit have higher priority.
+ENV OS=${TARGETOS:-${OS:-linux}}
 ARG VERSION
 ENV VERSION=${VERSION}
 ARG GOFLAGS
@@ -50,7 +52,7 @@ RUN ARCH=${ARCH}                \
         /bin/sh build/build.sh  \
         cmd/kubetrigger/main.go
 
-FROM --platform=${OS}/${ARCH} ${BASE_IMAGE}
+FROM ${BASE_IMAGE}
 WORKDIR /
 COPY --from=builder /workspace/kube-trigger .
 USER 65532:65532

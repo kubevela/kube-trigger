@@ -1,4 +1,4 @@
-name: Build and Push Images
+name: Build and Push Docker Image
 on:
   push:
     branches:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch: { }
 
 jobs:
-  release-images:
-    name: Release kube-trigger images
+  release-image:
+    name: Release kube-trigger image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -40,7 +40,7 @@ jobs:
       - name: Show available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
-      - name: Show Make variables
+      - name: Show make variables
         run: make variables
 
       - name: Build Images

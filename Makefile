@@ -30,7 +30,7 @@ MAKEFLAGS += --always-make
 
 # Binary targets that we support.
 # When doing all-build, these targets will be built.
-ALL_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+ALL_PLATFORMS       := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 ALL_IMAGE_PLATFORMS := linux/amd64 linux/arm64
 
 # If user has not defined target, set some default value, same as host machine.
@@ -114,13 +114,23 @@ docker-build-%:
 	    GOOS=$(firstword $(subst _, ,$*))  \
 	    GOARCH=$(lastword $(subst _, ,$*))
 
+PLATFORMS := $(shell echo "$(ALL_IMAGE_PLATFORMS)" | sed -r 's/ /,/g')
+
 all-docker-build: # @HELP build images for all platforms
-all-docker-build: $(addprefix docker-build-, $(subst /,_, $(ALL_IMAGE_PLATFORMS)))
+all-docker-build:
+	echo -e "# building for $(PLATFORMS)"
+	docker buildx build --load           \
+	    --platform "$(PLATFORMS)"        \
+	    --build-arg "VERSION=$(VERSION)" \
+	    --build-arg "GOFLAGS=$(GOFLAGS)" \
+	    --build-arg "GOPROXY=$(GOPROXY)" \
+	    $(addprefix -t ,$(IMGTAGS)) .
+
 
 docker-build: # @HELP build docker image
 docker-build:
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)"
-	docker buildx build --load           \
+	docker build                         \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
 	    --build-arg "VERSION=$(VERSION)" \
