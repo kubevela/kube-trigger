@@ -2,7 +2,7 @@ name: Go
 on:
   push:
     branches:
-      - master
+      - main
       - release-*
     tags:
       - "v*"
@@ -53,26 +53,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build binaries for all platforms
-        run: make all-build
+      - name: Build binaries for linux-amd64
+        run: make build-linux_amd64
 
       - name: Upload artifacts (linux-amd64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-linux-amd64
-          retention-days: 3
+          retention-days: 7
           path: bin/kube-trigger-*-linux-amd64
+
+      - name: Build binaries for linux-arm64
+        run: make build-linux_arm64
+
+      - name: Upload artifacts (linux-arm64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: kube-trigger-${{ github.sha }}-linux-arm64
+          retention-days: 7
+          path: bin/kube-trigger-*-linux-arm64
+
+      - name: Build binaries for darwin-amd64
+        run: make build-darwin_amd64
 
       - name: Upload artifacts (darwin-amd64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-darwin-amd64
-          retention-days: 3
+          retention-days: 7
           path: bin/kube-trigger-*-darwin-amd64
+
+      - name: Build binaries for darwin-arm64
+        run: make build-darwin_arm64
 
       - name: Upload artifacts (darwin-arm64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-darwin-arm64
-          retention-days: 3
+          retention-days: 7
           path: bin/kube-trigger-*-darwin-arm64
