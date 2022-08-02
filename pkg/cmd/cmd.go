@@ -29,6 +29,7 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/executor"
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
+	"github.com/kubevela/kube-trigger/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -70,6 +71,18 @@ func NewCommand() *cobra.Command {
 		RunE: runCli,
 	}
 	addFlags(c.Flags())
+	c.AddCommand(NewVersionCommand())
+	return c
+}
+
+func NewVersionCommand() *cobra.Command {
+	c := &cobra.Command{
+		Use:   "version",
+		Short: "show kube-trigger version and exit",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version.Version)
+		},
+	}
 	return c
 }
 

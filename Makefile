@@ -31,12 +31,19 @@ MAKEFLAGS += --always-make
 # Binary targets that we support.
 # When doing all-build, these targets will be built.
 ALL_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+ALL_IMAGE_PLATFORMS := linux/amd64 linux/arm64
 
 # If user has not defined target, set some default value, same as host machine.
 OS      := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH    := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 # Use git tags to set the version string
 VERSION ?= $(shell git describe --tags --always --dirty)
+IMGVERSION ?= $(shell bash -c "\
+if [[ ! $(VERSION) =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$$ ]]; then \
+  echo latest;                                                        \
+else                                                                  \
+  echo $(VERSION);                                                    \
+fi")
 
 BIN_EXTENSION :=
 ifeq ($(OS), windows)
@@ -58,9 +65,9 @@ OUTPUT       := bin/$(BIN_FULLNAME)
 ENTRY        := cmd/kubetrigger/main.go
 
 # Registry to push to
-REGISTRY ?= ghcr.io/oam-dev
+REGISTRY := docker.io/oamdev ghcr.io/kubevela
 # Docker image tag
-IMG      ?= $(REGISTRY)/$(BIN):$(VERSION)
+IMGTAGS  ?= $(addsuffix /$(BIN):$(IMGVERSION),$(REGISTRY))
 
 GOFLAGS ?=
 GOPROXY ?=
@@ -70,6 +77,16 @@ SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
 all: build
 
+build-%:
+	$(MAKE) build                          \
+	    --no-print-directory               \
+	    GOOS=$(firstword $(subst _, ,$*))  \
+	    GOARCH=$(lastword $(subst _, ,$*)) \
+	    FULL_NAME=1
+
+all-build: # @HELP build binaries for all platforms with target included in the filename
+all-build: $(addprefix build-, $(subst /,_, $(ALL_PLATFORMS)))
+
 build: # @HELP build binary locally
 build:
 	ARCH=$(ARCH)                     \
@@ -78,16 +95,6 @@ build:
 	    VERSION=$(VERSION)           \
 	    GOFLAGS=$(GOFLAGS)           \
 	    bash build/build.sh $(ENTRY)
-
-all-build: # @HELP build binaries for all platforms with target included in the filename
-all-build: $(addprefix build-, $(subst /,_, $(ALL_PLATFORMS)))
-
-build-%:
-	$(MAKE) build                          \
-	    --no-print-directory               \
-	    GOOS=$(firstword $(subst _, ,$*))  \
-	    GOARCH=$(lastword $(subst _, ,$*)) \
-	    FULL_NAME=1
 
 dirty-build: # @HELP same as build, but using build cache is allowed
 dirty-build:
@@ -99,19 +106,32 @@ dirty-build:
 	    DIRTY_BUILD=1                \
 	    bash build/build.sh $(ENTRY)
 
+docker-build-%:
+	$(MAKE) docker-build                   \
+	    --no-print-directory               \
+	    GOOS=$(firstword $(subst _, ,$*))  \
+	    GOARCH=$(lastword $(subst _, ,$*))
+
+all-docker-build: # @HELP build images for all platforms
+all-docker-build: $(addprefix docker-build-, $(subst /,_, $(ALL_IMAGE_PLATFORMS)))
+
 docker-build: # @HELP build docker image
 docker-build:
-	docker build                         \
+	echo -e " # target: $(OS)/$(ARCH)\tversion: $(VERSION)"
+	docker buildx build                  \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
 	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
 	    --build-arg "GOPROXY=$(GOPROXY)" \
-	    -t $(IMG) .
+	    $(addprefix -t ,$(IMGTAGS)) .
 
-docker-push: # @HELP push the image to the defined registry
-docker-push: docker-build
-	docker push $(IMG)
+docker-push-%:
+	echo " # Pushing $(subst =,:,$(subst _,/,$*))"
+	docker push $(subst =,:,$(subst _,/,$*))
+
+docker-push: # @HELP push images for all platforms
+docker-push: $(addprefix docker-push-, $(subst :,=, $(subst /,_, $(IMGTAGS))))
 
 lint: # @HELP run linter
 lint: generate
@@ -128,7 +148,6 @@ checklicense:
 reviewable: # @HELP do some checks before submitting code
 reviewable: generate checklicense lint
 
-
 clean: # @HELP remove build artifacts
 clean:
 	rm -rf bin
@@ -137,6 +156,10 @@ version: # @HELP output the version string
 version:
 	echo $(VERSION)
 
+imageversion: # @HELP output the image version
+imageversion:
+	echo $(IMGVERSION)
+
 binary-name: # @HELP output the binary name
 binary-name:
 	echo $(BIN_FULLNAME)
@@ -144,20 +167,23 @@ binary-name:
 help: # @HELP print this message
 help:
 	echo "VARIABLES:"
-	echo "  OUTPUT           $(OUTPUT)"
-	echo "  OS               $(OS)"
-	echo "  ARCH             $(ARCH)"
-	echo "  VERSION          $(VERSION)"
-	echo "  REGISTRY         $(REGISTRY)"
-	echo "  IMG              $(IMG)"
-	echo "  GOFLAGS          $(GOFLAGS)"
-	echo "  GOPROXY          $(GOPROXY)"
+	echo "  OUTPUT            $(OUTPUT)"
+	echo "  OS                $(OS)"
+	echo "  ARCH              $(ARCH)"
+	echo "  VERSION           $(VERSION)"
+	echo "  IMGVERSION        $(IMGVERSION)"
+	echo "  REGISTRY          $(REGISTRY)"
+	echo "  IMGTAGS           $(IMGTAGS)"
+	echo "  GOFLAGS           $(GOFLAGS)"
+	echo "  GOPROXY           $(GOPROXY)"
+	echo "  PLATFORMS         $(ALL_PLATFORMS)"
+	echo "  IMG_PLATFORMS     $(ALL_IMAGE_PLATFORMS)"
 	echo
 	echo "TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)     \
 	    | awk '                                   \
 	        BEGIN {FS = ": *# *@HELP"};           \
-	        { printf "  %-15s %s\n", $$1, $$2 };  \
+	        { printf "  %-16s %s\n", $$1, $$2 };  \
 	    '
 	echo
 	echo "NOTES:"

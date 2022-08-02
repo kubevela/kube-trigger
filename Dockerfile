@@ -14,8 +14,10 @@
 
 ARG BUILD_IMAGE=golang:1.17
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
+ARG ARCH
+ARG OS
 
-FROM ${BUILD_IMAGE} as builder
+FROM --platform=${OS}/${ARCH} ${BUILD_IMAGE} as builder
 
 WORKDIR /workspace
 COPY go.mod go.mod
@@ -25,9 +27,7 @@ ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
 RUN go mod download
 
-ARG ARCH
 ENV ARCH=${ARCH:-amd64}
-ARG OS
 ENV OS=${OS:-linux}
 ARG VERSION
 ENV VERSION=${VERSION}
@@ -44,7 +44,7 @@ RUN ARCH=${ARCH}                \
         VERSION=${VERSION}      \
         GOFLAGS=${GOFLAGS}      \
         /bin/sh build/build.sh  \
-        cmd/kubetrigger/main.go \
+        cmd/kubetrigger/main.go
 
 FROM ${BASE_IMAGE}
 WORKDIR /
