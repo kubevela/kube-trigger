@@ -50,7 +50,7 @@ ifeq ($(OS), windows)
   BIN_EXTENSION := .exe
 endif
 
-FULLNAME ?=
+FULL_NAME ?=
 
 # Binary basename, without extension
 BIN          := kube-trigger
@@ -119,7 +119,7 @@ all-docker-build: $(addprefix docker-build-, $(subst /,_, $(ALL_IMAGE_PLATFORMS)
 
 docker-build: # @HELP build docker image
 docker-build:
-	echo -e " # target: $(OS)/$(ARCH)\tversion: $(VERSION)"
+	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)"
 	docker buildx build                  \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
@@ -129,10 +129,10 @@ docker-build:
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 docker-push-%:
-	echo " # Pushing $(subst =,:,$(subst _,/,$*))"
+	echo "# Pushing $(subst =,:,$(subst _,/,$*))"
 	docker push $(subst =,:,$(subst _,/,$*))
 
-docker-push: # @HELP push images for all platforms
+docker-push: # @HELP push images
 docker-push: $(addprefix docker-push-, $(subst :,=, $(subst /,_, $(IMGTAGS))))
 
 lint: # @HELP run linter
