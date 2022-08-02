@@ -1,4 +1,4 @@
-name: Go
+name: Build and Run Go Checks
 on:
   push:
     branches:
@@ -26,7 +26,7 @@ jobs:
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
           concurrent_skipping: false
 
-  checks:
+  checks-and-build:
     runs-on: ubuntu-latest
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
@@ -45,16 +45,13 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_VERSION }}
 
-  build:
-    runs-on: ubuntu-latest
-    needs: checks
-    if: needs.detect-noop.outputs.noop != 'true'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Show make variables
+        run: make variables
 
-      - name: Build binaries for linux-amd64
-        run: make build-linux_amd64
+      - name: Build binaries for all platforms
+        env:
+          DIRTY_BUILD: true
+        run: make all-build
 
       - name: Upload artifacts (linux-amd64)
         uses: actions/upload-artifact@v3
@@ -63,18 +60,12 @@ jobs:
           retention-days: 7
           path: bin/kube-trigger-*-linux-amd64
 
-      - name: Build binaries for linux-arm64
-        run: make build-linux_arm64
-
       - name: Upload artifacts (linux-arm64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-linux-arm64
           retention-days: 7
           path: bin/kube-trigger-*-linux-arm64
-
-      - name: Build binaries for darwin-amd64
-        run: make build-darwin_amd64
 
       - name: Upload artifacts (darwin-amd64)
         uses: actions/upload-artifact@v3
@@ -83,12 +74,16 @@ jobs:
           retention-days: 7
           path: bin/kube-trigger-*-darwin-amd64
 
-      - name: Build binaries for darwin-arm64
-        run: make build-darwin_arm64
-
       - name: Upload artifacts (darwin-arm64)
         uses: actions/upload-artifact@v3
         with:
           name: kube-trigger-${{ github.sha }}-darwin-arm64
           retention-days: 7
           path: bin/kube-trigger-*-darwin-arm64
+
+      - name: Upload artifacts (windows-amd64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: kube-trigger-${{ github.sha }}-windows-amd64
+          retention-days: 7
+          path: bin/kube-trigger-*-windows-amd64.exe

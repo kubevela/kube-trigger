@@ -50,7 +50,10 @@ ifeq ($(OS), windows)
     BIN_EXTENSION := .exe
 endif
 
+DIRTY_BUILD ?=
 FULL_NAME ?=
+GOFLAGS ?=
+GOPROXY ?=
 
 # Binary basename, without extension
 BIN          := kube-trigger
@@ -75,9 +78,6 @@ REGISTRY := docker.io/oamdev ghcr.io/kubevela
 # Docker image tag
 IMGTAGS  ?= $(addsuffix /$(BIN):$(IMG_VERSION),$(REGISTRY))
 
-GOFLAGS ?=
-GOPROXY ?=
-
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
@@ -101,6 +101,7 @@ build:
 	    OUTPUT=$(OUTPUT)             \
 	    VERSION=$(VERSION)           \
 	    GOFLAGS=$(GOFLAGS)           \
+	    DIRTY_BUILD=$(DIRTY_BUILD)   \
 	    bash build/build.sh $(ENTRY)
 
 package: build
@@ -114,13 +115,7 @@ package: build
 
 dirty-build: # @HELP same as build, but using build cache is allowed
 dirty-build:
-	ARCH=$(ARCH)                     \
-	    OS=$(OS)                     \
-	    OUTPUT=$(OUTPUT)             \
-	    VERSION=$(VERSION)           \
-	    GOFLAGS=$(GOFLAGS)           \
-	    DIRTY_BUILD=1                \
-	    bash build/build.sh $(ENTRY)
+	$(MAKE) package DIRTY_BUILD=1
 
 docker-build-%:
 	$(MAKE) docker-build                   \
