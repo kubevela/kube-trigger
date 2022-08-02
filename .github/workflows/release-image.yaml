@@ -43,10 +43,6 @@ jobs:
       - name: Show make variables
         run: make variables
 
-      - name: Build Images
+      - name: Build and push images
         run: |
-          make all-docker-build
-
-      - name: Push Images
-        run: |
-          make docker-push
+          make all-docker-build-push

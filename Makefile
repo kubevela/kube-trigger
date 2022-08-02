@@ -116,10 +116,10 @@ docker-build-%:
 
 PLATFORMS := $(shell echo "$(ALL_IMAGE_PLATFORMS)" | sed -r 's/ /,/g')
 
-all-docker-build: # @HELP build images for all platforms
-all-docker-build:
+all-docker-build-push: # @HELP build and push images for all platforms
+all-docker-build-push:
 	echo -e "# building for $(PLATFORMS)"
-	docker buildx build --load           \
+	docker buildx build --push           \
 	    --platform "$(PLATFORMS)"        \
 	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
