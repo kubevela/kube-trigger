@@ -33,6 +33,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 const (
@@ -66,14 +67,14 @@ func NewCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:  "kubetrigger",
 		Long: cmdLongHelp,
-		RunE: RunCli,
+		RunE: runCli,
 	}
-	AddFlags(c.Flags())
+	addFlags(c.Flags())
 	return c
 }
 
 //nolint:lll
-func AddFlags(f *pflag.FlagSet) {
+func addFlags(f *pflag.FlagSet) {
 	f.StringP(flagConfig, flagConfigShort, defaultConfig, "Path to config file")
 	f.String(flagLogLevel, defaultLogLevel, "Log level")
 	f.Int(flagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
@@ -88,7 +89,7 @@ func AddFlags(f *pflag.FlagSet) {
 
 var logger = logrus.WithField("kubetrigger", "main")
 
-func RunCli(cmd *cobra.Command, args []string) error {
+func runCli(cmd *cobra.Command, args []string) error {
 	var err error
 
 	// Read options from env and cli, and fall back to defaults.
@@ -116,11 +117,14 @@ func RunCli(cmd *cobra.Command, args []string) error {
 	filterReg := filterregistry.NewWithBuiltinFilters(opt.RegistrySize)
 	actionReg := actionregistry.NewWithBuiltinActions(opt.RegistrySize)
 
+	defer utilruntime.HandleCrash()
+
 	// Create an executor for running Action jobs.
 	exe, err := executor.New(opt.GetExecutorConfig())
 	if err != nil {
 		return errors.Wrap(err, "error when creating executor")
 	}
+	defer exe.Shutdown()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -166,11 +170,6 @@ func RunCli(cmd *cobra.Command, args []string) error {
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
-
-	ok := exe.Shutdown()
-	if !ok {
-		return fmt.Errorf("shutdown failed")
-	}
 
 	return nil
 }
