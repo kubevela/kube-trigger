@@ -15,11 +15,11 @@
 # Set this to 1 to enable debugging output.
 DBG_MAKEFILE ?=
 ifeq ($(DBG_MAKEFILE),1)
-  $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
-  $(warning ***** $(shell date))
+    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
+    $(warning ***** $(shell date))
 else
-  # If we're not debugging the Makefile, don't echo recipes.
-  MAKEFLAGS += -s
+    # If we're not debugging the Makefile, don't echo recipes.
+    MAKEFLAGS += -s
 endif
 
 # No, we don't want builtin rules.
@@ -30,15 +30,15 @@ MAKEFLAGS += --always-make
 
 # Binary targets that we support.
 # When doing all-build, these targets will be built.
-ALL_PLATFORMS       := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
-ALL_IMAGE_PLATFORMS := linux/amd64 linux/arm64
+BIN_PLATFORMS       := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+IMG_PLATFORMS := linux/amd64 linux/arm64
 
 # If user has not defined target, set some default value, same as host machine.
 OS      := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH    := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 # Use git tags to set the version string
 VERSION ?= $(shell git describe --tags --always --dirty)
-IMGVERSION ?= $(shell bash -c "\
+IMG_VERSION ?= $(shell bash -c "\
 if [[ ! $(VERSION) =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$$ ]]; then \
   echo latest;                                                        \
 else                                                                  \
@@ -47,7 +47,7 @@ fi")
 
 BIN_EXTENSION :=
 ifeq ($(OS), windows)
-  BIN_EXTENSION := .exe
+    BIN_EXTENSION := .exe
 endif
 
 FULL_NAME ?=
@@ -61,6 +61,10 @@ _VER_OUT     := $(BIN)-$(VERSION)-$(OS)-$(ARCH)$(BIN_EXTENSION)
 # If the user set FULL_NAME, we will use the basename with version and target.
 # e.g. kube-trigger-v0.0.1-linux-amd64
 BIN_FULLNAME := $(if $(FULL_NAME),$(_VER_OUT),$(_OUT))
+PKG_FULLNAME := $(if $(FULL_NAME),$(_VER_OUT),$(_OUT)).tar.gz
+ifeq ($(OS), windows)
+    PKG_FULLNAME := $(subst .exe,,$(if $(FULL_NAME),$(_VER_OUT),$(_OUT))).zip
+endif
 # Full output relative path
 OUTPUT       := bin/$(BIN_FULLNAME)
 # CLI entry file
@@ -69,7 +73,7 @@ ENTRY        := cmd/kubetrigger/main.go
 # Registry to push to
 REGISTRY := docker.io/oamdev ghcr.io/kubevela
 # Docker image tag
-IMGTAGS  ?= $(addsuffix /$(BIN):$(IMGVERSION),$(REGISTRY))
+IMGTAGS  ?= $(addsuffix /$(BIN):$(IMG_VERSION),$(REGISTRY))
 
 GOFLAGS ?=
 GOPROXY ?=
@@ -80,14 +84,15 @@ SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 all: build
 
 build-%:
-	$(MAKE) build                          \
+	$(MAKE) package                        \
 	    --no-print-directory               \
 	    GOOS=$(firstword $(subst _, ,$*))  \
 	    GOARCH=$(lastword $(subst _, ,$*)) \
 	    FULL_NAME=1
 
-all-build: # @HELP build binaries for all platforms with target included in the filename
-all-build: $(addprefix build-, $(subst /,_, $(ALL_PLATFORMS)))
+all-build: # @HELP build and package binaries for all platforms
+all-build: $(addprefix build-, $(subst /,_, $(BIN_PLATFORMS)))
+	cd bin && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
 build: # @HELP build binary locally
 build:
@@ -97,6 +102,15 @@ build:
 	    VERSION=$(VERSION)           \
 	    GOFLAGS=$(GOFLAGS)           \
 	    bash build/build.sh $(ENTRY)
+
+package: build
+	echo "# Compressing $(BIN_FULLNAME) to $(PKG_FULLNAME)"
+	cp LICENSE bin/LICENSE
+	cd bin && if [ "$(OS)" == "windows" ]; then              \
+	    zip "$(PKG_FULLNAME)" "$(BIN_FULLNAME)" LICENSE;     \
+	else                                                     \
+	    tar czf "$(PKG_FULLNAME)" "$(BIN_FULLNAME)" LICENSE; \
+	fi
 
 dirty-build: # @HELP same as build, but using build cache is allowed
 dirty-build:
@@ -114,13 +128,13 @@ docker-build-%:
 	    GOOS=$(firstword $(subst _, ,$*))  \
 	    GOARCH=$(lastword $(subst _, ,$*))
 
-PLATFORMS := $(shell echo "$(ALL_IMAGE_PLATFORMS)" | sed -r 's/ /,/g')
+BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
 
 all-docker-build-push: # @HELP build and push images for all platforms
 all-docker-build-push:
-	echo -e "# building for $(PLATFORMS)"
+	echo -e "# building for $(BUILDX_PLATFORMS)"
 	docker buildx build --push           \
-	    --platform "$(PLATFORMS)"        \
+	    --platform "$(BUILDX_PLATFORMS)" \
 	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
 	    --build-arg "GOPROXY=$(GOPROXY)" \
@@ -170,7 +184,7 @@ version:
 
 imageversion: # @HELP output the image version
 imageversion:
-	echo $(IMGVERSION)
+	echo $(IMG_VERSION)
 
 binary-name: # @HELP output the binary name
 binary-name:
@@ -182,13 +196,13 @@ variables:
 	echo "  OS                $(OS)"
 	echo "  ARCH              $(ARCH)"
 	echo "  VERSION           $(VERSION)"
-	echo "  IMGVERSION        $(IMGVERSION)"
+	echo "  IMG_VERSION       $(IMG_VERSION)"
 	echo "  REGISTRY          $(REGISTRY)"
-	echo "  IMGTAGS           $(IMGTAGS)"
-	echo "  GOFLAGS           $(GOFLAGS)"
+	echo "  IMG_TAGS          $(IMGTAGS)"
+	echo "  BIN_PLATFORMS     $(BIN_PLATFORMS)"
+	echo "  IMG_PLATFORMS     $(IMG_PLATFORMS)"
 	echo "  GOPROXY           $(GOPROXY)"
-	echo "  PLATFORMS         $(ALL_PLATFORMS)"
-	echo "  IMG_PLATFORMS     $(ALL_IMAGE_PLATFORMS)"
+	echo "  GOFLAGS           $(GOFLAGS)"
 
 help: # @HELP print this message
 help:
@@ -197,19 +211,19 @@ help:
 	echo "  OS                $(OS)"
 	echo "  ARCH              $(ARCH)"
 	echo "  VERSION           $(VERSION)"
-	echo "  IMGVERSION        $(IMGVERSION)"
+	echo "  IMG_VERSION       $(IMG_VERSION)"
 	echo "  REGISTRY          $(REGISTRY)"
-	echo "  IMGTAGS           $(IMGTAGS)"
-	echo "  GOFLAGS           $(GOFLAGS)"
+	echo "  IMG_TAGS          $(IMGTAGS)"
+	echo "  BIN_PLATFORMS     $(BIN_PLATFORMS)"
+	echo "  IMG_PLATFORMS     $(IMG_PLATFORMS)"
 	echo "  GOPROXY           $(GOPROXY)"
-	echo "  PLATFORMS         $(ALL_PLATFORMS)"
-	echo "  IMG_PLATFORMS     $(ALL_IMAGE_PLATFORMS)"
+	echo "  GOFLAGS           $(GOFLAGS)"
 	echo
 	echo "TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)     \
 	    | awk '                                   \
 	        BEGIN {FS = ": *# *@HELP"};           \
-	        { printf "  %-16s %s\n", $$1, $$2 };  \
+	        { printf "  %-25s %s\n", $$1, $$2 };  \
 	    '
 	echo
 	echo "NOTES:"

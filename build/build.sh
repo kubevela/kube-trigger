@@ -45,7 +45,8 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
-echo "# target: ${OS}/${ARCH}\tversion: ${VERSION}\toutput: ${OUTPUT}"
+printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
+  "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
 
 echo "# Generating code..."
 go generate ./...

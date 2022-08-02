@@ -80,6 +80,7 @@ func NewVersionCommand() *cobra.Command {
 		Use:   "version",
 		Short: "show kube-trigger version and exit",
 		Run: func(cmd *cobra.Command, args []string) {
+			//nolint:forbidigo // print version
 			fmt.Println(version.Version)
 		},
 	}

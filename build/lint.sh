@@ -42,7 +42,7 @@ CURRENT_GOLANGCI_VERSION="$(${GOLANGCI} version 2>&1)"
 CURRENT_GOLANGCI_VERSION="${CURRENT_GOLANGCI_VERSION#*version }"
 CURRENT_GOLANGCI_VERSION="${CURRENT_GOLANGCI_VERSION% built*}"
 
-greaterver() {
+function greaterver() {
   if [[ $1 == $2 ]]; then
     return 0
   fi
