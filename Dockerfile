@@ -35,6 +35,7 @@ ARG GOFLAGS
 ENV GOFLAGS=${GOFLAGS}
 
 COPY build/ build/
+COPY hack/ hack/
 COPY cmd/ cmd/
 COPY pkg/ pkg/
 

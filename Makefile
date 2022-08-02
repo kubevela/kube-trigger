@@ -50,6 +50,8 @@ ifeq ($(OS), windows)
   BIN_EXTENSION := .exe
 endif
 
+FULLNAME ?=
+
 # Binary basename, without extension
 BIN          := kube-trigger
 # Binary basename
@@ -163,6 +165,20 @@ imageversion:
 binary-name: # @HELP output the binary name
 binary-name:
 	echo $(BIN_FULLNAME)
+
+variables: # @HELP print makefile variables
+variables:
+	echo "  OUTPUT            $(OUTPUT)"
+	echo "  OS                $(OS)"
+	echo "  ARCH              $(ARCH)"
+	echo "  VERSION           $(VERSION)"
+	echo "  IMGVERSION        $(IMGVERSION)"
+	echo "  REGISTRY          $(REGISTRY)"
+	echo "  IMGTAGS           $(IMGTAGS)"
+	echo "  GOFLAGS           $(GOFLAGS)"
+	echo "  GOPROXY           $(GOPROXY)"
+	echo "  PLATFORMS         $(ALL_PLATFORMS)"
+	echo "  IMG_PLATFORMS     $(ALL_IMAGE_PLATFORMS)"
 
 help: # @HELP print this message
 help:
