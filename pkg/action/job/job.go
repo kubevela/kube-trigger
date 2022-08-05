@@ -28,6 +28,7 @@ type Job struct {
 	action     types.Action
 	sourceType string
 	event      interface{}
+	data       interface{}
 }
 
 var _ executor.Job = &Job{}
@@ -35,11 +36,18 @@ var _ executor.Job = &Job{}
 // New creates a new job. It will fetch cached Action instance from Registry
 // using provided ActionMeta. sourceType and event will be passed to the Action.Run
 // method.
-func New(reg *registry.Registry, meta types.ActionMeta, sourceType string, event interface{}) (*Job, error) {
+func New(
+	reg *registry.Registry,
+	meta types.ActionMeta,
+	sourceType string,
+	event interface{},
+	data interface{},
+) (*Job, error) {
 	var err error
 	ret := Job{
 		sourceType: sourceType,
 		event:      event,
+		data:       data,
 	}
 	ret.action, err = reg.CreateOrGetInstance(meta)
 	if err != nil {
@@ -59,7 +67,7 @@ func (j *Job) Run(ctx context.Context) error {
 	if j.action == nil {
 		return nil
 	}
-	return j.action.Run(ctx, j.sourceType, j.event)
+	return j.action.Run(ctx, j.sourceType, j.event, j.data)
 }
 
 func (j *Job) AllowConcurrency() bool {

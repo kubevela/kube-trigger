@@ -46,7 +46,8 @@ type Filter interface {
 	// will be called multiple times, you should make sure it is idempotent.
 	ApplyToObject(obj interface{}) (bool, error)
 
-	// Type returns the type of this Filter.
+	// Type returns the type of this Filter. Name your filter as something-doer,
+	// instead of do-something.
 	Type() string
 }
 

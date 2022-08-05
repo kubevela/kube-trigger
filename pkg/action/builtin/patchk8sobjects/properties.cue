@@ -8,6 +8,12 @@ patchTarget: {
 	labelSelectors?: [string]: string
 }
 
+// patch is a CUE string that will patch the patchTargets.
+// Available contexts:
+// - context.event: event meta
+// - context.data: event data
+// - context.target: patchTarget
+// Put the patch in 'output' field, which will be merged with each target.
 patch: string
 
 allowConcurrency: *false | bool

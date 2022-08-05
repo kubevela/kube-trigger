@@ -16,18 +16,14 @@ limitations under the License.
 
 package event
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
 // Event represent an event got from k8s api server
 type Event struct {
+	EventType  string
 	Namespace  string
 	Kind       string
 	ApiVersion string
 	Name       string
 	Info       string
-	Obj        metav1.Object
 }
 
 // Message returns event message in standard format.

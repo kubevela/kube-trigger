@@ -35,6 +35,8 @@ type K8sResourceWatcher struct {
 	logger             *logrus.Entry
 }
 
+var _ sourcetypes.Source = &K8sResourceWatcher{}
+
 func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	return &K8sResourceWatcher{}
 }

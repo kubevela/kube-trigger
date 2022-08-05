@@ -44,14 +44,14 @@ type Action interface {
 	// will be cached. Subsequent calls will use the Run() method in cached instances.
 	Init(c Common, properties cue.Value) error
 
-	// Run executes this Action. sourceType is the type of upstream event source.
-	// event is what upstream source gives to you. For example, a k8s-resource-watcher
-	// may give you the object that it watches and what event happened.
+	// Run executes this Action. Refer to EventHandler for what each parameter
+	// means.
 	// Run will be called automatically job workers. Since this method
 	// will be called multiple times, you should not store any states in your Action.
-	Run(ctx context.Context, sourceType string, event interface{}) error
+	Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error
 
-	// Type returns the type of this Action.
+	// Type returns the type of this Action. Since this is an Action, please name
+	// your action as do-something, instead of something-doer.
 	Type() string
 
 	// AllowConcurrency indicates if this Action can be executed concurrently.

@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/kubevela/kube-trigger/pkg/action/builtin/bumpapplicationrevision"
 	"github.com/kubevela/kube-trigger/pkg/action/builtin/patchk8sobjects"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
 )
@@ -24,9 +25,14 @@ import (
 // RegisterBuiltinActions registers builtin actions into registry.
 // If you developed another action, put it here to make it available.
 func RegisterBuiltinActions(reg *Registry) {
-	pko := &patchk8sobjects.PatchK8sObjects{}
-	pkoMeta := types.ActionMeta{
-		Type: pko.Type(),
+	registerFromInstance(reg, &patchk8sobjects.PatchK8sObjects{})
+	registerFromInstance(reg, &bumpapplicationrevision.BumpApplicationRevision{})
+}
+
+func registerFromInstance(reg *Registry, act types.Action) {
+	ins := act
+	insMeta := types.ActionMeta{
+		Type: ins.Type(),
 	}
-	reg.RegisterType(pkoMeta, pko)
+	reg.RegisterType(insMeta, ins)
 }

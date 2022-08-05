@@ -20,25 +20,20 @@ limitations under the License.
 
 // Instead, edit properties.cue and regenerate this using go generate ./...
 
-package patchk8sobjects
+package executecommand
 
-const propertiesCUETemplate = `// This is a validator for properties of patch-k8s-objects
+const propertiesCUETemplate = `// This is a validator for properties of execute-command
 
-patchTarget: {
-	apiVersion: string
-	kind:       string
-	namespace:  *"" | string
-	name:       *"" | string
-	labelSelectors?: [string]: string
-}
+cmd:  string
+args: *[] | [...string]
+pwd:  *"" | string
+env?: [string]: string
+stdin: *"" | string
 
-// patch is a CUE string that will patch the patchTargets.
+// Dynamically build the options above using contexts.
 // Available contexts:
 // - context.event: event meta
 // - context.data: event data
-// - context.target: patchTarget
-// Put the patch in 'output' field, which will be merged with each target.
-patch: string
-
-allowConcurrency: *false | bool
+// Will override the options above.
+dynamicBuilder: *"" | string
 `

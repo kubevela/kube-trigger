@@ -35,6 +35,8 @@ type CUEValidator struct {
 	logger  *logrus.Entry
 }
 
+var _ types.Filter = &CUEValidator{}
+
 const (
 	typeName          = "cue-validator"
 	TemplateFieldName = "template"

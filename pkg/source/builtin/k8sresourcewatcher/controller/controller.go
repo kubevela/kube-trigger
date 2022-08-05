@@ -31,7 +31,7 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
 	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -98,10 +98,10 @@ func Setup(ctrlConf config.Config, eh eventhandler.EventHandler) *Controller {
 	}
 	informer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				return dynamicClient.Resource(mapping.Resource).List(ctx, options)
 			},
-			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				return dynamicClient.Resource(mapping.Resource).Watch(ctx, options)
 			},
 		},
@@ -285,14 +285,14 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 				status = "Normal"
 			}
 			kbEvent := event.Event{
+				EventType: newEvent.EventType,
 				Name:      objectMeta.GetName(),
 				Namespace: newEvent.Namespace,
 				Kind:      newEvent.ResourceType,
 				Info:      status,
-				Obj:       objectMeta,
 			}
 			c.logger.Debugf("add create event: %s", kbEvent.Message())
-			c.callEventHandler(kbEvent)
+			c.callEventHandler(objectMeta, kbEvent)
 			return nil
 		}
 	case "update":
@@ -303,33 +303,33 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 			status = "Warning"
 		}
 		kbEvent := event.Event{
+			EventType: newEvent.EventType,
 			Name:      newEvent.Key,
 			Namespace: newEvent.Namespace,
 			Kind:      newEvent.ResourceType,
 			Info:      status,
-			Obj:       objectMeta,
 		}
 		c.logger.Debugf("add update event: %s", kbEvent.Message())
-		c.callEventHandler(kbEvent)
+		c.callEventHandler(objectMeta, kbEvent)
 		return nil
 	case "delete":
 		kbEvent := event.Event{
+			EventType: newEvent.EventType,
 			Name:      newEvent.Key,
 			Namespace: newEvent.Namespace,
 			Kind:      newEvent.ResourceType,
 			Info:      "Deleted",
-			Obj:       objectMeta,
 		}
 		c.logger.Debugf("add create event: %s", kbEvent.Message())
-		c.callEventHandler(kbEvent)
+		c.callEventHandler(objectMeta, kbEvent)
 		return nil
 	}
 	return nil
 }
 
-func (c *Controller) callEventHandler(e event.Event) {
+func (c *Controller) callEventHandler(obj metav1.Object, e event.Event) {
 	c.logger.Infof("event \"%s\" happened, calling event handlers", e.Message())
-	err := c.eventHandler(c.controllerType, e.Obj)
+	err := c.eventHandler(c.controllerType, obj, e)
 	if err != nil {
 		c.logger.Infof("calling event handler failed: %s", err)
 	}

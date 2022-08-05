@@ -42,7 +42,8 @@ type Source interface {
 	// know when to exit.
 	Run(ctx context.Context) error
 
-	// Type returns the type of this Source.
+	// Type returns the type of this Source. Name your source as something-doer,
+	// instead of do-something.
 	Type() string
 }
 

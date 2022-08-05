@@ -24,7 +24,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"github.com/imdario/mergo"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	krwevent "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
+	"github.com/kubevela/kube-trigger/pkg/action/utils"
 	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -35,9 +35,10 @@ import (
 )
 
 const (
-	outputFieldName       = "output"
-	sourceObjectFieldName = "sourceObject"
-	patchTargetFieldName  = "patchTarget"
+	outputFieldName      = "output"
+	dataFieldName        = "data"
+	eventFieldName       = "event"
+	patchTargetFieldName = "target"
 )
 
 const (
@@ -45,28 +46,33 @@ const (
 	typeName = "patch-k8s-objects"
 )
 
+// PatchK8sObjects patches k8s objects.
 type PatchK8sObjects struct {
 	c      client.Client
 	prop   Properties
 	logger *logrus.Entry
 }
 
-func (pko *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}) error {
+var _ types.Action = &PatchK8sObjects{}
+
+func (pko *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error {
 	var contextStr string
 
 	pko.logger.Infof("running, event souce: %s", sourceType)
 	pko.logger.Debugf("running with event %v from %s", event, sourceType)
 
-	// Only if it is from k8s-resource-watcher, we add context.sourceObject
-	e, ok := event.(krwevent.Event)
-	if ok {
-		jsonByte, err := json.Marshal(e.Obj)
-		if err == nil {
-			pko.logger.Debugf("added context.%s: %s", sourceObjectFieldName, string(jsonByte))
-			contextStr += fmt.Sprintf("context:{%s:%s}\n", sourceObjectFieldName, string(jsonByte))
-		}
-	} else {
-		pko.logger.Infof("event is not a k8s-resource-watcher event, so context.%s available", sourceObjectFieldName)
+	// Add context.data using data.
+	jsonByte, err := json.Marshal(data)
+	if err == nil {
+		pko.logger.Debugf("added context.%s: %s", dataFieldName, string(jsonByte))
+		contextStr += fmt.Sprintf("context:{%s:%s}\n", dataFieldName, string(jsonByte))
+	}
+
+	// Add context.event using event.
+	jsonByte, err = json.Marshal(event)
+	if err == nil {
+		pko.logger.Debugf("added context.%s: %s", eventFieldName, string(jsonByte))
+		contextStr += fmt.Sprintf("context:{%s:%s}\n", eventFieldName, string(jsonByte))
 	}
 
 	gv, err := schema.ParseGroupVersion(pko.prop.PatchTarget.APIVersion)
@@ -165,32 +171,21 @@ func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string,
 	pko.logger.Debugf("merged with patch, ready to update: %v", un.Object)
 
 	// Apply merged object.
-	err = pko.c.Update(ctx, &un)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return pko.c.Update(ctx, &un)
 }
 
 func (pko *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
 	var err error
-
 	pko.logger = logrus.WithField("action", typeName)
-
 	pko.prop = Properties{}
-
 	// Parse properties.
 	err = pko.prop.parse(properties)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties")
 	}
 	pko.logger.Debugf("parsed propertise: %v", pko.prop)
-
 	pko.c = c.Client
-
 	pko.logger.Debugf("initialized")
-
 	return nil
 }
 
@@ -225,26 +220,5 @@ type PatchTarget struct {
 
 // parse parses, evaluate, validate, and apply defaults.
 func (p *Properties) parse(prop cue.Value) error {
-	var err error
-
-	// Evaluate and Validate config using properties.cue
-	cueCtx := cuecontext.New()
-
-	str, err := utilcue.Marshal(prop)
-	if err != nil {
-		return err
-	}
-
-	v := cueCtx.CompileString(propertiesCUETemplate + str)
-
-	b, err := v.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &p)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return utils.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

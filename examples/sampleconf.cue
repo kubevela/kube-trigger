@@ -57,11 +57,11 @@ watchers: [
 
 						previousRev: string
 
-						if context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"] != _|_ {
-							previousRev: context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"]
+						if context.target.metadata.annotations["app.oam.dev/publishVersion"] != _|_ {
+							previousRev: context.target.metadata.annotations["app.oam.dev/publishVersion"]
 						}
 
-						if context.patchTarget.metadata.annotations["app.oam.dev/publishVersion"] == _|_ {
+						if context.target.metadata.annotations["app.oam.dev/publishVersion"] == _|_ {
 							previousRev: "1"
 						}
 

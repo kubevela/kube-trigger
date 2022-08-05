@@ -22,10 +22,13 @@ import (
 )
 
 func RegisterBuiltinFilters(reg *Registry) {
-	// Register cue-validator
-	cv := &cuevalidator.CUEValidator{}
-	cvMeta := types.FilterMeta{
-		Type: cv.Type(),
+	registerFromInstance(reg, &cuevalidator.CUEValidator{})
+}
+
+func registerFromInstance(reg *Registry, act types.Filter) {
+	ins := act
+	insMeta := types.FilterMeta{
+		Type: ins.Type(),
 	}
-	reg.RegisterType(cvMeta, cv)
+	reg.RegisterType(insMeta, ins)
 }
