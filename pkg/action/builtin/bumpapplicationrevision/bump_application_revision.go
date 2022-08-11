@@ -45,7 +45,7 @@ type BumpApplicationRevision struct {
 
 var _ types.Action = &BumpApplicationRevision{}
 
-func (bar *BumpApplicationRevision) Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error {
+func (bar *BumpApplicationRevision) Run(ctx context.Context, sourceType string, _ interface{}, _ interface{}, _ []string) error {
 	var err error
 
 	bar.logger.Infof("running, event souce: %s", sourceType)

@@ -105,6 +105,8 @@ func New(c Config) (*Executor, error) {
 func (e *Executor) setJobStatus(j Job, status bool) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
+	// TODO(charlie0129): we are simply use action type to prevent concurrent
+	// runs. This is too strict. Ideally, we would the action hash/ID to do so.
 	e.runningJobs[j.Type()] = status
 }
 

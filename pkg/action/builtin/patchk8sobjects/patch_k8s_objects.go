@@ -55,7 +55,7 @@ type PatchK8sObjects struct {
 
 var _ types.Action = &PatchK8sObjects{}
 
-func (pko *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error {
+func (pko *PatchK8sObjects) Run(ctx context.Context, sourceType string, event interface{}, data interface{}, _ []string) error {
 	var contextStr string
 
 	pko.logger.Infof("running, event souce: %s", sourceType)

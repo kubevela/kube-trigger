@@ -35,7 +35,7 @@ type ExecuteCommand struct {
 
 var _ types.Action = &ExecuteCommand{}
 
-func (ec *ExecuteCommand) Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error {
+func (ec *ExecuteCommand) Run(ctx context.Context, sourceType string, event interface{}, data interface{}, messages []string) error {
 
 	return nil
 }

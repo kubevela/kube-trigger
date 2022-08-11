@@ -44,7 +44,12 @@ type Filter interface {
 	// ApplyToObject applies this Filter to the given object that came from
 	// sources. Returning false will filter this object out. Since this method
 	// will be called multiple times, you should make sure it is idempotent.
-	ApplyToObject(obj interface{}) (bool, error)
+	//
+	// The string in return values is used to pass messages. For example,
+	// your filter gets a pod failure event, and you want to say "hey this pod failed".
+	// You can put that in the string, and it can be passed to Actions. Actions
+	// can, for example, send this message to webhooks.
+	ApplyToObject(event interface{}, data interface{}) (bool, string, error)
 
 	// Type returns the type of this Filter. Name your filter as something-doer,
 	// instead of do-something.

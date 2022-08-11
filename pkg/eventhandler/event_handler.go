@@ -34,18 +34,63 @@ import (
 //
 // sourceType is what type the Source is.
 //
-// event is what event happened, containing a brief event object. Normally, it
-// is for humans to read, e.g. sending this to Telegram bot. So, do not include
-// complex objects in it.
+// event is what event happened, containing a brief event object. Do not include
+// complex objects in it. For example, a k8s-resource-watcher Source may contain
+// what event happened (create, update, delete) in it.
 //
 // data is the detailed event, for machines to process, e.g. passed to filters to
 // do filtering . You may put complex objects in it. For example,
-// a k8s-resource-watcher Source may contain the entire object in it.
+// a k8s-resource-watcher Source may contain the entire object that is changed
+// in it.
 type EventHandler func(sourceType string, event interface{}, data interface{}) error
+
+type Config struct {
+	Filters        []filtertypes.FilterMeta
+	Actions        []actiontypes.ActionMeta
+	FilterRegistry *filterregistry.Registry
+	ActionRegistry *actionregistry.Registry
+	Executor       *executor.Executor
+}
 
 // New create a new EventHandler that does nothing.
 func New() EventHandler {
 	return func(sourceType string, event interface{}, data interface{}) error {
+		return nil
+	}
+}
+
+func NewFromConfig(c Config) EventHandler {
+	filterLogger := logrus.WithField("eventhandler", "applyfilters")
+	actionLogger := logrus.WithField("eventhandler", "addactionjob")
+	return func(sourceType string, event interface{}, data interface{}) error {
+		// Apply filters
+		kept, msgs, err := filterutils.ApplyFilters(event, data, c.Filters, c.FilterRegistry)
+		if err != nil {
+			filterLogger.Errorf("error when applying filters to event %v: %s", event, err)
+			return err
+		}
+		if !kept {
+			filterLogger.Debugf("event %v is filtered out", event)
+			filterLogger.Infof("event is filtered out")
+			return fmt.Errorf("event is filtered out")
+		}
+		filterLogger.Infof("event passed filters")
+		filterLogger.Infof("filters left these messages: %v", msgs)
+
+		// Run actions
+		for _, act := range c.Actions {
+			//nolint:govet // ignore
+			newJob, err := job.New(c.ActionRegistry, act, sourceType, event, data, msgs)
+			if err != nil {
+				actionLogger.Errorf("error when creating new job: %s", err)
+				continue
+			}
+			err = c.Executor.AddJob(newJob)
+			if err != nil {
+				actionLogger.Errorf("error when adding job to executor: %s", err)
+			}
+		}
+
 		return nil
 	}
 }
@@ -70,49 +115,4 @@ func (e EventHandler) AddHandlerAfter(eh EventHandler) EventHandler {
 		}
 		return eh(sourceType, event, data)
 	}
-}
-
-// WithFilters applies filters to event before e is called.
-func (e EventHandler) WithFilters(
-	filters []filtertypes.FilterMeta,
-	reg *filterregistry.Registry,
-) EventHandler {
-	logger := logrus.WithField("eventhandler", "applyfilters")
-	return e.AddHandlerBefore(func(sourceType string, event interface{}, data interface{}) error {
-		kept, err := filterutils.ApplyFilters(data, filters, reg)
-		if err != nil {
-			logger.Errorf("error when applying filters to event %v: %s", event, err)
-			return err
-		}
-		if !kept {
-			logger.Debugf("event %v is filtered out", event)
-			logger.Infof("event is filtered out")
-			return fmt.Errorf("event is filtered out")
-		}
-		logger.Infof("event passed filters")
-		return nil
-	})
-}
-
-// WithActions adds jobs that will execute actions to Executor after e is called.
-func (e EventHandler) WithActions(
-	exe *executor.Executor,
-	actions []actiontypes.ActionMeta,
-	reg *actionregistry.Registry,
-) EventHandler {
-	logger := logrus.WithField("eventhandler", "newactionjob")
-	return e.AddHandlerAfter(func(sourceType string, event interface{}, data interface{}) error {
-		for _, act := range actions {
-			newJob, err := job.New(reg, act, sourceType, event, data)
-			if err != nil {
-				logger.Errorf("error when creating new job: %s", err)
-				continue
-			}
-			err = exe.AddJob(newJob)
-			if err != nil {
-				logger.Errorf("error when adding job to executor: %s", err)
-			}
-		}
-		return nil
-	})
 }

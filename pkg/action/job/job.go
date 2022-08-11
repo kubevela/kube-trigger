@@ -29,6 +29,7 @@ type Job struct {
 	sourceType string
 	event      interface{}
 	data       interface{}
+	msgs       []string
 }
 
 var _ executor.Job = &Job{}
@@ -42,12 +43,14 @@ func New(
 	sourceType string,
 	event interface{},
 	data interface{},
+	msgs []string,
 ) (*Job, error) {
 	var err error
 	ret := Job{
 		sourceType: sourceType,
 		event:      event,
 		data:       data,
+		msgs:       msgs,
 	}
 	ret.action, err = reg.CreateOrGetInstance(meta)
 	if err != nil {
@@ -67,7 +70,7 @@ func (j *Job) Run(ctx context.Context) error {
 	if j.action == nil {
 		return nil
 	}
-	return j.action.Run(ctx, j.sourceType, j.event, j.data)
+	return j.action.Run(ctx, j.sourceType, j.event, j.data, j.msgs)
 }
 
 func (j *Job) AllowConcurrency() bool {

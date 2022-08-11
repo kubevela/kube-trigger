@@ -44,11 +44,24 @@ type Action interface {
 	// will be cached. Subsequent calls will use the Run() method in cached instances.
 	Init(c Common, properties cue.Value) error
 
-	// Run executes this Action. Refer to EventHandler for what each parameter
-	// means.
+	// Run executes this Action.
+	//
+	// sourceType is what type the Source is.
+	//
+	// event is what event happened, containing a brief event object. Do not include
+	// complex objects in it. For example, a k8s-resource-watcher Source may contain
+	// what event happened (create, update, delete) in it.
+	//
+	// data is the detailed event, for machines to process, e.g. passed to filters to
+	// do filtering . You may put complex objects in it. For example,
+	// a k8s-resource-watcher Source may contain the entire object that is changed
+	// in it.
+	//
+	// messages are the messages that the filters left to you.
+	//
 	// Run will be called automatically job workers. Since this method
 	// will be called multiple times, you should not store any states in your Action.
-	Run(ctx context.Context, sourceType string, event interface{}, data interface{}) error
+	Run(ctx context.Context, sourceType string, event interface{}, data interface{}, messages []string) error
 
 	// Type returns the type of this Action. Since this is an Action, please name
 	// your action as do-something, instead of something-doer.

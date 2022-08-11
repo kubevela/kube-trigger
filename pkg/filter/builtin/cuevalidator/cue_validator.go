@@ -54,7 +54,7 @@ func (c *CUEValidator) parseProperties(properties cue.Value) (Properties, error)
 	return Properties{Template: v}, nil
 }
 
-func (c *CUEValidator) ApplyToObject(obj interface{}) (bool, error) {
+func (c *CUEValidator) ApplyToObject(_ interface{}, obj interface{}) (bool, string, error) {
 	var err error
 
 	c.logger.Debugf("applying to object %v", obj)
@@ -67,24 +67,24 @@ func (c *CUEValidator) ApplyToObject(obj interface{}) (bool, error) {
 	err = c.c.Validate(*c.v, obj)
 	if err != nil {
 		c.logger.Debugf("object is filtered out by stage 1: %s", err)
-		return false, nil
+		return false, "", nil
 	}
 
 	// Event is kept. Do further filter.
 	jsonBytes, err := json.Marshal(obj)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	cueCtx := cuecontext.New()
 	_, err = cueCtx.CompileString(c.tmplStr + "\n" + string(jsonBytes)).MarshalJSON()
 	if err != nil {
 		c.logger.Debugf("object is filtered out by stage 2: %s", err)
-		return false, nil
+		return false, "", nil
 	}
 
 	c.logger.Debugf("object is kept")
 
-	return true, nil
+	return true, "", nil
 }
 
 func (c *CUEValidator) Init(properties cue.Value) error {

@@ -154,10 +154,15 @@ func runCli(cmd *cobra.Command, args []string) error {
 		// New Source instance.
 		ns := s.New()
 
+		c := eventhandler.Config{
+			Filters:        w.Filters,
+			Actions:        w.Actions,
+			FilterRegistry: filterReg,
+			ActionRegistry: actionReg,
+			Executor:       exe,
+		}
 		// Create a EventHandler
-		eh := eventhandler.New().
-			WithFilters(w.Filters, filterReg).     // Will filter event using filters
-			WithActions(exe, w.Actions, actionReg) // Will run actions
+		eh := eventhandler.NewFromConfig(c)
 
 		// Initialize Source, with user-provided prop and event handler
 		err = ns.Init(w.Source.Properties, eh)

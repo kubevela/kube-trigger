@@ -24,20 +24,28 @@ import (
 
 // ApplyFilters applies the given list of filters to an object. Since only filterMeta
 // is given, it will try to fetch cached filters from registry if possible.
-func ApplyFilters(obj interface{}, filters []types.FilterMeta, reg *registry.Registry) (bool, error) {
+// All messages from filters will be returned as a list.
+func ApplyFilters(
+	event interface{},
+	data interface{},
+	filters []types.FilterMeta,
+	reg *registry.Registry,
+) (bool, []string, error) {
+	var msgs []string
 	for _, f := range filters {
 		fInstance, err := reg.CreateOrGetInstance(f)
 		if err != nil {
-			return false, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Type)
+			return false, msgs, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Type)
 		}
-		kept, err := fInstance.ApplyToObject(obj)
+		kept, msg, err := fInstance.ApplyToObject(event, data)
 		if err != nil {
-			return false, errors.Wrapf(err, "error when applying filter %s to %v", f.Type, obj)
+			return false, msgs, errors.Wrapf(err, "error when applying filter %s to %v", f.Type, event)
 		}
 		if !kept {
-			return false, nil
+			return false, msgs, nil
 		}
+		msgs = append(msgs, msg)
 	}
 
-	return true, nil
+	return true, msgs, nil
 }
