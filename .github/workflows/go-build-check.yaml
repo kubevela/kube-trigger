@@ -35,10 +35,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Go Generate
-        run: make generate
+        run: ./make-kt generate
 
       - name: Check boilerplate
-        run: make checklicense
+        run: ./make-kt checklicense
 
       - name: Lint
         uses: golangci/golangci-lint-action@v3
@@ -46,12 +46,12 @@ jobs:
           version: ${{ env.GOLANGCI_VERSION }}
 
       - name: Show Make Variables
-        run: make variables
+        run: ./make-kt variables
 
       - name: Build Binaries for All Platforms
         env:
           DIRTY_BUILD: true
-        run: make all-build
+        run: ./make-kt all-build
 
       - name: Upload Artifacts (linux-amd64)
         uses: actions/upload-artifact@v3
