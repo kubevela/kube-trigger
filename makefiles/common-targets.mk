@@ -29,10 +29,11 @@ OUTPUT       := bin/$(BIN_FULLNAME)
 all: build
 
 build-%:
-	$(MAKE) package                        \
-	    --no-print-directory               \
-	    GOOS=$(firstword $(subst _, ,$*))  \
-	    GOARCH=$(lastword $(subst _, ,$*)) \
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) \
+	    package                              \
+	    --no-print-directory                 \
+	    GOOS=$(firstword $(subst _, ,$*))    \
+	    GOARCH=$(lastword $(subst _, ,$*))   \
 	    FULL_NAME=1
 
 all-build: # @HELP build and package binaries for all platforms
@@ -60,12 +61,13 @@ package: build
 
 dirty-build: # @HELP same as build, but using build cache is allowed
 dirty-build:
-	$(MAKE) package DIRTY_BUILD=1
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) build DIRTY_BUILD=1
 
 docker-build-%:
-	$(MAKE) docker-build                   \
-	    --no-print-directory               \
-	    GOOS=$(firstword $(subst _, ,$*))  \
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) \
+	    docker-build                         \
+	    --no-print-directory                 \
+	    GOOS=$(firstword $(subst _, ,$*))    \
 	    GOARCH=$(lastword $(subst _, ,$*))
 
 BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
