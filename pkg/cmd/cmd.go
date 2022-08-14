@@ -189,6 +189,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
 	<-sigterm
+	<-ctx.Done()
 
 	return nil
 }

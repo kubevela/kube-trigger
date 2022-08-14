@@ -18,7 +18,7 @@ spec:
     - name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: KubeTrigger is the Schema for the kubetriggers API
+          description: KubeTrigger is the Schema for the kubetriggers API.
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
             metadata:
               type: object
             spec:
-              description: KubeTriggerSpec defines the desired state of KubeTrigger
+              description: KubeTriggerSpec defines the desired state of KubeTrigger.
               properties:
                 cueTemplate:
                   description: CUE config for kube-trigger. This will override everything
@@ -93,30 +93,36 @@ spec:
                   properties:
                     jobTimeout:
                       description: Timeout for each job in seconds.
+                      minimum: 1
                       type: integer
                     maxRetry:
                       description: Max retry count after action failed to run.
+                      minimum: 0
                       type: integer
                     perWorkerQPS:
                       description: Long-term QPS limiting per worker, this is shared
                         between all watchers.
+                      minimum: 1
                       type: integer
                     queueSize:
                       description: Queue size for running actions, this is shared between
                         all watchers.
+                      minimum: 0
                       type: integer
                     retryDelay:
                       description: First delay to retry actions in seconds, subsequent
                         delays will grow exponentially.
+                      minimum: 0
                       type: integer
                     workerCount:
                       description: Number of workers for running actions, this is shared
                         between all watchers.
+                      minimum: 1
                       type: integer
                   type: object
               type: object
             status:
-              description: KubeTriggerStatus defines the observed state of KubeTrigger
+              description: KubeTriggerStatus defines the observed state of KubeTrigger.
               properties:
                 createdResources:
                   description: 'Important: Run "make" to regenerate code after modifying

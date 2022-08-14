@@ -48,6 +48,8 @@ spec:
           type: RuntimeDefault
       containers:
         - workingDir: /
+          args:
+            - -c=/etc/kube-trigger/config.cue
           image: oamdev/kube-trigger:latest
           imagePullPolicy: IfNotPresent
           name: kube-trigger
@@ -64,16 +66,12 @@ spec:
               cpu: 10m
               memory: 64Mi
           volumeMounts:
-            - mountPath: /config.cue
+            - mountPath: /etc/kube-trigger
               name: config
-              subPath: config.cue
       serviceAccountName: kube-trigger-example
       terminationGracePeriodSeconds: 10
       volumes:
         - name: config
           configMap:
             name: kube-trigger-example
-            items:
-              - key: config.cue
-                path: config.cue
 `

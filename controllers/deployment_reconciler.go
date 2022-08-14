@@ -25,7 +25,9 @@ import (
 	"github.com/kubevela/kube-trigger/controllers/template"
 	"github.com/kubevela/kube-trigger/pkg/cmd"
 	"github.com/kubevela/kube-trigger/pkg/version"
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -61,7 +63,10 @@ func (r *KubeTriggerReconciler) createDeployment(
 	deployment.Labels[NameLabel] = kt.Name
 	deployment.Spec.Selector.MatchLabels[NameLabel] = kt.Name
 	deployment.Spec.Template.ObjectMeta.Labels[NameLabel] = kt.Name
-	deployment.Spec.Template.Spec.Containers[0].Args = workerConfigToArgs(kt.Spec.WorkerConfig)
+	deployment.Spec.Template.Spec.Containers[0].Args = workerConfigToArgs(
+		deployment.Spec.Template.Spec.Containers[0].Args,
+		kt.Spec.WorkerConfig,
+	)
 	deployment.Spec.Template.Spec.ServiceAccountName = kt.Name
 	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = kt.Name
 
@@ -95,8 +100,7 @@ func (r *KubeTriggerReconciler) createDeployment(
 	return nil
 }
 
-func workerConfigToArgs(wc *standardv1alpha1.WorkerConfig) []string {
-	args := []string{}
+func workerConfigToArgs(args []string, wc *standardv1alpha1.WorkerConfig) []string {
 	if wc == nil {
 		return args
 	}
@@ -137,6 +141,30 @@ func (r *KubeTriggerReconciler) deleteDeployment(ctx context.Context, namespaced
 
 	logger.Infof("deleting existing Deployment: %s", namespacedName.String())
 	return client.IgnoreNotFound(r.Delete(ctx, deployment))
+}
+
+func (r *KubeTriggerReconciler) restartPod(
+	ctx context.Context,
+	kt *standardv1alpha1.KubeTrigger,
+) error {
+	var err error
+
+	pods := v1.PodList{}
+	err = r.List(ctx, &pods, client.InNamespace(kt.Namespace), client.MatchingLabels{
+		NameLabel: kt.Name,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot list pods")
+	}
+
+	for _, pod := range pods.Items {
+		err = r.Delete(ctx, pod.DeepCopy())
+		if err != nil {
+			return errors.Wrapf(err, "cannot delete pod: %s/%s", pod.Namespace, pod.Name)
+		}
+	}
+
+	return nil
 }
 
 func (r *KubeTriggerReconciler) ReconcileDeployment(

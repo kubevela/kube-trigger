@@ -39,9 +39,11 @@ const (
 func (r *KubeTriggerReconciler) createConfigMap(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
+	oldCm v1.ConfigMap,
 	update bool,
 ) error {
 	var config string
+	var needRestartPod bool
 
 	//nolint:gocritic
 	if kt.Spec.CUETemplate != "" {
@@ -60,6 +62,9 @@ func (r *KubeTriggerReconciler) createConfigMap(
 	cm.Name = kt.Name
 	cm.Namespace = kt.Namespace
 	cm.Data[defaultConfigFilename] = config
+	if oldCm.Data[defaultConfigFilename] != "" && oldCm.Data[defaultConfigFilename] != cm.Data[defaultConfigFilename] {
+		needRestartPod = true
+	}
 
 	setOwnerReference(cm, *kt)
 
@@ -87,6 +92,15 @@ func (r *KubeTriggerReconciler) createConfigMap(
 		Name:       cm.Name,
 		Namespace:  cm.Namespace,
 	})
+
+	if needRestartPod {
+		logger.Infof("Template changed, restarting pods")
+		err := r.restartPod(ctx, kt)
+		if err != nil {
+			logger.Error("cannot restart pod")
+			return err
+		}
+	}
 
 	return nil
 }
@@ -116,10 +130,10 @@ func (r *KubeTriggerReconciler) ReconcileConfigMap(
 	err = r.Get(ctx, getNamespacedName(*kt), &cm)
 
 	if err == nil {
-		return r.createConfigMap(ctx, kt, true)
+		return r.createConfigMap(ctx, kt, cm, true)
 	}
 	if apierrors.IsNotFound(err) {
-		return r.createConfigMap(ctx, kt, false)
+		return r.createConfigMap(ctx, kt, cm, false)
 	}
 
 	return err
