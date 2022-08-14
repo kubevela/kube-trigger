@@ -155,7 +155,7 @@ skipped_dirs = [
 # list all the files contain 'DO NOT EDIT', but are not generated
 skipped_ungenerated_files = [
     'hack/boilerplate/boilerplate.py',
-    "hack/generate-properties-const-from-cue.sh"
+    "hack/generate-go-const-from-file.sh"
 ]
 
 def normalize_files(files):
@@ -208,7 +208,7 @@ def get_regexs():
     # company holder names can be anything
     regexs["date"] = re.compile(get_dates())
     # strip // +build \n\n build constraints
-    regexs["go_build_constraints"] = re.compile(r"^(// \+build.*\n)|(//go:build.*\n)+\n", re.MULTILINE)
+    regexs["go_build_constraints"] = re.compile(r"(//go:build.*\n\n?)?(//\s\+build.*\n\n)?", re.MULTILINE)
     # strip #!.* from shell scripts
     regexs["shebang"] = re.compile(r"^(#!.*\n)\n*", re.MULTILINE)
     # Search for generated files

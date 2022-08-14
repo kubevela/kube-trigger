@@ -12,51 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set this to 1 to enable debugging output.
-DBG_MAKEFILE ?=
-ifeq ($(DBG_MAKEFILE),1)
-    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
-    $(warning ***** $(shell date))
-else
-    # If we're not debugging the Makefile, don't echo recipes.
-    MAKEFLAGS += -s
-endif
-
-# No, we don't want builtin rules.
-MAKEFLAGS += --no-builtin-rules
-MAKEFLAGS += --warn-undefined-variables
-# Get rid of .PHONY everywhere.
-MAKEFLAGS += --always-make
-
-# Binary targets that we support.
-# When doing all-build, these targets will be built.
-BIN_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
-IMG_PLATFORMS := linux/amd64 linux/arm64
-
-# If user has not defined target, set some default value, same as host machine.
-OS          := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
-ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
-# Use git tags to set the version string
-VERSION     ?= $(shell git describe --tags --always --dirty)
-IMG_VERSION ?= $(shell bash -c "\
-if [[ ! $(VERSION) =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$$ ]]; then \
-  echo latest;                                                                                    \
-else                                                                                              \
-  echo $(VERSION);                                                                                \
-fi")
-
-BIN_EXTENSION :=
-ifeq ($(OS), windows)
-    BIN_EXTENSION := .exe
-endif
-
-DIRTY_BUILD ?=
-FULL_NAME   ?=
-GOFLAGS     ?=
-GOPROXY     ?=
-
-# Binary basename, without extension
-BIN          := kube-trigger
 # Binary basename
 _OUT         := $(BIN)$(BIN_EXTENSION)
 # Binary basename with version and target
@@ -70,16 +25,6 @@ ifeq ($(OS), windows)
 endif
 # Full output relative path
 OUTPUT       := bin/$(BIN_FULLNAME)
-# CLI entry file
-ENTRY        := cmd/kubetrigger/main.go
-
-# Registry to push to
-REGISTRY := docker.io/oamdev ghcr.io/kubevela
-# Docker image tag
-IMGTAGS  ?= $(addsuffix /$(BIN):$(IMG_VERSION),$(REGISTRY))
-
-# Use bash explicitly
-SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
 all: build
 
@@ -127,24 +72,33 @@ BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
 
 all-docker-build-push: # @HELP build and push images for all platforms
 all-docker-build-push:
-	echo -e "# Building and pushing images for $(IMG_PLATFORMS)"
-	docker buildx build --push           \
+	echo -e "# Building and pushing images for platforms $(IMG_PLATFORMS)"
+	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
+	TMPFILE=$$(mktemp) && \
+	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
+	    docker buildx build --push       \
+	    -f $${TMPFILE}                   \
 	    --platform "$(BUILDX_PLATFORMS)" \
 	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
 	    --build-arg "GOPROXY=$(GOPROXY)" \
+	    --build-arg "ENTRY=$(ENTRY)"     \
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 
 docker-build: # @HELP build docker image
 docker-build:
-	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)"
-	docker build                         \
+	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
+	TMPFILE=$$(mktemp) && \
+	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
+	    docker build                     \
+	    -f $${TMPFILE}                   \
 	    --build-arg "ARCH=$(ARCH)"       \
 	    --build-arg "OS=$(OS)"           \
 	    --build-arg "VERSION=$(VERSION)" \
 	    --build-arg "GOFLAGS=$(GOFLAGS)" \
 	    --build-arg "GOPROXY=$(GOPROXY)" \
+	    --build-arg "ENTRY=$(ENTRY)"     \
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 docker-push-%:
@@ -157,10 +111,6 @@ docker-push: $(addprefix docker-push-, $(subst :,=, $(subst /,_, $(IMGTAGS))))
 lint: # @HELP run linter
 lint: generate
 	bash build/lint.sh
-
-generate: # @HELP run go generate
-generate:
-	go generate ./...
 
 checklicense: # @HELP check license headers
 checklicense:
@@ -215,10 +165,11 @@ help:
 	echo "  GOFLAGS           $(GOFLAGS)"
 	echo
 	echo "TARGETS:"
-	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)     \
-	    | awk '                                   \
-	        BEGIN {FS = ": *# *@HELP"};           \
-	        { printf "  %-25s %s\n", $$1, $$2 };  \
+	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)    \
+	    | sed --expression='s_.*.mk:__g'         \
+	    | awk '                                  \
+	        BEGIN {FS = ": *# *@HELP"};          \
+	        { printf "  %-25s %s\n", $$1, $$2 }; \
 	    '
 	echo
 	echo "NOTES:"

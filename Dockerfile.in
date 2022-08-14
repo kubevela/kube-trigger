@@ -26,6 +26,13 @@ ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
 RUN go mod download
 
+COPY build       build
+COPY hack        hack
+COPY cmd         cmd
+COPY api         api
+COPY controllers controllers
+COPY pkg         pkg
+
 ARG TARGETARCH
 ARG ARCH
 # TARGETARCH in Docker BuildKit have higher priority.
@@ -38,23 +45,20 @@ ARG VERSION
 ENV VERSION=${VERSION}
 ARG GOFLAGS
 ENV GOFLAGS=${GOFLAGS}
+ARG ENTRY
 
-COPY build/ build/
-COPY hack/ hack/
-COPY cmd/ cmd/
-COPY pkg/ pkg/
-
-RUN ARCH=${ARCH}                \
-        OS=${OS}                \
-        OUTPUT=kube-trigger     \
-        VERSION=${VERSION}      \
-        GOFLAGS=${GOFLAGS}      \
-        /bin/sh build/build.sh  \
-        cmd/kubetrigger/main.go
+RUN ARCH=${ARCH}               \
+        OS=${OS}               \
+        OUTPUT=${BIN}          \
+        VERSION=${VERSION}     \
+        GOFLAGS=${GOFLAGS}     \
+        /bin/sh build/build.sh \
+        ${ENTRY}
 
 FROM ${BASE_IMAGE}
 WORKDIR /
-COPY --from=builder /workspace/kube-trigger .
-USER 65532:65532
 
-ENTRYPOINT ["/kube-trigger"]
+# This ${BIN} needs to be replace with the actual binary,
+# otherwise it won't work. Refer to Makefile for how it works.
+COPY --from=builder /workspace/${BIN} .
+ENTRYPOINT ["/${BIN}"]

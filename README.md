@@ -49,4 +49,4 @@ ones using CUE.
   CUE and K8s operations), metric (prometheus), storage (clickhouse)
 - [ ] Allow users to extend builtin filters/actions
 - [ ] Remove cache informer, make it with no catch but list watch events with unique queue.
-- [ ] Make the configuration as CRD, launch new process/pod for new watcher
+- [x] Make the configuration as CRD, launch new process/pod for new watcher

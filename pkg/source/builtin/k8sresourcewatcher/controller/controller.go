@@ -29,7 +29,7 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
-	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

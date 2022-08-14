@@ -58,6 +58,11 @@ func (w *K8sResourceWatcher) Init(properties cue.Value, eh eventhandler.EventHan
 	return nil
 }
 
+func (w *K8sResourceWatcher) Validate(properties cue.Value) error {
+	ctrlConf := &config.Config{}
+	return ctrlConf.Parse(properties)
+}
+
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 	if w.resourceController == nil {
 		return fmt.Errorf("controller has not been setup")

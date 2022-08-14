@@ -1,4 +1,4 @@
-name: Build Binaries and Run Go Checks
+name: Run Go Checks and Build Binaries
 on:
   push:
     branches:

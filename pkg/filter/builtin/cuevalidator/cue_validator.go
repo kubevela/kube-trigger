@@ -116,6 +116,20 @@ func (c *CUEValidator) Init(properties cue.Value) error {
 	return nil
 }
 
+func (c *CUEValidator) Validate(properties cue.Value) error {
+	prop, err := c.parseProperties(properties)
+	if err != nil {
+		return err
+	}
+
+	c.tmplStr, err = utilscue.Marshal(prop.Template)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *CUEValidator) Type() string {
 	return typeName
 }

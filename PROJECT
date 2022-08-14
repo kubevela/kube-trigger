@@ -1,0 +1,16 @@
+domain: oam.dev
+layout:
+- go.kubebuilder.io/v3
+projectName: kube-trigger
+repo: github.com/kubevela/kube-trigger
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: oam.dev
+  group: standard
+  kind: KubeTrigger
+  path: github.com/kubevela/kube-trigger/api/v1alpha1
+  version: v1alpha1
+version: "3"

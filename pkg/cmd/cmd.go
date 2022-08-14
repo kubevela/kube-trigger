@@ -38,19 +38,19 @@ import (
 )
 
 const (
-	flagLogLevel    = "log-level"
-	flagConfig      = "config"
-	flagConfigShort = "c"
+	FlagLogLevel    = "log-level"
+	FlagConfig      = "config"
+	FlagConfigShort = "c"
 
-	flagQueueSize    = "queue-size"
-	flagWorkers      = "workers"
-	flagPerWorkerQPS = "per-worker-qps"
-	flagMaxRetry     = "max-retry"
-	flagRetryDelay   = "retry-delay"
-	flagActionRetry  = "action-retry"
-	flagTimeout      = "timeout"
+	FlagQueueSize    = "queue-size"
+	FlagWorkers      = "workers"
+	FlagPerWorkerQPS = "per-worker-qps"
+	FlagMaxRetry     = "max-retry"
+	FlagRetryDelay   = "retry-delay"
+	FlagActionRetry  = "action-retry"
+	FlagTimeout      = "timeout"
 
-	flagRegistrySize = "registry-size"
+	FlagRegistrySize = "registry-size"
 )
 
 const (
@@ -89,16 +89,16 @@ func NewVersionCommand() *cobra.Command {
 
 //nolint:lll
 func addFlags(f *pflag.FlagSet) {
-	f.StringP(flagConfig, flagConfigShort, defaultConfig, "Path to config file")
-	f.String(flagLogLevel, defaultLogLevel, "Log level")
-	f.Int(flagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
-	f.Int(flagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
-	f.Int(flagPerWorkerQPS, defaultPerWorkerQPS, "Long-term QPS limiting per worker, this is shared between all watchers")
-	f.Bool(flagActionRetry, defaultActionRetry, "Retry actions if it fails")
-	f.Int(flagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
-	f.Int(flagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
-	f.Int(flagTimeout, defaultTimeout, "Timeout for running each action")
-	f.Int(flagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
+	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file")
+	f.String(FlagLogLevel, defaultLogLevel, "Log level")
+	f.Int(FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
+	f.Int(FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
+	f.Int(FlagPerWorkerQPS, defaultPerWorkerQPS, "Long-term QPS limiting per worker, this is shared between all watchers")
+	f.Bool(FlagActionRetry, defaultActionRetry, "Retry actions if it fails")
+	f.Int(FlagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
+	f.Int(FlagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
+	f.Int(FlagTimeout, defaultTimeout, "Timeout for running each action")
+	f.Int(FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
 }
 
 var logger = logrus.WithField("kubetrigger", "main")

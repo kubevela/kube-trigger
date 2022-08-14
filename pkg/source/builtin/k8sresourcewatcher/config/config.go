@@ -25,7 +25,7 @@ import (
 )
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
-//go:generate ../../../../../hack/generate-properties-const-from-cue.sh properties.cue
+//go:generate ../../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
 type Config struct {
 	APIVersion string   `json:"apiVersion"`

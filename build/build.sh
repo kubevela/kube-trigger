@@ -45,11 +45,11 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
-printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
-  "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
-
 echo "# Generating code..."
 go generate ./...
+
+printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
+  "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
 
 LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-}"
 

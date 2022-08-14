@@ -45,6 +45,10 @@ func (ec *ExecuteCommand) Init(c types.Common, properties cue.Value) error {
 	return nil
 }
 
+func (ec *ExecuteCommand) Validate(properties cue.Value) error {
+	return nil
+}
+
 func (ec *ExecuteCommand) Type() string {
 	return typeName
 }
@@ -59,7 +63,7 @@ func (ec *ExecuteCommand) AllowConcurrency() bool {
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
-//go:generate ../../../../hack/generate-properties-const-from-cue.sh properties.cue
+//go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
 type Properties struct {
 	Namespace      string            `json:"namespace"`

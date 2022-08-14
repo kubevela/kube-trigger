@@ -52,7 +52,7 @@ const (
 	defaultMaxRetry     = 5
 	defaultRetryDelay   = 2
 	defaultActionRetry  = false
-	defaultTimeout      = 5
+	defaultTimeout      = 10
 
 	defaultRegistrySize = 100
 )
@@ -127,34 +127,34 @@ func (o *Option) WithEnvVariables() *Option {
 
 //nolint:gocognit
 func (o *Option) WithCliFlags(flags *pflag.FlagSet) *Option {
-	if v, err := flags.GetString(flagLogLevel); err == nil && flags.Changed(flagLogLevel) {
+	if v, err := flags.GetString(FlagLogLevel); err == nil && flags.Changed(FlagLogLevel) {
 		o.LogLevel = v
 	}
-	if v, err := flags.GetString(flagConfig); err == nil && flags.Changed(flagConfig) {
+	if v, err := flags.GetString(FlagConfig); err == nil && flags.Changed(FlagConfig) {
 		o.Config = v
 	}
-	if v, err := flags.GetInt(flagQueueSize); err == nil && flags.Changed(flagQueueSize) {
+	if v, err := flags.GetInt(FlagQueueSize); err == nil && flags.Changed(FlagQueueSize) {
 		o.QueueSize = v
 	}
-	if v, err := flags.GetInt(flagWorkers); err == nil && flags.Changed(flagWorkers) {
+	if v, err := flags.GetInt(FlagWorkers); err == nil && flags.Changed(FlagWorkers) {
 		o.Workers = v
 	}
-	if v, err := flags.GetInt(flagPerWorkerQPS); err == nil && flags.Changed(flagPerWorkerQPS) {
+	if v, err := flags.GetInt(FlagPerWorkerQPS); err == nil && flags.Changed(FlagPerWorkerQPS) {
 		o.PerWorkerQPS = v
 	}
-	if v, err := flags.GetInt(flagMaxRetry); err == nil && flags.Changed(flagMaxRetry) {
+	if v, err := flags.GetInt(FlagMaxRetry); err == nil && flags.Changed(FlagMaxRetry) {
 		o.MaxRetry = v
 	}
-	if v, err := flags.GetInt(flagRetryDelay); err == nil && flags.Changed(flagRetryDelay) {
+	if v, err := flags.GetInt(FlagRetryDelay); err == nil && flags.Changed(FlagRetryDelay) {
 		o.RetryDelay = v
 	}
-	if v, err := flags.GetBool(flagActionRetry); err == nil && flags.Changed(flagActionRetry) {
+	if v, err := flags.GetBool(FlagActionRetry); err == nil && flags.Changed(FlagActionRetry) {
 		o.ActionRetry = v
 	}
-	if v, err := flags.GetInt(flagTimeout); err == nil && flags.Changed(flagTimeout) {
+	if v, err := flags.GetInt(FlagTimeout); err == nil && flags.Changed(FlagTimeout) {
 		o.Timeout = v
 	}
-	if v, err := flags.GetInt(flagRegistrySize); err == nil && flags.Changed(flagRegistrySize) {
+	if v, err := flags.GetInt(FlagRegistrySize); err == nil && flags.Changed(FlagRegistrySize) {
 		o.RegistrySize = v
 	}
 	return o
@@ -166,28 +166,28 @@ func (o *Option) Validate() (*Option, error) {
 		return nil, err
 	}
 	if o.Config == "" {
-		return nil, fmt.Errorf("%s not specified", flagConfig)
+		return nil, fmt.Errorf("%s not specified", FlagConfig)
 	}
 	if o.QueueSize <= 0 {
-		return nil, fmt.Errorf("%s must be greater than 0", flagQueueSize)
+		return nil, fmt.Errorf("%s must be greater than 0", FlagQueueSize)
 	}
 	if o.Workers <= 0 {
-		return nil, fmt.Errorf("%s must be greater than 0", flagWorkers)
+		return nil, fmt.Errorf("%s must be greater than 0", FlagWorkers)
 	}
 	if o.PerWorkerQPS <= 0 {
-		return nil, fmt.Errorf("%s must be greater than 0", flagPerWorkerQPS)
+		return nil, fmt.Errorf("%s must be greater than 0", FlagPerWorkerQPS)
 	}
 	if o.MaxRetry < 0 {
-		return nil, fmt.Errorf("%s must be greater or equal to 0", flagMaxRetry)
+		return nil, fmt.Errorf("%s must be greater or equal to 0", FlagMaxRetry)
 	}
 	if o.RetryDelay < 0 {
-		return nil, fmt.Errorf("%s must be greater or equal to 0", flagRetryDelay)
+		return nil, fmt.Errorf("%s must be greater or equal to 0", FlagRetryDelay)
 	}
 	if o.Timeout <= 0 {
-		return nil, fmt.Errorf("%s must be greater than 0", flagTimeout)
+		return nil, fmt.Errorf("%s must be greater than 0", FlagTimeout)
 	}
 	if o.RegistrySize <= 0 {
-		return nil, fmt.Errorf("%s must be greater than 0", flagRegistrySize)
+		return nil, fmt.Errorf("%s must be greater than 0", FlagRegistrySize)
 	}
 	return o, nil
 }

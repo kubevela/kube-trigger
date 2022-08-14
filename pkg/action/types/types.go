@@ -39,6 +39,9 @@ type Action interface {
 	// New returns a new uninitialized instance.
 	New() Action
 
+	// Validate validates properties.
+	Validate(properties cue.Value) error
+
 	// Init initializes this instance using user-provided properties and common things.
 	// Typically, this will only be called once and the initialized instance
 	// will be cached. Subsequent calls will use the Run() method in cached instances.

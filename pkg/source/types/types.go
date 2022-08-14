@@ -34,6 +34,9 @@ type Source interface {
 	// New returns a new uninitialized instance.
 	New() Source
 
+	// Validate validates properties.
+	Validate(properties cue.Value) error
+
 	// Init initializes this instance using user-provided properties.
 	// Call the EventHandler when an event happened.
 	Init(properties cue.Value, eh eventhandler.EventHandler) error

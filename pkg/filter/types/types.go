@@ -36,6 +36,9 @@ type Filter interface {
 	// New returns a new uninitialized instance.
 	New() Filter
 
+	// Validate validates properties.
+	Validate(properties cue.Value) error
+
 	// Init initializes this instance using user-provided properties.
 	// Typically, this will only be called once and the initialized instance
 	// will be cached.

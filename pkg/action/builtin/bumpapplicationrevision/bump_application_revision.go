@@ -23,8 +23,8 @@ import (
 	"cuelang.org/go/cue"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
 	"github.com/kubevela/kube-trigger/pkg/action/utils"
-	"github.com/oam-dev/kubevela/apis/core.oam.dev/v1beta1"
-	"github.com/oam-dev/kubevela/pkg/oam"
+	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
+	"github.com/oam-dev/kubevela-core-api/pkg/oam"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,6 +130,11 @@ func (bar *BumpApplicationRevision) Init(c types.Common, properties cue.Value) e
 	return nil
 }
 
+func (bar *BumpApplicationRevision) Validate(properties cue.Value) error {
+	p := &Properties{}
+	return p.parse(properties)
+}
+
 func (bar *BumpApplicationRevision) Type() string {
 	return typeName
 }
@@ -143,7 +148,7 @@ func (bar *BumpApplicationRevision) AllowConcurrency() bool {
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
-//go:generate ../../../../hack/generate-properties-const-from-cue.sh properties.cue
+//go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
 type Properties struct {
 	Namespace      string            `json:"namespace"`

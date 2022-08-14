@@ -189,6 +189,11 @@ func (pko *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
 	return nil
 }
 
+func (pko *PatchK8sObjects) Validate(properties cue.Value) error {
+	p := &Properties{}
+	return p.parse(properties)
+}
+
 func (pko *PatchK8sObjects) Type() string {
 	return typeName
 }
@@ -202,7 +207,7 @@ func (pko *PatchK8sObjects) AllowConcurrency() bool {
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
-//go:generate ../../../../hack/generate-properties-const-from-cue.sh properties.cue
+//go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
 type Properties struct {
 	PatchTarget      PatchTarget `json:"patchTarget"`
