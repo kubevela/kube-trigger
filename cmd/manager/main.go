@@ -89,7 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&kubetrigger.KubeTriggerReconciler{
+	if err = (&kubetrigger.Reconciler{
 		Client:       mgr.GetClient(),
 		StatusWriter: mgr.GetClient().Status(),
 		Scheme:       mgr.GetScheme(),
@@ -97,7 +97,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "KubeTrigger")
 		os.Exit(1)
 	}
-	if err = (&kubetriggerconfig.KubeTriggerConfigReconciler{
+	if err = (&kubetriggerconfig.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

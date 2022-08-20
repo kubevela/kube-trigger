@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *KubeTriggerReconciler) createServiceAccount(
+func (r *Reconciler) createServiceAccount(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	update bool,
@@ -70,7 +70,7 @@ func (r *KubeTriggerReconciler) createServiceAccount(
 	return nil
 }
 
-func (r *KubeTriggerReconciler) deleteServiceAccount(ctx context.Context, namespacedName types.NamespacedName) error {
+func (r *Reconciler) deleteServiceAccount(ctx context.Context, namespacedName types.NamespacedName) error {
 	sa := template.GetServiceAccount()
 
 	sa.Name = namespacedName.Name
@@ -80,7 +80,7 @@ func (r *KubeTriggerReconciler) deleteServiceAccount(ctx context.Context, namesp
 	return client.IgnoreNotFound(r.Delete(ctx, sa))
 }
 
-func (r *KubeTriggerReconciler) ReconcileServiceAccount(
+func (r *Reconciler) ReconcileServiceAccount(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	req ctrl.Request,

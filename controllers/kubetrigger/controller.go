@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// KubeTriggerReconciler reconciles a KubeTrigger object.
-type KubeTriggerReconciler struct {
+// Reconciler reconciles a KubeTrigger object.
+type Reconciler struct {
 	client.Client
 	StatusWriter client.StatusWriter
 	Scheme       *runtime.Scheme
@@ -47,7 +47,7 @@ var (
 //+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;list;create;update;delete
 //+kubebuilder:rbac:groups=,resources=serviceaccounts,verbs=get;list;create;update;delete
 
-func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	kt := standardv1alpha1.KubeTrigger{}
@@ -93,7 +93,7 @@ func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *KubeTriggerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO(charlie0129): also listen to other resource events
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&standardv1alpha1.KubeTrigger{}).

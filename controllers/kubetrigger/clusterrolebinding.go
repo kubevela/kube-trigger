@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *KubeTriggerReconciler) createClusterRoleBinding(
+func (r *Reconciler) createClusterRoleBinding(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	update bool,
@@ -73,7 +73,7 @@ func (r *KubeTriggerReconciler) createClusterRoleBinding(
 	return nil
 }
 
-func (r *KubeTriggerReconciler) deleteClusterRoleBinding(
+func (r *Reconciler) deleteClusterRoleBinding(
 	ctx context.Context,
 	namespacedName types.NamespacedName,
 ) error {
@@ -86,7 +86,7 @@ func (r *KubeTriggerReconciler) deleteClusterRoleBinding(
 	return client.IgnoreNotFound(r.Delete(ctx, crb))
 }
 
-func (r *KubeTriggerReconciler) ReconcileClusterRoleBinding(
+func (r *Reconciler) ReconcileClusterRoleBinding(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	req ctrl.Request,

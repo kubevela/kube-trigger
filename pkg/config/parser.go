@@ -43,6 +43,7 @@ func New() *Config {
 	return &Config{}
 }
 
+//nolint:nestif // .
 func NewFromFileOrDir(path string) (*Config, error) {
 	c := &Config{}
 

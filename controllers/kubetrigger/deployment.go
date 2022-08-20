@@ -47,7 +47,7 @@ const (
 	NameLabel = "app.kubernetes.io/name"
 )
 
-func (r *KubeTriggerReconciler) createDeployment(
+func (r *Reconciler) createDeployment(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	update bool,
@@ -67,7 +67,7 @@ func (r *KubeTriggerReconciler) createDeployment(
 		kt.Spec.WorkerConfig,
 	)
 	// TODO: use a deterministic version of image or let the use specify it
-	//deployment.Spec.Template.Spec.Containers[0].Image = ""
+	// deployment.Spec.Template.Spec.Containers[0].Image = ""
 	deployment.Spec.Template.Spec.ServiceAccountName = kt.Name
 	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = kt.Name
 
@@ -134,7 +134,7 @@ func flagToArg(flag string, value interface{}) string {
 	return fmt.Sprintf("--%s=%v", flag, value)
 }
 
-func (r *KubeTriggerReconciler) deleteDeployment(ctx context.Context, namespacedName types.NamespacedName) error {
+func (r *Reconciler) deleteDeployment(ctx context.Context, namespacedName types.NamespacedName) error {
 	deployment := template.GetDeployment()
 
 	deployment.Name = namespacedName.Name
@@ -144,7 +144,7 @@ func (r *KubeTriggerReconciler) deleteDeployment(ctx context.Context, namespaced
 	return client.IgnoreNotFound(r.Delete(ctx, deployment))
 }
 
-func (r *KubeTriggerReconciler) ReconcileDeployment(
+func (r *Reconciler) ReconcileDeployment(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	req ctrl.Request,

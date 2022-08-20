@@ -27,5 +27,5 @@ kind: ConfigMap
 metadata:
   name: kube-trigger-example
   namespace: default
-data: {}
+data: { }
 `

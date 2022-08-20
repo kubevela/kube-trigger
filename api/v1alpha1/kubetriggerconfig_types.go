@@ -24,7 +24,7 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// KubeTriggerConfigSpec defines the desired state of KubeTriggerConfig
+// KubeTriggerConfigSpec defines the desired state of KubeTriggerConfig.
 type KubeTriggerConfigSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -46,7 +46,7 @@ type Meta struct {
 	Properties *runtime.RawExtension `json:"properties"`
 }
 
-// KubeTriggerConfigStatus defines the observed state of KubeTriggerConfig
+// KubeTriggerConfigStatus defines the observed state of KubeTriggerConfig.
 type KubeTriggerConfigStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -55,7 +55,7 @@ type KubeTriggerConfigStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// KubeTriggerConfig is the Schema for the kubetriggerconfigs API
+// KubeTriggerConfig is the Schema for the kubetriggerconfigs API.
 type KubeTriggerConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -66,7 +66,7 @@ type KubeTriggerConfig struct {
 
 //+kubebuilder:object:root=true
 
-// KubeTriggerConfigList contains a list of KubeTriggerConfig
+// KubeTriggerConfigList contains a list of KubeTriggerConfig.
 type KubeTriggerConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

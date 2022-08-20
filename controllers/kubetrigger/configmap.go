@@ -30,11 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	defaultConfigFilename = "config.cue"
-)
-
-func (r *KubeTriggerReconciler) createConfigMap(
+func (r *Reconciler) createConfigMap(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 ) error {
@@ -64,7 +60,7 @@ func (r *KubeTriggerReconciler) createConfigMap(
 	return nil
 }
 
-func (r *KubeTriggerReconciler) deleteConfigMap(ctx context.Context, namespacedName types.NamespacedName) error {
+func (r *Reconciler) deleteConfigMap(ctx context.Context, namespacedName types.NamespacedName) error {
 	cm := template.GetConfigMap()
 
 	cm.Name = namespacedName.Name
@@ -74,7 +70,7 @@ func (r *KubeTriggerReconciler) deleteConfigMap(ctx context.Context, namespacedN
 	return client.IgnoreNotFound(r.Delete(ctx, cm))
 }
 
-func (r *KubeTriggerReconciler) ReconcileConfigMap(
+func (r *Reconciler) ReconcileConfigMap(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
 	req ctrl.Request,

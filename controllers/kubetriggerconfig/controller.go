@@ -35,8 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// KubeTriggerConfigReconciler reconciles a KubeTriggerConfig object
-type KubeTriggerConfigReconciler struct {
+// Reconciler reconciles a KubeTriggerConfig object.
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -64,8 +64,7 @@ var (
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
-func (r *KubeTriggerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ktc := standardv1alpha1.KubeTriggerConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &ktc); err != nil && !apierrors.IsNotFound(err) {
 		logger.Error(err, "unable to fetch KubeTriggerConfig CRD")
@@ -94,7 +93,7 @@ func (r *KubeTriggerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	return ctrl.Result{}, nil
 }
 
-func (r *KubeTriggerConfigReconciler) addOrDeleteConfigToKubeTrigger(
+func (r *Reconciler) addOrDeleteConfigToKubeTrigger(
 	ctx context.Context,
 	ktc standardv1alpha1.KubeTriggerConfig,
 	kt standardv1alpha1.KubeTrigger,
@@ -128,7 +127,7 @@ func (r *KubeTriggerConfigReconciler) addOrDeleteConfigToKubeTrigger(
 		return errors.Wrapf(err, "cannot marshal watchers in %s", utils.GetNamespacedName(&ktc))
 	}
 
-	keyName := req.Name + ".cue"
+	keyName := req.Name + "." + defaultExtension
 
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)
@@ -152,7 +151,7 @@ func (r *KubeTriggerConfigReconciler) addOrDeleteConfigToKubeTrigger(
 	return r.restartPod(ctx, kt)
 }
 
-func (r *KubeTriggerConfigReconciler) restartPod(
+func (r *Reconciler) restartPod(
 	ctx context.Context,
 	kt standardv1alpha1.KubeTrigger,
 ) error {
@@ -178,7 +177,7 @@ func (r *KubeTriggerConfigReconciler) restartPod(
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *KubeTriggerConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&standardv1alpha1.KubeTriggerConfig{}).
 		Complete(r)
