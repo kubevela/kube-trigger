@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/syncmap"
 	"golang.org/x/time/rate"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -37,11 +38,10 @@ type Executor struct {
 	queueSize    int
 	maxRetries   int
 	allowRetries bool
-	lock         sync.RWMutex
 	wg           sync.WaitGroup
 	timeout      time.Duration
 	logger       *logrus.Entry
-	runningJobs  map[string]bool
+	runningJobs  sync.Map
 	queue        workqueue.RateLimitingInterface
 }
 
@@ -76,8 +76,7 @@ func New(c Config) (*Executor, error) {
 	e.maxRetries = c.MaxJobRetries
 	e.allowRetries = c.RetryJobAfterFailure
 	e.wg = sync.WaitGroup{}
-	e.runningJobs = make(map[string]bool)
-	e.lock = sync.RWMutex{}
+	e.runningJobs = syncmap.Map{}
 	// Create a rate limited queue, with a token bucket for overall limiting,
 	// and exponential failure for per-item limiting.
 	e.queue = workqueue.NewRateLimitingQueue(
@@ -103,11 +102,13 @@ func New(c Config) (*Executor, error) {
 }
 
 func (e *Executor) setJobStatus(j Job, status bool) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
 	// TODO(charlie0129): we are simply use action type to prevent concurrent
 	// runs. This is too strict. Ideally, we would the action hash/ID to do so.
-	e.runningJobs[j.Type()] = status
+	if status {
+		e.runningJobs.Store(j.Type(), true)
+	} else {
+		e.runningJobs.Delete(j.Type())
+	}
 }
 
 func (e *Executor) setJobRunning(j Job) {
@@ -119,9 +120,11 @@ func (e *Executor) setJobNotRunning(j Job) {
 }
 
 func (e *Executor) getJobStatus(j Job) bool {
-	e.lock.RLock()
-	defer e.lock.RUnlock()
-	return e.runningJobs[j.Type()]
+	v, ok := e.runningJobs.Load(j.Type())
+	if !ok {
+		return false
+	}
+	return v.(bool)
 }
 
 func (e *Executor) requeueJob(j Job) {
@@ -158,7 +161,7 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		return true
 	}
 
-	e.logger.Infof("job picked up by a worker, going running job: %s", j.Type())
+	e.logger.Infof("job picked up by a worker, going to run job: %s", j.Type())
 
 	// This job does not allow concurrent runs, and it is already running.
 	// Requeue it to run it later.

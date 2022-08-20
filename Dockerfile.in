@@ -50,7 +50,6 @@ RUN ARCH=${TARGETARCH:-${ARCH:-amd64}} \
         OUTPUT=${BIN}                  \
         VERSION=${VERSION}             \
         GOFLAGS=${GOFLAGS}             \
-        DIRTY_BUILD=${DIRTY_BUILD}     \
         /bin/sh build/build.sh         \
         ${ENTRY}
 

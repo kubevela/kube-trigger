@@ -93,15 +93,14 @@ docker-build:
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
 	TMPFILE=$$(mktemp) && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
-	    docker build                             \
-	    -f $${TMPFILE}                           \
-	    --build-arg "ARCH=$(ARCH)"               \
-	    --build-arg "OS=$(OS)"                   \
-	    --build-arg "VERSION=$(VERSION)"         \
-	    --build-arg "GOFLAGS=$(GOFLAGS)"         \
-	    --build-arg "GOPROXY=$(GOPROXY)"         \
-	    --build-arg "ENTRY=$(ENTRY)"             \
-	    --build-arg "DIRTY_BUILD=$(DIRTY_BUILD)" \
+	    docker build                     \
+	    -f $${TMPFILE}                   \
+	    --build-arg "ARCH=$(ARCH)"       \
+	    --build-arg "OS=$(OS)"           \
+	    --build-arg "VERSION=$(VERSION)" \
+	    --build-arg "GOFLAGS=$(GOFLAGS)" \
+	    --build-arg "GOPROXY=$(GOPROXY)" \
+	    --build-arg "ENTRY=$(ENTRY)"     \
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 docker-push-%:

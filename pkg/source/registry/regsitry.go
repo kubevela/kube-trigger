@@ -24,8 +24,7 @@ import (
 
 // Registry stores builtin Sources.
 type Registry struct {
-	reg  map[string]types.Source
-	lock sync.RWMutex
+	reg sync.Map
 }
 
 // NewWithBuiltinSources return a Registry with builtin sources registered.
@@ -39,22 +38,21 @@ func NewWithBuiltinSources() *Registry {
 // New creates a new Registry.
 func New() *Registry {
 	r := Registry{}
-	r.reg = make(map[string]types.Source)
-	r.lock = sync.RWMutex{}
+	r.reg = sync.Map{}
 	return &r
 }
 
 // Register registers a Source.
 func (r *Registry) Register(meta types.SourceMeta, initial types.Source) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.reg[meta.Type] = initial
+	r.reg.Store(meta.Type, initial)
 }
 
 // Get gets a Souce.
 func (r *Registry) Get(meta types.SourceMeta) (types.Source, bool) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	f, ok := r.reg[meta.Type]
-	return f, ok
+	f, ok := r.reg.Load(meta.Type)
+	if !ok {
+		return nil, ok
+	}
+	a, ok := f.(types.Source)
+	return a, ok
 }

@@ -26,8 +26,8 @@ import (
 
 // Registry stores Actions, both uninitialized and cached ones.
 type Registry struct {
-	reg         map[string]types.Action
-	lock        sync.RWMutex
+	lock        sync.Mutex
+	reg         sync.Map
 	maxCapacity int
 }
 
@@ -42,10 +42,19 @@ func NewWithBuiltinActions(capacity int) *Registry {
 // New creates a new Registry.
 func New(capacity int) *Registry {
 	r := Registry{}
-	r.reg = make(map[string]types.Action)
-	r.lock = sync.RWMutex{}
+	r.reg = sync.Map{}
+	r.lock = sync.Mutex{}
 	r.maxCapacity = capacity
 	return &r
+}
+
+func (r *Registry) size() int {
+	cnt := 0
+	r.reg.Range(func(k, v interface{}) bool {
+		cnt++
+		return true
+	})
+	return cnt
 }
 
 // RegisterExistingInstance registers an existing initialized Action instance to Registry.
@@ -53,12 +62,10 @@ func (r *Registry) RegisterExistingInstance(meta types.ActionMeta, instance type
 	if meta.Raw == "" {
 		return fmt.Errorf("action meta raw info is empty")
 	}
-	if len(r.reg) >= r.maxCapacity {
+	if r.size() >= r.maxCapacity {
 		return fmt.Errorf("action registry max capacity exceed %d", r.maxCapacity)
 	}
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.reg[meta.Raw] = instance
+	r.reg.Store(meta.Raw, instance)
 	return nil
 }
 
@@ -71,6 +78,8 @@ func (r *Registry) RegisterExistingInstance(meta types.ActionMeta, instance type
 //
 // If this type does not exist, it errors out.
 func (r *Registry) CreateOrGetInstance(meta types.ActionMeta) (types.Action, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	if meta.Raw == "" {
 		return nil, fmt.Errorf("action meta raw info is empty")
 	}
@@ -100,23 +109,25 @@ func (r *Registry) CreateOrGetInstance(meta types.ActionMeta) (types.Action, err
 
 // GetInstance gets initialized instance.
 func (r *Registry) GetInstance(meta types.ActionMeta) (types.Action, bool) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	f, ok := r.reg[meta.Raw]
-	return f, ok
+	f, ok := r.reg.Load(meta.Raw)
+	if !ok {
+		return nil, ok
+	}
+	a, ok := f.(types.Action)
+	return a, ok
 }
 
 // RegisterType registers an uninitialized one.
 func (r *Registry) RegisterType(meta types.ActionMeta, initial types.Action) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.reg[meta.Type] = initial
+	r.reg.Store(meta.Type, initial)
 }
 
 // GetType gets an uninitialized one.
 func (r *Registry) GetType(meta types.ActionMeta) (types.Action, bool) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	f, ok := r.reg[meta.Type]
-	return f, ok
+	f, ok := r.reg.Load(meta.Type)
+	if !ok {
+		return nil, ok
+	}
+	a, ok := f.(types.Action)
+	return a, ok
 }

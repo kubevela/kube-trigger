@@ -66,6 +66,8 @@ func (r *KubeTriggerReconciler) createDeployment(
 		deployment.Spec.Template.Spec.Containers[0].Args,
 		kt.Spec.WorkerConfig,
 	)
+	// TODO: use a deterministic version of image or let the use specify it
+	//deployment.Spec.Template.Spec.Containers[0].Image = ""
 	deployment.Spec.Template.Spec.ServiceAccountName = kt.Name
 	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = kt.Name
 

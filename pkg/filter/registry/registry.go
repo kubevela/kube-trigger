@@ -25,8 +25,7 @@ import (
 
 // Registry stores Filters, both uninitialized and cached ones.
 type Registry struct {
-	reg         map[string]types.Filter
-	lock        sync.RWMutex
+	reg         sync.Map
 	maxCapacity int
 }
 
@@ -41,10 +40,18 @@ func NewWithBuiltinFilters(capacity int) *Registry {
 // New creates a new Registry.
 func New(capacity int) *Registry {
 	r := Registry{}
-	r.reg = make(map[string]types.Filter)
-	r.lock = sync.RWMutex{}
+	r.reg = sync.Map{}
 	r.maxCapacity = capacity
 	return &r
+}
+
+func (r *Registry) size() int {
+	cnt := 0
+	r.reg.Range(func(k, v interface{}) bool {
+		cnt++
+		return true
+	})
+	return cnt
 }
 
 // RegisterExistingInstance registers an existing initialized Filters instance to Registry.
@@ -52,12 +59,10 @@ func (r *Registry) RegisterExistingInstance(meta types.FilterMeta, instance type
 	if meta.Raw == "" {
 		return fmt.Errorf("filter meta raw info is empty")
 	}
-	if len(r.reg) >= r.maxCapacity {
+	if r.size() >= r.maxCapacity {
 		return fmt.Errorf("filter registry max capacity exceed %d", r.maxCapacity)
 	}
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.reg[meta.Raw] = instance
+	r.reg.Store(meta.Raw, instance)
 	return nil
 }
 
@@ -95,23 +100,25 @@ func (r *Registry) CreateOrGetInstance(meta types.FilterMeta) (types.Filter, err
 
 // GetInstance gets initialized instance.
 func (r *Registry) GetInstance(meta types.FilterMeta) (types.Filter, bool) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	f, ok := r.reg[meta.Raw]
-	return f, ok
+	f, ok := r.reg.Load(meta.Raw)
+	if !ok {
+		return nil, ok
+	}
+	a, ok := f.(types.Filter)
+	return a, ok
 }
 
 // RegisterType registers an uninitialized one.
 func (r *Registry) RegisterType(meta types.FilterMeta, initial types.Filter) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.reg[meta.Type] = initial
+	r.reg.Store(meta.Type, initial)
 }
 
 // GetType gets an uninitialized one.
 func (r *Registry) GetType(meta types.FilterMeta) (types.Filter, bool) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	f, ok := r.reg[meta.Type]
-	return f, ok
+	f, ok := r.reg.Load(meta.Type)
+	if !ok {
+		return nil, ok
+	}
+	a, ok := f.(types.Filter)
+	return a, ok
 }
