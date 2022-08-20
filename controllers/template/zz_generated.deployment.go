@@ -49,7 +49,7 @@ spec:
       containers:
         - workingDir: /
           args:
-            - -c=/etc/kube-trigger/config.cue
+            - -c=/etc/kube-trigger
           image: oamdev/kube-trigger:latest
           imagePullPolicy: IfNotPresent
           name: kube-trigger

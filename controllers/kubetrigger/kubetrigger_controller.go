@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package kubetrigger
 
 import (
 	"context"
@@ -30,7 +30,8 @@ import (
 // KubeTriggerReconciler reconciles a KubeTrigger object.
 type KubeTriggerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	StatusWriter client.StatusWriter
+	Scheme       *runtime.Scheme
 }
 
 var (
@@ -46,17 +47,8 @@ var (
 //+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;list;create;update;delete
 //+kubebuilder:rbac:groups=,resources=serviceaccounts,verbs=get;list;create;update;delete
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the KubeTrigger object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	kt := standardv1alpha1.KubeTrigger{}
 	if err := r.Get(ctx, req.NamespacedName, &kt); err != nil && !apierrors.IsNotFound(err) {
@@ -70,7 +62,8 @@ func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if kt.GetUID() == "" {
 			return
 		}
-		err := r.Update(ctx, &kt)
+		err := r.StatusWriter.Update(ctx, &kt)
+		logger.Debugf("updated status: %v", kt.Status)
 		if err != nil {
 			logger.Errorf("cannot update KubeTrigger: %s", err)
 		}
@@ -87,7 +80,7 @@ func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if err := r.ReconcileConfigMap(ctx, &kt, req); err != nil {
-		logger.Errorf("reconcile ConfigMap failed: %s", err)
+		logger.Errorf("reconcile ServiceAccount failed: %s", err)
 		return ctrl.Result{}, err
 	}
 
@@ -101,6 +94,7 @@ func (r *KubeTriggerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KubeTriggerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// TODO(charlie0129): also listen to other resource events
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&standardv1alpha1.KubeTrigger{}).
 		Complete(r)

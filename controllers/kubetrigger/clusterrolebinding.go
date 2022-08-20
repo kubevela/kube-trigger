@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package kubetrigger
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/template"
+	"github.com/kubevela/kube-trigger/controllers/utils"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -62,7 +63,7 @@ func (r *KubeTriggerReconciler) createClusterRoleBinding(
 		return err
 	}
 
-	updateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(kt, standardv1alpha1.Resource{
 		APIVersion: rbacv1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(rbacv1.ClusterRoleBinding{}).Name(),
 		Name:       crb.Name,
@@ -97,7 +98,7 @@ func (r *KubeTriggerReconciler) ReconcileClusterRoleBinding(
 	var err error
 
 	crb := rbacv1.ClusterRoleBinding{}
-	err = r.Get(ctx, getNamespacedName(*kt), &crb)
+	err = r.Get(ctx, utils.GetNamespacedName(kt), &crb)
 
 	if err == nil {
 		return r.createClusterRoleBinding(ctx, kt, true)

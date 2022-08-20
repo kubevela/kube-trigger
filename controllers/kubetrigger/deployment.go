@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package kubetrigger
 
 import (
 	"context"
@@ -23,11 +23,10 @@ import (
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/template"
+	"github.com/kubevela/kube-trigger/controllers/utils"
 	"github.com/kubevela/kube-trigger/pkg/cmd"
 	"github.com/kubevela/kube-trigger/pkg/version"
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -70,7 +69,7 @@ func (r *KubeTriggerReconciler) createDeployment(
 	deployment.Spec.Template.Spec.ServiceAccountName = kt.Name
 	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = kt.Name
 
-	setOwnerReference(deployment, *kt)
+	utils.SetOwnerReference(deployment, *kt)
 
 	var err error
 	if update {
@@ -90,7 +89,7 @@ func (r *KubeTriggerReconciler) createDeployment(
 		return err
 	}
 
-	updateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(kt, standardv1alpha1.Resource{
 		APIVersion: appsv1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(appsv1.Deployment{}).Name(),
 		Name:       deployment.Name,
@@ -143,30 +142,6 @@ func (r *KubeTriggerReconciler) deleteDeployment(ctx context.Context, namespaced
 	return client.IgnoreNotFound(r.Delete(ctx, deployment))
 }
 
-func (r *KubeTriggerReconciler) restartPod(
-	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
-) error {
-	var err error
-
-	pods := v1.PodList{}
-	err = r.List(ctx, &pods, client.InNamespace(kt.Namespace), client.MatchingLabels{
-		NameLabel: kt.Name,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot list pods")
-	}
-
-	for _, pod := range pods.Items {
-		err = r.Delete(ctx, pod.DeepCopy())
-		if err != nil {
-			return errors.Wrapf(err, "cannot delete pod: %s/%s", pod.Namespace, pod.Name)
-		}
-	}
-
-	return nil
-}
-
 func (r *KubeTriggerReconciler) ReconcileDeployment(
 	ctx context.Context,
 	kt *standardv1alpha1.KubeTrigger,
@@ -179,7 +154,7 @@ func (r *KubeTriggerReconciler) ReconcileDeployment(
 	var err error
 
 	deployment := appsv1.Deployment{}
-	err = r.Get(ctx, getNamespacedName(*kt), &deployment)
+	err = r.Get(ctx, utils.GetNamespacedName(kt), &deployment)
 
 	if err == nil {
 		return r.createDeployment(ctx, kt, true)

@@ -89,7 +89,7 @@ func NewVersionCommand() *cobra.Command {
 
 //nolint:lll
 func addFlags(f *pflag.FlagSet) {
-	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file")
+	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files (recursively) will be appended together.")
 	f.String(FlagLogLevel, defaultLogLevel, "Log level")
 	f.Int(FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
 	f.Int(FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
@@ -121,9 +121,9 @@ func runCli(cmd *cobra.Command, args []string) error {
 	logrus.SetLevel(level)
 
 	// Get our kube-trigger config.
-	conf, err := config.NewFromFile(opt.Config)
+	conf, err := config.NewFromFileOrDir(opt.Config)
 	if err != nil {
-		return errors.Wrapf(err, "error when paring config %s", opt.Config)
+		return errors.Wrapf(err, "error when parsing config %s", opt.Config)
 	}
 
 	// Create registries for Sources, Filers, and Actions.
@@ -167,7 +167,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 		// Initialize Source, with user-provided prop and event handler
 		err = ns.Init(w.Source.Properties, eh)
 		if err != nil {
-			return fmt.Errorf("failed to initialize source %s", ns.Type())
+			return errors.Wrapf(err, "failed to initialize source %s", ns.Type())
 		}
 
 		// Time to run this source.
@@ -188,8 +188,12 @@ func runCli(cmd *cobra.Command, args []string) error {
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGTERM)
 	signal.Notify(sigterm, syscall.SIGINT)
-	<-sigterm
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+		logger.Infof("context cancelled, stopping")
+	case <-sigterm:
+		logger.Infof("recived termination signel, stopping")
+	}
 
 	return nil
 }

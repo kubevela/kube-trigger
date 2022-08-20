@@ -18,20 +18,11 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // KubeTriggerSpec defines the desired state of KubeTrigger.
 type KubeTriggerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
-
-	// Config for kube-trigger
-	//+optional
-	Template *Template `json:"template"`
-
-	// CUE config for kube-trigger. This will override everything in watchers.
-	//+optional
-	CUETemplate string `json:"cueTemplate,omitempty"`
 
 	// Cache size for filters and actions.
 	//+optional
@@ -73,21 +64,6 @@ type WorkerConfig struct {
 	//+optional
 	//+kubebuilder:validation:Minimum=1
 	WorkerCount *int `json:"workerCount,omitempty"`
-}
-
-type Template struct {
-	Watchers []Watcher `json:"watchers"`
-}
-
-type Watcher struct {
-	Source  Meta   `json:"source"`
-	Filters []Meta `json:"filters,omitempty"`
-	Actions []Meta `json:"actions,omitempty"`
-}
-
-type Meta struct {
-	Type       string                `json:"type"`
-	Properties *runtime.RawExtension `json:"properties"`
 }
 
 // KubeTriggerStatus defines the observed state of KubeTrigger.

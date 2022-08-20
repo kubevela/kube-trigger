@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package kubetrigger
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/template"
+	"github.com/kubevela/kube-trigger/controllers/utils"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +40,7 @@ func (r *KubeTriggerReconciler) createServiceAccount(
 	sa.Name = kt.Name
 	sa.Namespace = kt.Namespace
 
-	setOwnerReference(sa, *kt)
+	utils.SetOwnerReference(sa, *kt)
 
 	var err error
 	if update {
@@ -59,7 +60,7 @@ func (r *KubeTriggerReconciler) createServiceAccount(
 		return err
 	}
 
-	updateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(kt, standardv1alpha1.Resource{
 		APIVersion: v1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(v1.ServiceAccount{}).Name(),
 		Name:       sa.Name,
@@ -91,7 +92,7 @@ func (r *KubeTriggerReconciler) ReconcileServiceAccount(
 	var err error
 
 	sa := v1.ServiceAccount{}
-	err = r.Get(ctx, getNamespacedName(*kt), &sa)
+	err = r.Get(ctx, utils.GetNamespacedName(kt), &sa)
 
 	if err == nil {
 		return r.createServiceAccount(ctx, kt, true)

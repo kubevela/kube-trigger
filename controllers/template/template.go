@@ -20,6 +20,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -35,37 +36,22 @@ var serviceAccount corev1.ServiceAccount
 
 //nolint:gochecknoinits
 func init() {
-	var err error
-
-	err = yaml.Unmarshal([]byte(clusterrolebindingTemplate), &clusterRoleBinding)
-	// This must not error. Otherwise, just panic.
-	if err != nil {
-		panic(err)
-	}
+	utilruntime.Must(yaml.Unmarshal([]byte(clusterrolebindingTemplate), &clusterRoleBinding))
 	if len(clusterRoleBinding.Subjects) != 1 {
 		panic("ClusterRoleBinding must have one subject")
 	}
 
-	err = yaml.Unmarshal([]byte(cmTemplate), &configMap)
-	if err != nil {
-		panic(err)
-	}
+	utilruntime.Must(yaml.Unmarshal([]byte(cmTemplate), &configMap))
 
-	err = yaml.Unmarshal([]byte(deploymentTemplate), &deployment)
-	if err != nil {
-		panic(err)
-	}
-	if len(deployment.Spec.Template.Spec.Containers) != 1 {
-		panic("Deployment must have one container")
+	utilruntime.Must(yaml.Unmarshal([]byte(deploymentTemplate), &deployment))
+	if len(deployment.Spec.Template.Spec.Containers) < 1 {
+		panic("Deployment must have at least one container")
 	}
 	if len(deployment.Spec.Template.Spec.Volumes) != 1 {
 		panic("Deployment must have one volume")
 	}
 
-	err = yaml.Unmarshal([]byte(saTemplate), &serviceAccount)
-	if err != nil {
-		panic(err)
-	}
+	utilruntime.Must(yaml.Unmarshal([]byte(saTemplate), &serviceAccount))
 }
 
 func GetClusterRoleBinding() *rbacv1.ClusterRoleBinding {

@@ -1,0 +1,24 @@
+apiVersion: standard.oam.dev/v1alpha1
+kind: KubeTriggerConfig
+metadata:
+  name: kubetrigger-sample-config
+  namespace: default
+spec:
+  selector:
+    app: kubetrigger-sample
+  watchers:
+    - source:
+        type: k8s-resource-watcher
+        properties:
+          apiVersion: "v1"
+          kind: ConfigMap
+          namespace: default
+          events:
+            - update
+      filters: [ ]
+      actions:
+        - type: bump-application-revision
+          properties:
+            namespace: default
+            labelSelectors:
+              my-label: my-value

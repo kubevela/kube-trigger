@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note: the ${BIN} needs to be replaced with the actual binary,
+# otherwise it won't work. Refer to Makefile for how it can be done.
+
 ARG BUILD_IMAGE=golang:1.17
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
 
@@ -35,30 +38,23 @@ COPY pkg         pkg
 
 ARG TARGETARCH
 ARG ARCH
-# TARGETARCH in Docker BuildKit have higher priority.
-ENV ARCH=${TARGETARCH:-${ARCH:-amd64}}
 ARG TARGETOS
 ARG OS
-# TARGETOS in Docker BuildKit have higher priority.
-ENV OS=${TARGETOS:-${OS:-linux}}
 ARG VERSION
-ENV VERSION=${VERSION}
 ARG GOFLAGS
-ENV GOFLAGS=${GOFLAGS}
+ARG DIRTY_BUILD
 ARG ENTRY
 
-RUN ARCH=${ARCH}               \
-        OS=${OS}               \
-        OUTPUT=${BIN}          \
-        VERSION=${VERSION}     \
-        GOFLAGS=${GOFLAGS}     \
-        /bin/sh build/build.sh \
+RUN ARCH=${TARGETARCH:-${ARCH:-amd64}} \
+        OS=${TARGETOS:-${OS:-linux}}   \
+        OUTPUT=${BIN}                  \
+        VERSION=${VERSION}             \
+        GOFLAGS=${GOFLAGS}             \
+        DIRTY_BUILD=${DIRTY_BUILD}     \
+        /bin/sh build/build.sh         \
         ${ENTRY}
 
 FROM ${BASE_IMAGE}
 WORKDIR /
-
-# This ${BIN} needs to be replace with the actual binary,
-# otherwise it won't work. Refer to Makefile for how it works.
 COPY --from=builder /workspace/${BIN} .
 ENTRYPOINT ["/${BIN}"]

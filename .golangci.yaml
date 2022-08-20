@@ -1,9 +1,4 @@
-## Golden config for golangci-lint v1.47.2
-#
-# This is the best config for golangci-lint based on my experience and opinion.
-# It is very strict, but not extremely strict.
-# Feel free to adopt and change it for your needs.
-
+## Config for golangci-lint v1.47.2
 run:
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m

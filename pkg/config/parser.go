@@ -19,6 +19,8 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -33,17 +35,71 @@ import (
 
 var logger = logrus.WithField("config", "parser")
 
+var allowedExtensions = []string{
+	"cue",
+}
+
 func New() *Config {
 	return &Config{}
 }
 
-func NewFromFile(path string) (*Config, error) {
+func NewFromFileOrDir(path string) (*Config, error) {
 	c := &Config{}
-	err := c.ParseFromFile(path)
+
+	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
+
+	if fileInfo.IsDir() {
+		files, err := findFilesInDir(path)
+		if err != nil {
+			return nil, err
+		}
+		logger.Debugf("files in dir: %v", files)
+		for _, f := range files {
+			if !isExtensionAllowed(f) {
+				logger.Debugf("file %s does not have an acceptable extension", f)
+				continue
+			}
+			subConfig := &Config{}
+			err := subConfig.ParseFromFile(f)
+			if err != nil {
+				return nil, errors.Wrapf(err, "reading %s failed", f)
+			}
+			logger.Infof("loaded config from %s", f)
+			c.Watchers = append(c.Watchers, subConfig.Watchers...)
+		}
+	} else {
+		err := c.ParseFromFile(path)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return c, nil
+}
+
+func isExtensionAllowed(filename string) bool {
+	var allowed bool
+	for _, ext := range allowedExtensions {
+		if strings.HasSuffix(filename, "."+ext) {
+			allowed = true
+			break
+		}
+	}
+	return allowed
+}
+
+func findFilesInDir(dir string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
 }
 
 func (c *Config) Parse(confStr string) error {
@@ -67,7 +123,6 @@ func (c *Config) Parse(confStr string) error {
 		return err
 	}
 
-	logger.Infof("configuration parsed")
 	logger.Debugf("configuration parsed: %v", c.Watchers)
 
 	return nil

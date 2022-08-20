@@ -21,7 +21,8 @@ import (
 	"os"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/controllers"
+	"github.com/kubevela/kube-trigger/controllers/kubetrigger"
+	"github.com/kubevela/kube-trigger/controllers/kubetriggerconfig"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme" //nolint
@@ -88,11 +89,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.KubeTriggerReconciler{
+	if err = (&kubetrigger.KubeTriggerReconciler{
+		Client:       mgr.GetClient(),
+		StatusWriter: mgr.GetClient().Status(),
+		Scheme:       mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KubeTrigger")
+		os.Exit(1)
+	}
+	if err = (&kubetriggerconfig.KubeTriggerConfigReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KubeTrigger")
+		setupLog.Error(err, "unable to create controller", "controller", "KubeTriggerConfig")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

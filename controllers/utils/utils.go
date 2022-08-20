@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package utils
 
 import (
 	"time"
@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func setOwnerReference(obj metav1.Object, kt standardv1alpha1.KubeTrigger) {
+func SetOwnerReference(obj metav1.Object, kt standardv1alpha1.KubeTrigger) {
 	t := true
 	ownerReference := metav1.OwnerReference{
 		APIVersion: standardv1alpha1.GroupVersion.String(),
@@ -37,14 +37,14 @@ func setOwnerReference(obj metav1.Object, kt standardv1alpha1.KubeTrigger) {
 	obj.SetOwnerReferences([]metav1.OwnerReference{ownerReference})
 }
 
-func getNamespacedName(kt standardv1alpha1.KubeTrigger) types.NamespacedName {
+func GetNamespacedName(kt metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: kt.Namespace,
-		Name:      kt.Name,
+		Namespace: kt.GetNamespace(),
+		Name:      kt.GetName(),
 	}
 }
 
-func updateResource(kt *standardv1alpha1.KubeTrigger, res standardv1alpha1.Resource) {
+func UpdateResource(kt *standardv1alpha1.KubeTrigger, res standardv1alpha1.Resource) {
 	if kt == nil {
 		return
 	}

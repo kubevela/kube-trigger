@@ -61,7 +61,7 @@ package: build
 
 dirty-build: # @HELP same as build, but using build cache is allowed
 dirty-build:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) build DIRTY_BUILD=1
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) build DIRTY_BUILD=true
 
 docker-build-%:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) \
@@ -93,14 +93,15 @@ docker-build:
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
 	TMPFILE=$$(mktemp) && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
-	    docker build                     \
-	    -f $${TMPFILE}                   \
-	    --build-arg "ARCH=$(ARCH)"       \
-	    --build-arg "OS=$(OS)"           \
-	    --build-arg "VERSION=$(VERSION)" \
-	    --build-arg "GOFLAGS=$(GOFLAGS)" \
-	    --build-arg "GOPROXY=$(GOPROXY)" \
-	    --build-arg "ENTRY=$(ENTRY)"     \
+	    docker build                             \
+	    -f $${TMPFILE}                           \
+	    --build-arg "ARCH=$(ARCH)"               \
+	    --build-arg "OS=$(OS)"                   \
+	    --build-arg "VERSION=$(VERSION)"         \
+	    --build-arg "GOFLAGS=$(GOFLAGS)"         \
+	    --build-arg "GOPROXY=$(GOPROXY)"         \
+	    --build-arg "ENTRY=$(ENTRY)"             \
+	    --build-arg "DIRTY_BUILD=$(DIRTY_BUILD)" \
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 docker-push-%:

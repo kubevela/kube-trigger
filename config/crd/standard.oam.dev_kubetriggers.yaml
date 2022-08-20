@@ -35,60 +35,9 @@ spec:
             spec:
               description: KubeTriggerSpec defines the desired state of KubeTrigger.
               properties:
-                cueTemplate:
-                  description: CUE config for kube-trigger. This will override everything
-                    in watchers.
-                  type: string
                 registrySize:
                   description: Cache size for filters and actions.
                   type: integer
-                template:
-                  description: Config for kube-trigger
-                  properties:
-                    watchers:
-                      items:
-                        properties:
-                          actions:
-                            items:
-                              properties:
-                                properties:
-                                  type: object
-                                type:
-                                  type: string
-                              required:
-                                - properties
-                                - type
-                              type: object
-                            type: array
-                          filters:
-                            items:
-                              properties:
-                                properties:
-                                  type: object
-                                type:
-                                  type: string
-                              required:
-                                - properties
-                                - type
-                              type: object
-                            type: array
-                          source:
-                            properties:
-                              properties:
-                                type: object
-                              type:
-                                type: string
-                            required:
-                              - properties
-                              - type
-                            type: object
-                        required:
-                          - source
-                        type: object
-                      type: array
-                  required:
-                    - watchers
-                  type: object
                 workerConfig:
                   properties:
                     jobTimeout:

@@ -44,6 +44,32 @@ rules:
   - apiGroups:
       - standard.oam.dev
     resources:
+      - kubetriggerconfigs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - standard.oam.dev
+    resources:
+      - kubetriggerconfigs/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - standard.oam.dev
+    resources:
+      - kubetriggerconfigs/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - standard.oam.dev
+    resources:
       - kubetriggers
     verbs:
       - create
