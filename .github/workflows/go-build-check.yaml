@@ -1,4 +1,4 @@
-name: Run Go Checks and Build Binaries
+name: Run Go Checks
 on:
   push:
     branches:
@@ -6,6 +6,10 @@ on:
       - release-*
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - main
+      - release-*
   workflow_dispatch: { }
 
 env:
@@ -44,38 +48,3 @@ jobs:
 
       - name: Run Go Generate
         run: make generate
-
-      - name: Show Make Variables
-        run: ./make-kt variables
-
-      - name: Get Version
-        id: get_version
-        run: |
-          export VERSION=$(./make-kt version)
-          echo ::set-output name=VERSION::${VERSION}
-
-      - name: Build Binaries for All Platforms
-        env:
-          DIRTY_BUILD: true
-        run: ./make-kt all-build
-
-      - name: Upload Artifacts (linux-amd64)
-        uses: actions/upload-artifact@v3
-        with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-linux-amd64
-          retention-days: 7
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-linux-amd64
-
-      - name: Upload Artifacts (darwin-amd64)
-        uses: actions/upload-artifact@v3
-        with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-amd64
-          retention-days: 7
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-amd64
-
-      - name: Upload Artifacts (darwin-arm64)
-        uses: actions/upload-artifact@v3
-        with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-arm64
-          retention-days: 7
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-arm64

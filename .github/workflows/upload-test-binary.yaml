@@ -1,0 +1,66 @@
+name: Upload Test Binaries
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - release-*
+  workflow_dispatch: { }
+
+env:
+  GOLANGCI_VERSION: 'v1.47.2'
+
+jobs:
+  upload-test-binary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: ${{ env.GOLANGCI_VERSION }}
+
+      - name: Run Go Generate
+        run: make generate
+
+      - name: Show Make Variables
+        run: ./make-kt variables
+
+      - name: Get Version
+        id: get_version
+        run: |
+          export VERSION=$(./make-kt version)
+          echo ::set-output name=VERSION::${VERSION}
+
+      - name: Build Binaries for linux and darwin
+        env:
+          DIRTY_BUILD: true
+        run: |
+          ./make-kt build-linux_amd64
+          ./make-kt build-darwin_amd64
+          ./make-kt build-darwin_arm64
+
+      - name: Upload Artifacts (linux-amd64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-linux-amd64
+          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-linux-amd64
+
+      - name: Upload Artifacts (darwin-amd64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-amd64
+          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-amd64
+
+      - name: Upload Artifacts (darwin-arm64)
+        uses: actions/upload-artifact@v3
+        with:
+          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-arm64
+          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-arm64
