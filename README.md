@@ -1,35 +1,11 @@
 # kube-trigger
 
-> This project is in its early stage as a proof-of-concept. Don't expect to be able to use it in production any time
-> soon.
->
-> **You can check out `examples/` to see what it can do now.** The overall architectural design is almost done.
+kube-trigger is a tool that combines event listeners and action triggers.
 
-kube-trigger can list and watch kubernetes object events and run actions. The project is inspired
-by [kubewatch](https://github.com/vmware-archive/kubewatch).
+![kube-trigger overview](/home/charlie/workspace/charlie0129/kube-trigger/docs/img/overview.svg "Overview")
 
-It can solve issues like https://github.com/kubevela/kubevela/issues/4418 .
-
-It's a lightweight event-trigger in Kubernetes world. The
-architecture can be:
-
-```                                                                                         
-       Kubernetes Events                                             Operations on Kubernetes
-       Cron by time                     Conditions                   or any API Notifications
-                                                                                             
-    +--------------------+          +---------------------+          +---------------------+ 
-    |                    |          |                     |          |                     | 
-    |      Sources       ----------->       Filters       ----------->       Actions       | 
-    |                    |          |                     |          |                     | 
-    +--------------------+          +---------------------+          +---------------------+ 
-                                                                                            
-                                                                                             
-    +--------------------+          +---------------------+          +---------------------+ 
-    |                    |          |                     |          |                     | 
-    |      Sources       ----------->       Filters       ----------->       Actions       | 
-    |                    |          |                     |          |                     | 
-    +--------------------+          +---------------------+          +---------------------+ 
-```
+Although there is `kube` in the name, it is actually not limited to Kubernetes and can do much more than that. It has an
+e
 
 We provide generic low-level filters/actions to users, and users can create customized filters/actions to wrap low-level
 ones using CUE.
