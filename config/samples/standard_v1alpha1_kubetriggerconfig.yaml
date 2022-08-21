@@ -15,7 +15,13 @@ spec:
           namespace: default
           events:
             - update
-      filters: [ ]
+      filters:
+        - type: cue-validator
+          properties:
+            template: |
+              // Filter by object name.
+              // I used regular expressions here.
+              metadata: name: =~"this-will-trigger-update-.*"
       actions:
         - type: bump-application-revision
           properties:

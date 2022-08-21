@@ -1,0 +1,22 @@
+watchers:
+  - source:
+      type: k8s-resource-watcher
+      properties:
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        events:
+          - update
+    filters:
+      - type: cue-validator
+        properties:
+          template: |
+            // Filter by object name.
+            // I used regular expressions here.
+            metadata: name: =~"this-will-trigger-update-.*"
+    actions:
+      - type: bump-application-revision
+        properties:
+          namespace: default
+          labelSelectors:
+            my-label: my-value

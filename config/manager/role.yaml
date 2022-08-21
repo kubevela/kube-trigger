@@ -5,7 +5,9 @@ metadata:
   creationTimestamp: null
   name: kube-trigger-manager-role
 rules:
-  - resources:
+  - apiGroups:
+      - ""
+    resources:
       - configmaps
     verbs:
       - create
@@ -13,7 +15,9 @@ rules:
       - get
       - list
       - update
-  - resources:
+  - apiGroups:
+      - ""
+    resources:
       - serviceaccounts
     verbs:
       - create
@@ -22,19 +26,15 @@ rules:
       - list
       - update
   - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
       - apps
     resources:
       - deployments
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - update
-  - apiGroups:
-      - rbac.authorization.k8s.io
-    resources:
-      - clusterrolebindings
     verbs:
       - create
       - delete

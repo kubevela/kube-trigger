@@ -50,6 +50,7 @@ spec:
         - workingDir: /
           args:
             - -c=/etc/kube-trigger
+            - --log-level=debug
           image: oamdev/kube-trigger:latest
           imagePullPolicy: IfNotPresent
           name: kube-trigger

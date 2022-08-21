@@ -89,7 +89,7 @@ func NewVersionCommand() *cobra.Command {
 
 //nolint:lll
 func addFlags(f *pflag.FlagSet) {
-	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files (recursively) will be combined together. Supported file formats are: json, yaml, and cue.")
+	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files inside that directory will be combined together. Supported file formats are: json, yaml, and cue.")
 	f.String(FlagLogLevel, defaultLogLevel, "Log level")
 	f.Int(FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
 	f.Int(FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")

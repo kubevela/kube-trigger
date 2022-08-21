@@ -43,9 +43,11 @@ var (
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggers/finalizers,verbs=update
 
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;create;update;delete
-//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,verbs=get;list;create;update;delete
-//+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;list;create;update;delete
-//+kubebuilder:rbac:groups=,resources=serviceaccounts,verbs=get;list;create;update;delete
+// We need to create ClusterRoleBinding, so * is used.
+// TODO: use stricter psermissions
+//+kubebuilder:rbac:groups=*,resources=*,verbs=*
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;create;update;delete
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;create;update;delete
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logrus.SetLevel(logrus.DebugLevel)

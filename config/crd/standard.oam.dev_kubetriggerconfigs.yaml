@@ -18,7 +18,7 @@ spec:
     - name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: KubeTriggerConfig is the Schema for the kubetriggerconfigs API
+          description: KubeTriggerConfig is the Schema for the kubetriggerconfigs API.
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
             metadata:
               type: object
             spec:
-              description: KubeTriggerConfigSpec defines the desired state of KubeTriggerConfig
+              description: KubeTriggerConfigSpec defines the desired state of KubeTriggerConfig.
               properties:
                 selector:
                   additionalProperties:
@@ -92,7 +92,7 @@ spec:
                 - selector
               type: object
             status:
-              description: KubeTriggerConfigStatus defines the observed state of KubeTriggerConfig
+              description: KubeTriggerConfigStatus defines the observed state of KubeTriggerConfig.
               type: object
           type: object
       served: true

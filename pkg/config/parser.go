@@ -47,11 +47,22 @@ type WatchMeta struct {
 
 var logger = logrus.WithField("config", "parser")
 
+var parsers = map[string]func([]byte) (*Config, error){
+	".cue":  CUEParser,
+	".yaml": YAMLParser,
+	".yml":  YAMLParser,
+	".json": JSONParser,
+}
+
+var (
+	ErrUnsupportedExtension = errors.New("extension not supported")
+)
+
 func New() *Config {
 	return &Config{}
 }
 
-//nolint:nestif // .
+//nolint:nestif,govet // .
 func NewFromFileOrDir(path string) (*Config, error) {
 	c := &Config{}
 
@@ -67,16 +78,18 @@ func NewFromFileOrDir(path string) (*Config, error) {
 		}
 		logger.Debugf("loading files: %v", files)
 		for _, f := range files {
-			subConfig := &Config{}
-			err := subConfig.ParseFromFile(f)
+			subConfig, err := parseFromFile(f)
 			if err != nil {
+				if errors.Is(err, ErrUnsupportedExtension) {
+					continue
+				}
 				return nil, errors.Wrapf(err, "reading %s failed", f)
 			}
 			logger.Infof("loaded config from %s", f)
 			c.Watchers = append(c.Watchers, subConfig.Watchers...)
 		}
 	} else {
-		err := c.ParseFromFile(path)
+		c, err = parseFromFile(path)
 		if err != nil {
 			return nil, err
 		}
@@ -87,46 +100,33 @@ func NewFromFileOrDir(path string) (*Config, error) {
 
 func findFilesInDir(dir string) ([]string, error) {
 	var files []string
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			files = append(files, path)
+	fs, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range fs {
+		if f.IsDir() {
+			continue
 		}
-		return nil
-	})
+		files = append(files, filepath.Join(dir, f.Name()))
+	}
 	return files, err
 }
 
-func (c *Config) ParseFromFile(path string) error {
+func parseFromFile(path string) (*Config, error) {
+	ext := filepath.Ext(path)
+	parser, ok := parsers[ext]
+	if !ok {
+		logger.Warnf("file %s is skipped because extension %s is not supported", path, ext)
+		return nil, ErrUnsupportedExtension
+	}
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return errors.Wrapf(err, "cannot read config")
+		return nil, errors.Wrapf(err, "cannot read config file content")
 	}
 
-	var jsonByte []byte
-
-	ext := filepath.Ext(path)
-	switch ext {
-	case ".cue":
-		c := cuecontext.New()
-		v := c.CompileString(string(data))
-		jsonByte, err = v.MarshalJSON()
-		if err != nil {
-			return errors.Wrapf(err, "cannot read cue config %s", path)
-		}
-	case ".json":
-		jsonByte = data
-	case ".yaml", ".yml":
-		jsonByte, err = yaml.ToJSON(data)
-		if err != nil {
-			return errors.Wrapf(err, "cannot read yaml config %s", path)
-		}
-	default:
-		return fmt.Errorf("file %s has an unsupported format %s", path, ext)
-	}
-
-	logger.Infof("loading config from %s", path)
-
-	return c.Parse(jsonByte)
+	return parser(data)
 }
 
 func (c *Config) Parse(jsonByte []byte) error {
@@ -135,6 +135,7 @@ func (c *Config) Parse(jsonByte []byte) error {
 		return errors.Wrapf(err, "cannot unmarshal config")
 	}
 
+	var newWatchers []WatchMeta
 	// Insert Raw field
 	for _, w := range c.Watchers {
 		var newActions []actiontype.ActionMeta
@@ -157,7 +158,9 @@ func (c *Config) Parse(jsonByte []byte) error {
 			newFilters = append(newFilters, f)
 		}
 		w.Filters = newFilters
+		newWatchers = append(newWatchers, w)
 	}
+	c.Watchers = newWatchers
 
 	logger.Debugf("configuration parsed: %v", c.Watchers)
 
@@ -203,4 +206,42 @@ func (c *Config) Validate(
 	}
 
 	return nil
+}
+
+func CUEParser(data []byte) (*Config, error) {
+	c := cuecontext.New()
+	v := c.CompileString(string(data))
+	jsonByte, err := v.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	conf := &Config{}
+	err = conf.Parse(jsonByte)
+	if err != nil {
+		return nil, err
+	}
+	return conf, nil
+}
+
+func JSONParser(data []byte) (*Config, error) {
+	conf := &Config{}
+	err := conf.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	return conf, nil
+}
+
+func YAMLParser(data []byte) (*Config, error) {
+	jsonByte, err := yaml.ToJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	conf := &Config{}
+	err = conf.Parse(jsonByte)
+	if err != nil {
+		return nil, err
+	}
+	return conf, nil
 }

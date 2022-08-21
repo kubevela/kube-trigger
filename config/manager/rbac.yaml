@@ -5,11 +5,12 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kube-trigger-manager-role
+  # TODO: use a stricter permission
+  name: cluster-admin
 subjects:
   - kind: ServiceAccount
     name: kube-trigger-manager
-    namespace: system
+    namespace: kube-trigger-system
 
 ---
 
@@ -17,7 +18,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-trigger-manager
-  namespace: system
+  namespace: kube-trigger-system
 
 ---
 
@@ -27,6 +28,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: leader-election-role
+  namespace: kube-trigger-system
 rules:
   - apiGroups:
       - ""
@@ -66,6 +68,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: leader-election-rolebinding
+  namespace: kube-trigger-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -73,5 +76,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kube-trigger-manager
-    namespace: system
+    namespace: kube-trigger-system
 

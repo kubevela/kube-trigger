@@ -26,7 +26,8 @@ spec:
             - /manager
           args:
             - --leader-elect
-          image: oam-dev/kube-trigger-manager:latest
+          image: oamdev/kube-trigger-manager:latest
+          imagePullPolicy: IfNotPresent
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
