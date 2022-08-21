@@ -1,5 +1,9 @@
 # kube-trigger
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/kubevela/kube-trigger)](https://goreportcard.com/report/github.com/kubevela/kube-trigger)
+[![LICENSE](https://img.shields.io/github/license/kubevela/kube-trigger.svg?style=flat-square)](/LICENSE)
+[![Releases](https://img.shields.io/github/release/kubevela/kube-trigger/all.svg?style=flat-square)](https://github.com/kubevela/kube-trigger/releases)
+
 kube-trigger is a tool that combines event listeners and action triggers.
 
 ![kube-trigger overview](docs/img/overview.svg)
