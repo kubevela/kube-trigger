@@ -2,10 +2,10 @@
 
 kube-trigger is a tool that combines event listeners and action triggers.
 
-![kube-trigger overview](/home/charlie/workspace/charlie0129/kube-trigger/docs/img/overview.svg "Overview")
+![kube-trigger overview](docs/img/overview.svg)
 
 Although there is `kube` in the name, it is actually not limited to Kubernetes and can do much more than that. It has an
-e
+extensible architecture that can extend its capabilities fairly easily.
 
 We provide generic low-level filters/actions to users, and users can create customized filters/actions to wrap low-level
 ones using CUE.
