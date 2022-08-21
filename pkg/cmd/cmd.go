@@ -89,7 +89,7 @@ func NewVersionCommand() *cobra.Command {
 
 //nolint:lll
 func addFlags(f *pflag.FlagSet) {
-	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files (recursively) will be appended together.")
+	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files (recursively) will be combined together. Supported file formats are: json, yaml, and cue.")
 	f.String(FlagLogLevel, defaultLogLevel, "Log level")
 	f.Int(FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
 	f.Int(FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
@@ -120,16 +120,20 @@ func runCli(cmd *cobra.Command, args []string) error {
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
 
+	// Create registries for Sources, Filers, and Actions.
+	sourceReg := sourceregistry.NewWithBuiltinSources()
+	filterReg := filterregistry.NewWithBuiltinFilters(opt.RegistrySize)
+	actionReg := actionregistry.NewWithBuiltinActions(opt.RegistrySize)
+
 	// Get our kube-trigger config.
 	conf, err := config.NewFromFileOrDir(opt.Config)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing config %s", opt.Config)
 	}
-
-	// Create registries for Sources, Filers, and Actions.
-	sourceReg := sourceregistry.NewWithBuiltinSources()
-	filterReg := filterregistry.NewWithBuiltinFilters(opt.RegistrySize)
-	actionReg := actionregistry.NewWithBuiltinActions(opt.RegistrySize)
+	err = conf.Validate(sourceReg, filterReg, actionReg)
+	if err != nil {
+		return errors.Wrapf(err, "cannot validate config")
+	}
 
 	defer utilruntime.HandleCrash()
 

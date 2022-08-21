@@ -24,7 +24,6 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"github.com/imdario/mergo"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	"github.com/kubevela/kube-trigger/pkg/action/utils"
 	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -174,7 +173,7 @@ func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string,
 	return pko.c.Update(ctx, &un)
 }
 
-func (pko *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
+func (pko *PatchK8sObjects) Init(c types.Common, properties map[string]interface{}) error {
 	var err error
 	pko.logger = logrus.WithField("action", typeName)
 	pko.prop = Properties{}
@@ -189,7 +188,7 @@ func (pko *PatchK8sObjects) Init(c types.Common, properties cue.Value) error {
 	return nil
 }
 
-func (pko *PatchK8sObjects) Validate(properties cue.Value) error {
+func (pko *PatchK8sObjects) Validate(properties map[string]interface{}) error {
 	p := &Properties{}
 	return p.parse(properties)
 }
@@ -224,6 +223,6 @@ type PatchTarget struct {
 }
 
 // parse parses, evaluate, validate, and apply defaults.
-func (p *Properties) parse(prop cue.Value) error {
-	return utils.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
+func (p *Properties) parse(prop map[string]interface{}) error {
+	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

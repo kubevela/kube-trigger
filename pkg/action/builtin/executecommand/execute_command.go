@@ -20,9 +20,8 @@ import (
 	"context"
 	"os/exec"
 
-	"cuelang.org/go/cue"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	"github.com/kubevela/kube-trigger/pkg/action/utils"
+	cue2 "github.com/kubevela/kube-trigger/pkg/util/cue"
 )
 
 const (
@@ -40,12 +39,12 @@ func (ec *ExecuteCommand) Run(ctx context.Context, sourceType string, event inte
 	return nil
 }
 
-func (ec *ExecuteCommand) Init(c types.Common, properties cue.Value) error {
+func (ec *ExecuteCommand) Init(c types.Common, properties map[string]interface{}) error {
 
 	return nil
 }
 
-func (ec *ExecuteCommand) Validate(properties cue.Value) error {
+func (ec *ExecuteCommand) Validate(properties map[string]interface{}) error {
 	return nil
 }
 
@@ -71,6 +70,6 @@ type Properties struct {
 	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 
-func (p *Properties) parse(prop cue.Value) error {
-	return utils.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
+func (p *Properties) parse(prop map[string]interface{}) error {
+	return cue2.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

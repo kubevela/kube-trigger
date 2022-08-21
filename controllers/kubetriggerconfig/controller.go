@@ -43,7 +43,7 @@ type Reconciler struct {
 
 var (
 	logger           = logrus.WithField("controller", "kube-trigger-config")
-	defaultExtension = "cue"
+	defaultExtension = ".json"
 )
 
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggerconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -127,7 +127,7 @@ func (r *Reconciler) addOrDeleteConfigToKubeTrigger(
 		return errors.Wrapf(err, "cannot marshal watchers in %s", utils.GetNamespacedName(&ktc))
 	}
 
-	keyName := req.Name + "." + defaultExtension
+	keyName := req.Name + defaultExtension
 
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)

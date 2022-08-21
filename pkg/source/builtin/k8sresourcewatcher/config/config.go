@@ -16,13 +16,7 @@ limitations under the License.
 
 package config
 
-import (
-	"encoding/json"
-
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/cuecontext"
-	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
-)
+import utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
 //go:generate ../../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
@@ -35,24 +29,6 @@ type Config struct {
 }
 
 // Parse parses, evaluate, validate, and apply defaults.
-func (c *Config) Parse(vConf cue.Value) error {
-	str, err := utilcue.Marshal(vConf)
-	if err != nil {
-		return err
-	}
-
-	cueCtx := cuecontext.New()
-	v := cueCtx.CompileString(propertiesCUETemplate + str)
-
-	js, err := v.MarshalJSON()
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(js, c)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (c *Config) Parse(conf map[string]interface{}) error {
+	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, conf, c)
 }

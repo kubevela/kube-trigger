@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"cuelang.org/go/cue"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
@@ -41,7 +40,7 @@ func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	return &K8sResourceWatcher{}
 }
 
-func (w *K8sResourceWatcher) Init(properties cue.Value, eh eventhandler.EventHandler) error {
+func (w *K8sResourceWatcher) Init(properties map[string]interface{}, eh eventhandler.EventHandler) error {
 	var err error
 
 	ctrlConf := &config.Config{}
@@ -58,7 +57,7 @@ func (w *K8sResourceWatcher) Init(properties cue.Value, eh eventhandler.EventHan
 	return nil
 }
 
-func (w *K8sResourceWatcher) Validate(properties cue.Value) error {
+func (w *K8sResourceWatcher) Validate(properties map[string]interface{}) error {
 	ctrlConf := &config.Config{}
 	return ctrlConf.Parse(properties)
 }

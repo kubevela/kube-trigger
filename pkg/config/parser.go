@@ -17,27 +17,35 @@ limitations under the License.
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
 	actiontype "github.com/kubevela/kube-trigger/pkg/action/types"
+	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
 	filtertype "github.com/kubevela/kube-trigger/pkg/filter/types"
+	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 	sourcetype "github.com/kubevela/kube-trigger/pkg/source/types"
-	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-var logger = logrus.WithField("config", "parser")
-
-var allowedExtensions = []string{
-	"cue",
+type Config struct {
+	Watchers []WatchMeta `json:"watchers"`
 }
+
+type WatchMeta struct {
+	Source  sourcetype.SourceMeta   `json:"source"`
+	Filters []filtertype.FilterMeta `json:"filters"`
+	Actions []actiontype.ActionMeta `json:"actions"`
+}
+
+var logger = logrus.WithField("config", "parser")
 
 func New() *Config {
 	return &Config{}
@@ -57,12 +65,8 @@ func NewFromFileOrDir(path string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		logger.Debugf("files in dir: %v", files)
+		logger.Debugf("loading files: %v", files)
 		for _, f := range files {
-			if !isExtensionAllowed(f) {
-				logger.Debugf("file %s does not have an acceptable extension", f)
-				continue
-			}
 			subConfig := &Config{}
 			err := subConfig.ParseFromFile(f)
 			if err != nil {
@@ -81,17 +85,6 @@ func NewFromFileOrDir(path string) (*Config, error) {
 	return c, nil
 }
 
-func isExtensionAllowed(filename string) bool {
-	var allowed bool
-	for _, ext := range allowedExtensions {
-		if strings.HasSuffix(filename, "."+ext) {
-			allowed = true
-			break
-		}
-	}
-	return allowed
-}
-
 func findFilesInDir(dir string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -103,25 +96,67 @@ func findFilesInDir(dir string) ([]string, error) {
 	return files, err
 }
 
-func (c *Config) Parse(confStr string) error {
-	var err error
-
-	cueCtx := cuecontext.New()
-	vConf := cueCtx.CompileString(confStr)
-
-	err = vConf.Validate()
+func (c *Config) ParseFromFile(path string) error {
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "cannot read config")
 	}
 
-	vWatches := vConf.LookupPath(cue.ParsePath(WatchesFieldName))
-	if vWatches.Err() != nil {
-		return vWatches.Err()
+	var jsonByte []byte
+
+	ext := filepath.Ext(path)
+	switch ext {
+	case ".cue":
+		c := cuecontext.New()
+		v := c.CompileString(string(data))
+		jsonByte, err = v.MarshalJSON()
+		if err != nil {
+			return errors.Wrapf(err, "cannot read cue config %s", path)
+		}
+	case ".json":
+		jsonByte = data
+	case ".yaml", ".yml":
+		jsonByte, err = yaml.ToJSON(data)
+		if err != nil {
+			return errors.Wrapf(err, "cannot read yaml config %s", path)
+		}
+	default:
+		return fmt.Errorf("file %s has an unsupported format %s", path, ext)
 	}
 
-	c.Watchers, err = parseWatchers(vWatches)
+	logger.Infof("loading config from %s", path)
+
+	return c.Parse(jsonByte)
+}
+
+func (c *Config) Parse(jsonByte []byte) error {
+	err := json.Unmarshal(jsonByte, c)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "cannot unmarshal config")
+	}
+
+	// Insert Raw field
+	for _, w := range c.Watchers {
+		var newActions []actiontype.ActionMeta
+		for _, a := range w.Actions {
+			b, err := json.Marshal(a.Properties)
+			if err != nil {
+				return err
+			}
+			a.Raw = string(b)
+			newActions = append(newActions, a)
+		}
+		w.Actions = newActions
+		var newFilters []filtertype.FilterMeta
+		for _, f := range w.Filters {
+			b, err := json.Marshal(f.Properties)
+			if err != nil {
+				return err
+			}
+			f.Raw = string(b)
+			newFilters = append(newFilters, f)
+		}
+		w.Filters = newFilters
 	}
 
 	logger.Debugf("configuration parsed: %v", c.Watchers)
@@ -129,192 +164,43 @@ func (c *Config) Parse(confStr string) error {
 	return nil
 }
 
-func (c *Config) ParseFromFile(path string) error {
-	if !strings.HasSuffix(path, ".cue") {
-		return fmt.Errorf("config files shoule be CUE source")
-	}
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		logrus.Errorf("cannot load config %s. You should specify where your config resides.", path)
-		return err
-	}
-
-	return c.Parse(string(data))
-}
-func parseWatchers(vWatches cue.Value) ([]WatchMeta, error) {
-	var ret []WatchMeta
-
-	vWatchList, err := vWatches.List()
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; vWatchList.Next(); i++ {
-		//nolint:govet // this err-shadowing fine
-		watch, err := parseWatcher(vWatchList.Value())
-		if err != nil {
-			return nil, errors.Wrapf(err, "error when parsing %s[%d]", WatchesFieldName, i)
+//nolint:gocognit // .
+func (c *Config) Validate(
+	sourceReg *sourceregistry.Registry,
+	filterReg *filterregistry.Registry,
+	actionReg *actionregistry.Registry,
+) error {
+	// TODO(charlie0129): gather all errors before returning
+	for _, w := range c.Watchers {
+		s, ok := sourceReg.Get(w.Source)
+		if !ok {
+			return fmt.Errorf("no such source found: %s", w.Source.Type)
 		}
-		ret = append(ret, watch)
-	}
-
-	return ret, nil
-}
-
-func parseWatcher(vWatch cue.Value) (WatchMeta, error) {
-	var err error
-	ret := WatchMeta{}
-
-	vSource := vWatch.LookupPath(cue.ParsePath(SourceFieldName))
-	if vSource.Err() != nil {
-		return ret, vSource.Err()
-	}
-
-	ret.Source, err = parseSource(vSource)
-	if err != nil {
-		return ret, err
-	}
-
-	logger.Debugf("parsed source: %v", vSource)
-
-	vFilters := vWatch.LookupPath(cue.ParsePath(FiltersFieldName))
-	if vFilters.Err() != nil {
-		return ret, vFilters.Err()
-	}
-
-	ret.Filters, err = parseFilters(vFilters)
-	if err != nil {
-		return ret, err
-	}
-
-	vActions := vWatch.LookupPath(cue.ParsePath(ActionsFieldName))
-	if vActions.Err() != nil {
-		return ret, vActions.Err()
-	}
-
-	ret.Actions, err = parseActions(vActions)
-	if err != nil {
-		return ret, err
-	}
-
-	return ret, nil
-}
-
-func parseSource(vSource cue.Value) (sourcetype.SourceMeta, error) {
-	var err error
-	ret := sourcetype.SourceMeta{}
-
-	vType := vSource.LookupPath(cue.ParsePath(sourcetype.TypeFieldName))
-	if vType.Err() != nil {
-		return ret, vType.Err()
-	}
-	vProperties := vSource.LookupPath(cue.ParsePath(sourcetype.PropertiesFieldName))
-	if vProperties.Err() != nil {
-		return ret, vProperties.Err()
-	}
-
-	ret.Type, err = vType.String()
-	if err != nil {
-		return ret, err
-	}
-	ret.Properties = vProperties
-
-	logger.Debugf("parsed source: %s", ret.Type)
-
-	return ret, nil
-}
-
-func parseFilters(vFilters cue.Value) ([]filtertype.FilterMeta, error) {
-	var ret []filtertype.FilterMeta
-
-	vFilterList, err := vFilters.List()
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; vFilterList.Next(); i++ {
-		//nolint:govet // this err-shadowing fine
-		filter, err := parseFilter(vFilterList.Value())
+		err := s.Validate(w.Source.Properties)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error when parsing %s[%d]", FiltersFieldName, i)
+			return errors.Wrapf(err, "cannot validate source %s", w.Source.Type)
 		}
-		ret = append(ret, filter)
-	}
-
-	return ret, nil
-}
-
-func parseFilter(vFilter cue.Value) (filtertype.FilterMeta, error) {
-	var err error
-	ret := filtertype.FilterMeta{}
-
-	vType := vFilter.LookupPath(cue.ParsePath(filtertype.TypeFieldName))
-	if vType.Err() != nil {
-		return ret, vType.Err()
-	}
-	vProperties := vFilter.LookupPath(cue.ParsePath(filtertype.PropertiesFieldName))
-	if vProperties.Err() != nil {
-		return ret, vProperties.Err()
-	}
-
-	ret.Type, err = vType.String()
-	if err != nil {
-		return ret, err
-	}
-	rawStr, err := utilcue.Marshal(vFilter)
-	if err != nil {
-		return ret, err
-	}
-	ret.Raw = rawStr
-	ret.Properties = vProperties
-
-	logger.Debugf("parsed filter: %s", ret.Raw)
-
-	return ret, nil
-}
-
-func parseActions(vActions cue.Value) ([]actiontype.ActionMeta, error) {
-	var ret []actiontype.ActionMeta
-
-	vActionsList, err := vActions.List()
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; vActionsList.Next(); i++ {
-		//nolint:govet // this err-shadowing fine
-		action, err := parseAction(vActionsList.Value())
-		if err != nil {
-			return nil, errors.Wrapf(err, "error when parsing %s[%d]", ActionsFieldName, i)
+		for _, a := range w.Actions {
+			s, ok := actionReg.GetType(a)
+			if !ok {
+				return fmt.Errorf("no such action found: %s", w.Source.Type)
+			}
+			err := s.Validate(a.Properties)
+			if err != nil {
+				return errors.Wrapf(err, "cannot validate action %s", w.Source.Type)
+			}
 		}
-		ret = append(ret, action)
+		for _, f := range w.Filters {
+			s, ok := filterReg.GetType(f)
+			if !ok {
+				return fmt.Errorf("no such filter found: %s", w.Source.Type)
+			}
+			err := s.Validate(f.Properties)
+			if err != nil {
+				return errors.Wrapf(err, "cannot validate filter %s", w.Source.Type)
+			}
+		}
 	}
 
-	return ret, nil
-}
-
-func parseAction(vAction cue.Value) (actiontype.ActionMeta, error) {
-	var err error
-	ret := actiontype.ActionMeta{}
-
-	vType := vAction.LookupPath(cue.ParsePath(actiontype.TypeFieldName))
-	if vType.Err() != nil {
-		return ret, vType.Err()
-	}
-	vProperties := vAction.LookupPath(cue.ParsePath(actiontype.PropertiesFieldName))
-	if vProperties.Err() != nil {
-		return ret, vProperties.Err()
-	}
-
-	ret.Type, err = vType.String()
-	if err != nil {
-		return ret, err
-	}
-	rawStr, err := utilcue.Marshal(vAction)
-	if err != nil {
-		return ret, err
-	}
-	ret.Raw = rawStr
-	ret.Properties = vProperties
-
-	logger.Debugf("parsed action: %s", ret.Raw)
-
-	return ret, nil
+	return nil
 }

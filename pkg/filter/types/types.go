@@ -16,10 +16,6 @@ limitations under the License.
 
 package types
 
-import (
-	"cuelang.org/go/cue"
-)
-
 const (
 	// TypeFieldName is type field name in string representation. Will be used
 	// when parsing configurations.
@@ -37,12 +33,12 @@ type Filter interface {
 	New() Filter
 
 	// Validate validates properties.
-	Validate(properties cue.Value) error
+	Validate(properties map[string]interface{}) error
 
 	// Init initializes this instance using user-provided properties.
 	// Typically, this will only be called once and the initialized instance
 	// will be cached.
-	Init(properties cue.Value) error
+	Init(properties map[string]interface{}) error
 
 	// ApplyToObject applies this Filter to the given object that came from
 	// sources. Returning false will filter this object out. Since this method
@@ -63,12 +59,12 @@ type Filter interface {
 // they want to use and what properties they provided.
 type FilterMeta struct {
 	// Type is the name (identifier) of this filter.
-	Type string
+	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
-	Properties cue.Value
+	Properties map[string]interface{} `json:"properties"`
 
 	// Raw is the raw string representation of this filter. Typically, you will
 	// not use it. This is for identifying filter instances.
-	Raw string
+	Raw string `json:"raw,omitempty"`
 }

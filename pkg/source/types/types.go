@@ -19,7 +19,6 @@ package types
 import (
 	"context"
 
-	"cuelang.org/go/cue"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 )
 
@@ -35,11 +34,11 @@ type Source interface {
 	New() Source
 
 	// Validate validates properties.
-	Validate(properties cue.Value) error
+	Validate(properties map[string]interface{}) error
 
 	// Init initializes this instance using user-provided properties.
 	// Call the EventHandler when an event happened.
-	Init(properties cue.Value, eh eventhandler.EventHandler) error
+	Init(properties map[string]interface{}, eh eventhandler.EventHandler) error
 
 	// Run starts this Source. You should handle the context so that you can
 	// know when to exit.
@@ -54,8 +53,8 @@ type Source interface {
 // they want to use and what properties they provided.
 type SourceMeta struct {
 	// Type is the name (identifier) of this Source.
-	Type string
+	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
-	Properties cue.Value
+	Properties map[string]interface{} `json:"properties"`
 }

@@ -22,11 +22,11 @@ watchers: [
 				// Filter by validating the object data using CUE.
 				// This is a builtin one (and the only one currently).
 				type: "cue-validator"
-				properties: template: {
+				properties: template: """
 					// Filter by object name.
 					// I used regular expressions here.
 					metadata: name: =~"this-will-trigger-update-.*"
-				}
+				"""
 			},
 		]
 		// What to do when the events above happen?

@@ -20,9 +20,8 @@ import (
 	"context"
 	"strconv"
 
-	"cuelang.org/go/cue"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	"github.com/kubevela/kube-trigger/pkg/action/utils"
+	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela-core-api/pkg/oam"
 	"github.com/pkg/errors"
@@ -116,7 +115,7 @@ func (bar *BumpApplicationRevision) bumpApp(ctx context.Context, app *v1beta1.Ap
 	return bar.c.Update(ctx, app)
 }
 
-func (bar *BumpApplicationRevision) Init(c types.Common, properties cue.Value) error {
+func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]interface{}) error {
 	var err error
 	bar.logger = logrus.WithField("action", typeName)
 	bar.prop = Properties{}
@@ -130,7 +129,7 @@ func (bar *BumpApplicationRevision) Init(c types.Common, properties cue.Value) e
 	return nil
 }
 
-func (bar *BumpApplicationRevision) Validate(properties cue.Value) error {
+func (bar *BumpApplicationRevision) Validate(properties map[string]interface{}) error {
 	p := &Properties{}
 	return p.parse(properties)
 }
@@ -156,6 +155,6 @@ type Properties struct {
 	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 
-func (p *Properties) parse(prop cue.Value) error {
-	return utils.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
+func (p *Properties) parse(prop map[string]interface{}) error {
+	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

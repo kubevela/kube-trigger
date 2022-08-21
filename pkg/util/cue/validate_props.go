@@ -14,27 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package cue
 
 import (
-	actiontype "github.com/kubevela/kube-trigger/pkg/action/types"
-	filtertype "github.com/kubevela/kube-trigger/pkg/filter/types"
-	sourcetype "github.com/kubevela/kube-trigger/pkg/source/types"
+	"encoding/json"
+
+	"cuelang.org/go/cue/cuecontext"
 )
 
-type Config struct {
-	Watchers []WatchMeta
+// ValidateAndUnMarshal validates the input against the CUE schema, and unmarshal
+// the input cue to output. output must be a pointer.
+func ValidateAndUnMarshal(schema string, input map[string]interface{}, output interface{}) error {
+	inputStr, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+	cueCtx := cuecontext.New()
+	v := cueCtx.CompileString(schema + "\n" + string(inputStr))
+	b, err := v.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, output)
 }
-
-type WatchMeta struct {
-	Source  sourcetype.SourceMeta
-	Filters []filtertype.FilterMeta
-	Actions []actiontype.ActionMeta
-}
-
-const (
-	WatchesFieldName = "watchers"
-	SourceFieldName  = "source"
-	FiltersFieldName = "filters"
-	ActionsFieldName = "actions"
-)

@@ -19,18 +19,7 @@ package types
 import (
 	"context"
 
-	"cuelang.org/go/cue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	// TypeFieldName is type field name in string representation. Will be used
-	// when parsing configurations.
-	TypeFieldName = "type"
-
-	// PropertiesFieldName is properties field name in string representation.
-	// Will be used when parsing configurations.
-	PropertiesFieldName = "properties"
 )
 
 // Action is an interface for actions. Anything that implements this interface
@@ -40,12 +29,12 @@ type Action interface {
 	New() Action
 
 	// Validate validates properties.
-	Validate(properties cue.Value) error
+	Validate(properties map[string]interface{}) error
 
 	// Init initializes this instance using user-provided properties and common things.
 	// Typically, this will only be called once and the initialized instance
 	// will be cached. Subsequent calls will use the Run() method in cached instances.
-	Init(c Common, properties cue.Value) error
+	Init(c Common, properties map[string]interface{}) error
 
 	// Run executes this Action.
 	//
@@ -84,12 +73,12 @@ type Common struct {
 // they want to use and what properties they provided.
 type ActionMeta struct {
 	// Type is the name (identifier) of this action.
-	Type string
+	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
-	Properties cue.Value
+	Properties map[string]interface{} `json:"properties"`
 
 	// Raw is the raw string representation of this action. Typically, you will
 	// not use it. This is for identifying action instances.
-	Raw string
+	Raw string `json:"raw,omitempty"`
 }

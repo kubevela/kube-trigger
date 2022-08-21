@@ -38,21 +38,8 @@ type CUEValidator struct {
 var _ types.Filter = &CUEValidator{}
 
 const (
-	typeName          = "cue-validator"
-	TemplateFieldName = "template"
+	typeName = "cue-validator"
 )
-
-type Properties struct {
-	Template cue.Value
-}
-
-func (c *CUEValidator) parseProperties(properties cue.Value) (Properties, error) {
-	v := properties.LookupPath(cue.ParsePath(TemplateFieldName))
-	if v.Err() != nil {
-		return Properties{}, v.Err()
-	}
-	return Properties{Template: v}, nil
-}
 
 func (c *CUEValidator) ApplyToObject(_ interface{}, obj interface{}) (bool, string, error) {
 	var err error
@@ -87,18 +74,16 @@ func (c *CUEValidator) ApplyToObject(_ interface{}, obj interface{}) (bool, stri
 	return true, "", nil
 }
 
-func (c *CUEValidator) Init(properties cue.Value) error {
-	prop, err := c.parseProperties(properties)
+func (c *CUEValidator) Init(properties map[string]interface{}) error {
+	p := Properties{}
+	err := p.parseProperties(properties)
 	if err != nil {
-		return errors.Wrapf(err, "error when parsing properties")
+		return errors.Wrapf(err, "cannot parse properties")
 	}
 
 	c.r = &cue.Runtime{}
 
-	c.tmplStr, err = utilscue.Marshal(prop.Template)
-	if err != nil {
-		return err
-	}
+	c.tmplStr = p.Template
 
 	instance, err := c.r.Compile("validator", c.tmplStr)
 	if err != nil {
@@ -116,18 +101,9 @@ func (c *CUEValidator) Init(properties cue.Value) error {
 	return nil
 }
 
-func (c *CUEValidator) Validate(properties cue.Value) error {
-	prop, err := c.parseProperties(properties)
-	if err != nil {
-		return err
-	}
-
-	c.tmplStr, err = utilscue.Marshal(prop.Template)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (c *CUEValidator) Validate(properties map[string]interface{}) error {
+	p := Properties{}
+	return p.parseProperties(properties)
 }
 
 func (c *CUEValidator) Type() string {
@@ -136,4 +112,15 @@ func (c *CUEValidator) Type() string {
 
 func (c *CUEValidator) New() types.Filter {
 	return &CUEValidator{}
+}
+
+type Properties struct {
+	Template string `json:"template"`
+}
+
+// This will make properties.cue into our go code. We will use it to validate user-provided config.
+//go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
+
+func (p *Properties) parseProperties(properties map[string]interface{}) error {
+	return utilscue.ValidateAndUnMarshal(propertiesCUETemplate, properties, p)
 }
