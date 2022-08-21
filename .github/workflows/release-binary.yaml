@@ -35,6 +35,6 @@ jobs:
           fail_on_unmatched_files: true
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') }}
           files: |
-            bin/kube-trigger-*.zip
-            bin/kube-trigger-*.tar.gz
-            bin/*-checksums.txt
+            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*.zip
+            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*.tar.gz
+            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/*-checksums.txt

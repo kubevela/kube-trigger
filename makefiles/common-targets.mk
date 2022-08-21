@@ -13,18 +13,21 @@
 # limitations under the License.
 
 # Binary basename
-_OUT         := $(BIN)$(BIN_EXTENSION)
+BIN_BASENAME     := $(BIN)$(BIN_EXTENSION)
 # Binary basename with version and target
-_VER_OUT     := $(BIN)-$(VERSION)-$(OS)-$(ARCH)$(BIN_EXTENSION)
+BIN_VERBOSE_BASE := $(BIN)-$(VERSION)-$(OS)-$(ARCH)$(BIN_EXTENSION)
 # If the user set FULL_NAME, we will use the basename with version and target.
 # e.g. kube-trigger-v0.0.1-linux-amd64
-BIN_FULLNAME := $(if $(FULL_NAME),$(_VER_OUT),$(_OUT))
-PKG_FULLNAME := $(if $(FULL_NAME),$(_VER_OUT),$(_OUT)).tar.gz
+BIN_FULLNAME     := $(if $(FULL_NAME),$(BIN_VERBOSE_BASE),$(BIN_BASENAME))
+PKG_FULLNAME     := $(if $(FULL_NAME),$(BIN_VERBOSE_BASE),$(BIN_BASENAME)).tar.gz
 ifeq ($(OS), windows)
-    PKG_FULLNAME := $(subst .exe,,$(if $(FULL_NAME),$(_VER_OUT),$(_OUT))).zip
+    PKG_FULLNAME := $(subst .exe,,$(if $(FULL_NAME),$(BIN_VERBOSE_BASE),$(BIN_BASENAME))).zip
 endif
+
+BIN_VERBOSE_DIR  := bin/$(BIN)-$(VERSION)
 # Full output relative path
-OUTPUT       := bin/$(BIN_FULLNAME)
+OUTPUT           := $(if $(FULL_NAME),$(BIN_VERBOSE_DIR)/$(BIN_FULLNAME),bin/$(BIN_FULLNAME))
+
 
 all: build
 
@@ -38,7 +41,7 @@ build-%:
 
 all-build: # @HELP build and package binaries for all platforms
 all-build: $(addprefix build-, $(subst /,_, $(BIN_PLATFORMS)))
-	cd bin && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
+	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
 build: # @HELP build binary locally
 build:
@@ -52,11 +55,12 @@ build:
 
 package: build
 	echo "# Compressing $(BIN_FULLNAME) to $(PKG_FULLNAME)"
-	cp LICENSE bin/LICENSE
-	cd bin && if [ "$(OS)" == "windows" ]; then              \
-	    zip "$(PKG_FULLNAME)" "$(BIN_FULLNAME)" LICENSE;     \
+	cp LICENSE "$(BIN_VERBOSE_DIR)/LICENSE"
+	cp "$(OUTPUT)" "$(BIN_VERBOSE_DIR)/$(BIN_BASENAME)"
+	cd $(BIN_VERBOSE_DIR) && if [ "$(OS)" == "windows" ]; then \
+	    zip "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE;     \
 	else                                                     \
-	    tar czf "$(PKG_FULLNAME)" "$(BIN_FULLNAME)" LICENSE; \
+	    tar czf "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE; \
 	fi
 
 dirty-build: # @HELP same as build, but using build cache is allowed
