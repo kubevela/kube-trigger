@@ -1,0 +1,40 @@
+name: Release kube-trigger Binary
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: { }
+
+permissions:
+  contents: write
+
+jobs:
+  kube-trigger:
+    name: Release kube-trigger image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Show Make Variables
+        run: ./make-kt variables
+
+      - name: Get Version
+        id: get_version
+        run: |
+          export VERSION=$(./make-kt version)
+          echo ::set-output name=VERSION::${VERSION}
+
+      - name: Build Binaries for All Platforms
+        run: ./make-kt all-build
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          fail_on_unmatched_files: true
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') }}
+          files: |
+            bin/kube-trigger-*.zip
+            bin/kube-trigger-*.tar.gz
+            bin/sha256sum.txt
