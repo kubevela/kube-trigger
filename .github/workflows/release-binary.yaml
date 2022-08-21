@@ -28,7 +28,7 @@ jobs:
       - name: Build Binaries for All Platforms
         run: ./make-kt all-build
 
-      - name: Release
+      - name: Attach Binaries to Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
@@ -37,4 +37,4 @@ jobs:
           files: |
             bin/kube-trigger-*.zip
             bin/kube-trigger-*.tar.gz
-            bin/sha256sum.txt
+            bin/*-checksums.txt
