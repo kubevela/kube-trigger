@@ -4,10 +4,10 @@ watchers: [
 	{
 		// Watch what event?
 		source: {
-			// Watch Kubernets objects.
-			// This is a builtin one (and the only one currently).
+			// Watch Kubernetes objects.
 			type: "k8s-resource-watcher"
 			properties: {
+				// Watch ConfigMap events.
 				apiVersion: "v1"
 				kind:       "ConfigMap"
 				namespace:  "default"
@@ -16,28 +16,26 @@ watchers: [
 			}
 		}
 		// Filter the events above.
-		// You can add multiple filters.
+		// You can add multiple filters, logical AND will be used.
 		filters: [
 			{
 				// Filter by validating the object data using CUE.
-				// This is a builtin one (and the only one currently).
+				// For example, we are filtering by ConfigMap names (metadata.name) from above.
 				type: "cue-validator"
 				properties: template: """
-					// Filter by object name.
-					// I used regular expressions here.
 					metadata: name: =~"this-will-trigger-update-.*"
 				"""
 			},
 		]
 		// What to do when the events above happen?
-		// You can add multiple actions.
+		// You can add multiple actions to trigger them all.
 		actions: [
 			{
-				// Bump Application Revision
+				// Bump Application Revision to update Application.
 				type: "bump-application-revision"
 				properties: {
 					namespace: "default"
-					name:      ""
+					// Select Applications.
 					labelSelectors: {
 						"my-label": "my-value"
 					}

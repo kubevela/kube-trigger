@@ -35,15 +35,15 @@ spec:
             spec:
               description: KubeTriggerSpec defines the desired state of KubeTrigger.
               properties:
+                logLevel:
+                  type: string
                 registrySize:
                   description: Cache size for filters and actions.
                   type: integer
                 workerConfig:
                   properties:
-                    jobTimeout:
-                      description: Timeout for each job in seconds.
-                      minimum: 1
-                      type: integer
+                    actionRetry:
+                      type: boolean
                     maxRetry:
                       description: Max retry count after action failed to run.
                       minimum: 0
@@ -62,6 +62,10 @@ spec:
                       description: First delay to retry actions in seconds, subsequent
                         delays will grow exponentially.
                       minimum: 0
+                      type: integer
+                    timeout:
+                      description: Timeout for each job in seconds.
+                      minimum: 1
                       type: integer
                     workerCount:
                       description: Number of workers for running actions, this is shared

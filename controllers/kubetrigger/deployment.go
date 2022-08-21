@@ -117,8 +117,8 @@ func workerConfigToArgs(args []string, wc *standardv1alpha1.WorkerConfig) []stri
 	if wc.QueueSize != nil {
 		args = append(args, flagToArg(cmd.FlagQueueSize, wc.QueueSize))
 	}
-	if wc.JobTimeout != nil {
-		args = append(args, flagToArg(cmd.FlagTimeout, wc.JobTimeout))
+	if wc.Timeout != nil {
+		args = append(args, flagToArg(cmd.FlagTimeout, wc.Timeout))
 	}
 	if wc.WorkerCount != nil {
 		args = append(args, flagToArg(cmd.FlagWorkers, wc.WorkerCount))

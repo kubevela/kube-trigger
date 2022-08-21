@@ -29,12 +29,18 @@ type KubeTriggerSpec struct {
 	RegistrySize *int `json:"registrySize,omitempty"`
 
 	//+optional
+	LogLevel *string `json:"logLevel,omitempty"`
+
+	//+optional
 	WorkerConfig *WorkerConfig `json:"workerConfig,omitempty"`
 
 	// TODO(charlie0129): add RBAC config, container image
 }
 
 type WorkerConfig struct {
+	//+optional
+	ActionRetry *bool `json:"actionRetry"`
+
 	// Max retry count after action failed to run.
 	//+optional
 	//+kubebuilder:validation:Minimum=0
@@ -58,7 +64,7 @@ type WorkerConfig struct {
 	// Timeout for each job in seconds.
 	//+optional
 	//+kubebuilder:validation:Minimum=1
-	JobTimeout *int `json:"jobTimeout,omitempty"`
+	Timeout *int `json:"timeout,omitempty"`
 
 	// Number of workers for running actions, this is shared between all watchers.
 	//+optional

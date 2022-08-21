@@ -4,16 +4,17 @@ metadata:
   name: this-will-trigger-update-1
   namespace: "default"
 data:
-  context: EDIT_ME_AFTER_APPLY
+  content: EDIT_ME_AFTER_APPLY
 
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  # Filters will be used to filter this name.
   name: this-will-trigger-update-2
   namespace: "default"
 data:
-  context: EDIT_ME_AFTER_APPLY
+  content: EDIT_ME_AFTER_APPLY
 
 ---
 
@@ -21,9 +22,10 @@ apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
   annotations:
-    # notice changes here after you update the CM above
+    # Notice changes here after you update the CM above/
     app.oam.dev/publishVersion: "1"
   name: this-will-be-updated-1
+  # Labels will be used to select which Application to bump revision.
   labels:
     my-label: my-value
   namespace: default
@@ -36,7 +38,6 @@ apiVersion: core.oam.dev/v1beta1
 kind: Application
 metadata:
   annotations:
-    # notice changes here after you update the CM above
     app.oam.dev/publishVersion: "1"
   name: this-will-be-updated-2
   labels:

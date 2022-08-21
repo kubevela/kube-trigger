@@ -1,30 +1,58 @@
-Described in issue https://github.com/kubevela/kubevela/issues/4418 , sometimes we want k8s event to trigger an
-Application update.
+# Quick Start
 
-Current kube-trigger can already do that. Let's see an example.
+kube-trigger can run as standalone or in-cluster. Let's use a real use-case as an exmaple (
+see [#4418](https://github.com/kubevela/kubevela/issues/4418)). TL;DR, the user want the Application to be automatically
+updated whenever the ConfigMaps that are referenced by `ref-objects` are updated.
 
-In `sample.yaml`, we have:
+## Prerequisites
 
-- two ConfigMaps
-- two Applications
+- Install [KubeVela](https://kubevela.net/docs/install) in your cluster
 
-### What we want to achieve?
+## What we want to achieve?
+
+- use a `k8s-resource-watcher` Source to listen to update events of ConfigMaps
+- use a `cue-validator` Filter to only keep the ConfigMaps that we are interested in
+- trigger an `bump-application-revision` Action to update Application.
+
+As a result:
 
 - Once any of the two ConfigMaps are updated, both Applications will be updated as well.
 
-### Try out
+## Try out
 
-1. **Apply `sample.yaml`**
+1. **Apply sample resources**
+
+Apply `sample.yaml` to create 2 Applications and 2 ConfigMaps in the default namespace. The changes in 2 ConfigMaps will
+trigger 2 Application updates.
 
 ```shell
-kubectl apply examples/sample.yaml
+kubectl apply sample.yaml
 ```
 
 2. **Run kube-trigger**
 
+Choose your preferred way: standalone (recommended for quick testing) or in-cluster
+
+Standalone:
+
 ```shell
-make dirty-build
-bin/kube-trigger --config examples/sampleconf.cue
+# Download kube-trigger binaries from releases first
+./kube-trigger --config sampleconf.yaml
+```
+
+In-Cluster:
+
+```shell
+# Install CRDs: KubeTrigger and KubeTriggerConfig
+kubectl apply -f config/crd
+# Create namespace
+kubectl apply -f config/manager/ns.yaml
+# Run controllers
+kubectl apply -f config/manager
+# Create a KubeTrigger instance
+kubectl apply -f config/samples/standard_v1alpha1_kubetrigger.yaml
+# Add config to the KubeTrigger instance by creating a KubeTriggerConfig
+kubectl apply -f config/samples/standard_v1alpha1_kubetriggerconfig.yaml
 ```
 
 3. **Watch ApplicationRevision changes** so that you can see what it does.
@@ -39,8 +67,11 @@ kubectl get apprev --watch
 kubectl edit cm this-will-trigger-update-1
 ```
 
-Immediately, you should see the two new ApplicationRevision created.
+Immediately, you should see the two new ApplicationRevision created. Specifically, Applications all have updated with
+annotation: `app.oam.dev/publishVersion: '2/3/4...'`
 
-Specifically, Applications all have updated with annotation: `app.oam.dev/publishVersion: '2/3/4...'`
+Please read `sampleconf.cue/yaml` for more details.
 
-Please read `sampleconf.cue` for more details.
+## Delete resources
+
+Just replace all `kubectl apply` with `kubectl delete`, and run them in the reverse order.
