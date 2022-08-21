@@ -30,7 +30,7 @@ notifications, log events, execute a command, or patch some Kubernetes objects w
 
 ## Quick Start
 
-kube-trigger can run as standalone or in-cluster. Let's use a real use-case as an exmaple (
+To quickly know the concepts of kube-trigger, let's use a real use-case as an exmaple (
 see [#4418](https://github.com/kubevela/kubevela/issues/4418)). TL;DR, the user want the Application to be automatically
 updated whenever the ConfigMaps that are referenced by `ref-objects` are updated.
 
@@ -134,12 +134,11 @@ Let's assume your config file is `config.yaml`, to run kube-trigger:
 We have two CRDs: *KubeTrigger* and *KubeTriggerConfig*.
 
 - *KubeTrigger* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
-  provided).
+  provided). Advanced kube-trigger Instance Configuration (next section) can be provided in it.
 - *KubeTriggerConfig* is used to provide one or more configs (same as the config file you use when running as
   standalone) to a *KubeTrigger* instance.
 
-So we know *KubeTriggerConfig* is what actually provides a config, this is what we will be discussing. (*KubeTrigger*
-will be described in the next section)
+So we know *KubeTriggerConfig* is what actually provides a config, this is what we will be discussing.
 
 ```yaml
 # You can find this file in config/samples/standard_v1alpha1_kubetriggerconfig.yaml
@@ -183,7 +182,8 @@ spec:
 
 ## Advanced kube-trigger Instance Configuration
 
-Advanced kube-trigger Instance Configurations are internal configurations to fine-tune your kube-trigger instance. In
+In addition to config files, you can also do advanced configurations. Advanced kube-trigger Instance Configurations are
+internal configurations to fine-tune your kube-trigger instance. In
 most cases, you probably don't need to fiddle with these settings.
 
 ### Log Level

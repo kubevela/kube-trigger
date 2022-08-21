@@ -44,6 +44,10 @@ In-Cluster:
 
 ```shell
 # Install CRDs: KubeTrigger and KubeTriggerConfig
+# - *KubeTrigger* is what creates a kube-trigger instance (similar to running 
+#   `./kube-trigger` in-cluster but no config is provided). 
+# - *KubeTriggerConfig* is used to provide one or more configs (same as the
+#   config file you use when running as standalone) to a *KubeTrigger* instance.
 kubectl apply -f config/crd
 # Create namespace
 kubectl apply -f config/manager/ns.yaml
