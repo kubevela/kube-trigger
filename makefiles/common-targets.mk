@@ -110,21 +110,6 @@ docker-push-%:
 docker-push: # @HELP push images
 docker-push: $(addprefix docker-push-, $(subst :,=, $(subst /,_, $(IMGTAGS))))
 
-lint: # @HELP run linter
-lint: generate
-	bash build/lint.sh
-
-checklicense: # @HELP check license headers
-checklicense:
-	bash hack/verify-boilerplate.sh
-
-reviewable: # @HELP do some checks before submitting code
-reviewable: generate checklicense lint
-
-clean: # @HELP remove build artifacts
-clean:
-	rm -rf bin
-
 version: # @HELP output the version string
 version:
 	echo $(VERSION)

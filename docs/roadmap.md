@@ -1,14 +1,16 @@
 - [x] Basic build infrastructure
 - [x] Complete a basic proof-of-concept sample
 - [x] linters, license checker
-- [ ] GitHub Actions
-- [ ] **Add tests. No tests currently, this is terrible.**
+- [x] GitHub Actions
+- [ ] Add tests.
 - [ ] Make it run as Addon, build component definition, and examples
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
-- [ ] Refine README, quick starts, contribution guide
+- [x] Refine README, quick starts
+- [ ] Contribution Guide
 - [ ] More Source types
 - [ ] More Action Types, such as WorkflowRun, API webhook, notifications(email, dingtalk, slack), execute velaql(
   CUE and K8s operations), metric (prometheus), storage (clickhouse)
 - [ ] Allow users to extend builtin filters/actions
 - [ ] Remove cache informer, make it with no catch but list watch events with unique queue.
 - [x] Make the configuration as CRD, launch new process/pod for new watcher
+- [ ] Validation webhook

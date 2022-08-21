@@ -1,4 +1,4 @@
-name: Release kube-trigger Binary
+name: Release kube-trigger Binaries
 on:
   push:
     tags:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   kube-trigger:
-    name: Release kube-trigger image
+    name: Release kube-trigger binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
