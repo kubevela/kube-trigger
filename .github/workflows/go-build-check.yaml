@@ -1,4 +1,5 @@
-name: Run Go Checks
+name: Go Checks
+
 on:
   push:
     branches:
@@ -30,7 +31,7 @@ jobs:
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
           concurrent_skipping: false
 
-  checks-and-build:
+  checks:
     runs-on: ubuntu-latest
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'

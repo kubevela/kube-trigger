@@ -60,7 +60,7 @@
   <g transform="translate(92 394.83349609375) rotate(0 47.5 10)">
     <text x="0" y="15" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Webhooks</text>
   </g>
-  <g transform="translate(94.66668701171875 552.3333740234375) rotate(0 46 10)">
+  <g transform="translate(93.5555419921875 552.3333740234375) rotate(0 46 10)">
     <text x="0" y="15" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Cron Jobs</text>
   </g>
   <g stroke-linecap="round" transform="translate(10 118.3333740234375) rotate(0 136 270)">
@@ -107,15 +107,15 @@
   <g transform="translate(896.6668090820312 67.16671752929688) rotate(0 94 14)">
     <text x="0" y="21" font-family="Helvetica, Segoe UI Emoji" font-size="28px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Action Triggers</text>
   </g>
-  <use href="#image-ed583c35cbe0cee77e04a763028803a50ce6164a" width="72" height="70" transform="translate(849.3889600965713 154.00006103515625) rotate(0 35.95012240939661 34.90592798256765)"/>
+  <use href="#image-ed583c35cbe0cee77e04a763028803a50ce6164a" width="72" height="70" transform="translate(856.7223341200088 154.666748046875) rotate(0 35.95012240939661 34.90592798256765)"/>
   <g transform="translate(811.3334655761719 245.16683959960938) rotate(0 81 10)">
     <text x="0" y="15" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Patch k8s Objects</text>
   </g>
   <g transform="translate(809.3333129882812 385.1667175292969) rotate(0 85.5 10)">
     <text x="0" y="15" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Execute Command</text>
   </g>
-  <use href="#image-9f0efcafe3b1cd1f480b5a88be4b90596bf691a6" width="72" height="61" transform="translate(851.0879579444531 296.6666564941406) rotate(0 35.93795281371206 30.333343505859375)"/>
-  <use href="#image-2a78c8ee6e23738bada5ab3d604b1d0fab136fdb" width="85" height="56" transform="translate(849.166748046875 448.17479034791495) rotate(0 42.5 28.162650602409656)"/>
+  <use href="#image-9f0efcafe3b1cd1f480b5a88be4b90596bf691a6" width="72" height="61" transform="translate(857.5322531918491 298.4443664550781) rotate(0 35.93795281371206 30.333343505859375)"/>
+  <use href="#image-2a78c8ee6e23738bada5ab3d604b1d0fab136fdb" width="85" height="56" transform="translate(853.833251953125 450.17479034791495) rotate(0 42.5 28.162650602409656)"/>
   <g transform="translate(810.6666870117188 536.1667785644531) rotate(0 88 10)">
     <text x="0" y="15" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#000000" text-anchor="start" style="white-space: pre;" direction="ltr">Bump App Revision</text>
   </g>

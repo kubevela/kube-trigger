@@ -1,4 +1,5 @@
 name: Release kube-trigger Binaries
+
 on:
   push:
     tags:
