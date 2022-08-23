@@ -15,12 +15,12 @@ patchTarget: {
 	labelSelectors?: [string]: string
 }
 // TODO(charlie0129): parse this multi-line usage
-//+usage=Patch is a CUE string that will patch the patchTargets. \n\
-//You have some contexts(variables) that you can use in your code: \n\
-//  context.event: event metadata \n\
-//  context.data: full event data \n\
-//  context.target: one of the patchTargets (k8s object) that you selected \n\
-//Put the patch in 'output' field, which will be merged with each patchTarget. \n\
+//+usage=Patch is a CUE string that will patch the patchTargets.
+//You have some contexts(variables) that you can use in your code:
+//  context.event: event metadata
+//  context.data: full event data
+//  context.target: one of the patchTargets (k8s object) that you selected
+//Put the patch in 'output' field, which will be merged with each patchTarget.
 patch: string
 
 //+usage=Allow this Action to be run concurrently.

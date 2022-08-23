@@ -30,8 +30,6 @@ MAKEFLAGS += --always-make
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
-reviewable: generate checklicense lint svgformat
-
 generate:
 	./make-kt generate
 	./make-mgr manifests generate
@@ -48,7 +46,9 @@ svgformat:
 clean:
 	rm -rf bin
 
-checkdiff: reviewable
+reviewable: generate checklicense lint svgformat
+
+checkdiff: generate svgformat
 	git --no-pager diff
 	if ! git diff --quiet; then                                     \
 	    echo "Please run 'make reviewable' to include all changes"; \
