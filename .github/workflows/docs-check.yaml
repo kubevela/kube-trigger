@@ -26,7 +26,23 @@ jobs:
       - name: Check boilerplate
         run: make checklicense
 
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Go Caches
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-golang-
+
       # Currently not required
+      # Will be required to auto-gen docs in the future
       - name: Run Go Generate
         run: make generate
 

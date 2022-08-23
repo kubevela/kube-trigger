@@ -63,7 +63,7 @@ bin:
 	mkdir -p bin
 
 envtest: bin
-	[ -f $(ENVTEST) ] || GOBIN=bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	[ -f $(ENVTEST) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 test: envtest
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
