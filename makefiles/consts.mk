@@ -38,9 +38,9 @@ ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 VERSION     ?= $(shell git describe --tags --always --dirty)
 IMG_VERSION ?= $(shell bash -c "\
 if [[ ! $(VERSION) =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$$ ]]; then \
-  echo latest;                                                                                    \
-else                                                                                              \
-  echo $(VERSION);                                                                                \
+  echo latest;     \
+else               \
+  echo $(VERSION); \
 fi")
 
 BIN_EXTENSION :=
