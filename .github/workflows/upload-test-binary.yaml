@@ -15,18 +15,45 @@ on:
 
 env:
   GOLANGCI_VERSION: 'v1.47.2'
+  GO_VERSION: '1.17'
 
 jobs:
+  detect-noop:
+    runs-on: ubuntu-latest
+    outputs:
+      noop: ${{ steps.noop.outputs.should_skip }}
+    steps:
+      - name: Detect No-op Changes
+        id: noop
+        uses: fkirc/skip-duplicate-actions@v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          paths_ignore: '["**.md", "**.mdx", "**.png", "**.jpg", "**.svg"]'
+          do_not_skip: '["workflow_dispatch", "schedule", "push"]'
+          concurrent_skipping: false
+
   upload-test-binary:
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
         with:
-          version: ${{ env.GOLANGCI_VERSION }}
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Go Caches
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-golang-
 
       - name: Run Go Generate
         run: make generate

@@ -280,3 +280,60 @@ Default: `100`
 | CLI               | ENV             | KubeTrigger CRD      |
 |-------------------|-----------------|----------------------|
 | `--registry-size` | `REGISTRY_SIZE` | `.spec.registrySize` |
+
+## Roadmap
+
+### v0.0.1-alpha.x
+
+- [x] Basic build infrastructure
+- [x] Complete a basic proof-of-concept sample
+- [x] linters, license checker
+- [x] GitHub Actions
+- [x] Rate-limited worker
+- [x] Make the configuration as CRD, launch new process/pod for new watcher
+- [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
+- [x] Refine README, quick starts
+- [ ] Refactor CRD according to [#2](https://github.com/kubevela/kube-trigger/issues/2)
+
+### v0.0.1-beta.x
+
+Code enhancements
+
+- [ ] Add missing unit tests
+- [ ] Add missing integration tests
+
+### v0.0.x
+
+User experience
+
+- [ ] Refine health status of CRs
+- [ ] Make it run as Addon, build component definition, and examples
+- [ ] Kubernetes dynamic admission control with validation webhook
+
+### v0.1.x
+
+Webhook support
+
+- [ ] Contribution Guide
+- [ ] New Action: webhook
+- [ ] New Source: webhook
+
+### v0.2.x
+
+Observability
+
+- [ ] New Action: execute VelaQL(CUE and K8s operations)
+- [ ] New Source: cron
+- [ ] New Action: notifications(email, dingtalk, slack, telegram)
+- [ ] New Action: log (loki, clickhouse)
+
+### Planned for later releases
+
+- [ ] Allow user set custom RBAC for each TriggerInstance
+- [ ] New Action: workflow-run
+- [ ] New Action: execute-command
+- [ ] New Action: metric (prometheus)
+- [ ] Refine controller logic
+- [ ] Remove cache informer, make it with no catch but list watch events with unique queue.
+
+
