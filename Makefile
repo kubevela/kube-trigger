@@ -48,7 +48,7 @@ clean:
 
 reviewable: generate checklicense lint svgformat
 
-checkdiff: generate svgformat
+checkdiff: generate
 	git --no-pager diff
 	if ! git diff --quiet; then                                     \
 	    echo "Please run 'make reviewable' to include all changes"; \
