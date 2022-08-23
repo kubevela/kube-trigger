@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	// TODO(charlie0129): auto generate this
 	typeName              = "bump-application-revision"
 	initialPublishVersion = "1"
 )

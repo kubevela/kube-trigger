@@ -22,9 +22,15 @@ limitations under the License.
 
 package bumpapplicationrevision
 
-const propertiesCUETemplate = `// This is a validator for properties of bump-application-revision
+const propertiesCUETemplate = `// TODO(charlie0129): make these markers work
 
+//+type=bump-application-revision
+//+description=TODO
+
+//+usage=Only bump Applications in this namespace. Leave empty to select all namespaces.
 namespace: *"" | string
-name:      *"" | string
+//+usage=Only bump Applications with this name.
+name: *"" | string
+//+usage=Only bump Applications with these labels.
 labelSelectors?: [string]: string
 `

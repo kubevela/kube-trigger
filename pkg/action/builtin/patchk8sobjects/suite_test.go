@@ -14,14 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package bumpapplicationrevision_test
+package patchk8sobjects_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/kubevela/kube-trigger/pkg/action/types"
-	coreoam "github.com/oam-dev/kubevela-core-api/apis/core.oam.dev"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,9 +35,9 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 var actionCommon types.Common
 
-func TestBumpApplicationRevision(t *testing.T) {
+func TestPatchK8sObjects(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "BumpApplicationRevision Suite")
+	RunSpecs(t, "PatchK8sObjects Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -47,7 +45,6 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("testdata", "crd")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -56,9 +53,6 @@ var _ = BeforeSuite(func() {
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-
-	err = coreoam.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())

@@ -55,6 +55,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-golang-
 
+      - name: Cache envtest binaries
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.local/share/kubebuilder-envtest
+          key: ${{ runner.os }}-kubebuilder-envtest-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-kubebuilder-envtest-
+
       - name: Install ginkgo
         run: |
           go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo

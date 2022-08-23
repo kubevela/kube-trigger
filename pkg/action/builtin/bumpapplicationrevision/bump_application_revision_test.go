@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	bar "github.com/kubevela/kube-trigger/pkg/action/builtin/bumpapplicationrevision"
-	"github.com/kubevela/kube-trigger/pkg/action/types"
 	"github.com/kubevela/kube-trigger/pkg/util"
 	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
 	"github.com/oam-dev/kubevela-core-api/pkg/oam"
@@ -31,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types2 "k8s.io/apimachinery/pkg/types"
+	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -122,7 +121,7 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 
 	It("Bump app with no apprev annotation", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(types.Common{Client: k8sClient}, map[string]interface{}{
+		err := b.Init(actionCommon, map[string]interface{}{
 			"name": "no-annotation",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -131,7 +130,7 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		app := &v1beta1.Application{}
-		err = k8sClient.Get(ctx, types2.NamespacedName{
+		err = k8sClient.Get(ctx, apitypes.NamespacedName{
 			Namespace: "default",
 			Name:      "no-annotation",
 		}, app)
@@ -140,7 +139,7 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 		Expect(app.Annotations[oam.AnnotationPublishVersion]).To(Equal("2"))
 
 		// App in another ns should be updated as well
-		err = k8sClient.Get(ctx, types2.NamespacedName{
+		err = k8sClient.Get(ctx, apitypes.NamespacedName{
 			Namespace: "multiple-apps",
 			Name:      "no-annotation",
 		}, app)
@@ -151,7 +150,7 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 
 	It("Bump all apps in a namespace", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(types.Common{Client: k8sClient}, map[string]interface{}{
+		err := b.Init(actionCommon, map[string]interface{}{
 			"namespace": "multiple-apps",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -172,7 +171,7 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 
 	It("Bump apps using selectors", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(types.Common{Client: k8sClient}, map[string]interface{}{
+		err := b.Init(actionCommon, map[string]interface{}{
 			"labelSelectors": map[string]string{
 				"my-label": "my-value",
 			},
