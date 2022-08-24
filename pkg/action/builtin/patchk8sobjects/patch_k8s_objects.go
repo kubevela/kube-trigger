@@ -149,7 +149,7 @@ func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string,
 	// Get evaluated patch.
 	vPatch := v.LookupPath(cue.ParsePath(outputFieldName)).Eval()
 	if vPatch.Err() != nil {
-		return vPatch.Err()
+		return errors.Wrapf(vPatch.Err(), "did you forget to put `output` field inside your patch?")
 	}
 
 	// Put patch into a map.

@@ -47,5 +47,5 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_VERSION }}
 
-      - name: Run Go Generate
-        run: make generate
+      - name: Check Diff
+        run: make checkdiff

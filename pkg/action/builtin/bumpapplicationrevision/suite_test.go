@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package bumpapplicationrevision_test
 
 import (
 	"path/filepath"
 	"testing"
 
-	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/pkg/action/types"
+	coreoam "github.com/oam-dev/kubevela-core-api/apis/core.oam.dev"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -29,19 +30,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//+kubebuilder:scaffold:imports
 )
-
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var actionCommon types.Common
 
-func TestAPIs(t *testing.T) {
+func TestBumpApplicationRevision(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Controller Suite")
+	RunSpecs(t, "BumpApplicationRevision Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -49,7 +47,7 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd")},
+		CRDDirectoryPaths:     []string{filepath.Join("testdata", "crd")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -59,15 +57,16 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = standardv1alpha1.AddToScheme(scheme.Scheme)
+	err = coreoam.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-
-	//+kubebuilder:scaffold:scheme
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	actionCommon = types.Common{
+		Client: k8sClient,
+	}
 })
 
 var _ = AfterSuite(func() {

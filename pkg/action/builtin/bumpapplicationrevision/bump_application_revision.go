@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	// TODO(charlie0129): auto generate this
 	typeName              = "bump-application-revision"
 	initialPublishVersion = "1"
 )
@@ -94,14 +95,18 @@ func (bar *BumpApplicationRevision) Run(ctx context.Context, sourceType string, 
 }
 
 func (bar *BumpApplicationRevision) bumpApp(ctx context.Context, app *v1beta1.Application) error {
+	// Avoid empty annotation
+	if app.Annotations == nil {
+		app.Annotations = make(map[string]string)
+	}
 	annotations := app.GetAnnotations()
 
-	// If no app.oam.dev/publishVersion already, add it.
+	// If no app.oam.dev/publishVersion, set it to 1.
 	if _, ok := annotations[oam.AnnotationPublishVersion]; !ok {
 		annotations[oam.AnnotationPublishVersion] = initialPublishVersion
 	}
 
-	// Bump app.oam.dev/publishVersion already
+	// Bump app.oam.dev/publishVersion
 	previous := annotations[oam.AnnotationPublishVersion]
 	intVal, err := strconv.ParseInt(previous, 10, 64)
 	if err != nil {
@@ -109,9 +114,9 @@ func (bar *BumpApplicationRevision) bumpApp(ctx context.Context, app *v1beta1.Ap
 	}
 	bumpedIntVal := intVal + 1
 	annotations[oam.AnnotationPublishVersion] = strconv.FormatInt(bumpedIntVal, 10)
+	bar.logger.Infof("bumping apprev %s from %d to %d", app.GetName(), intVal, bumpedIntVal)
 
 	// Update app using new rev.
-	bar.logger.Infof("bumping apprev %s from %d to %d", app.GetName(), intVal, bumpedIntVal)
 	return bar.c.Update(ctx, app)
 }
 
@@ -119,7 +124,7 @@ func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]i
 	var err error
 	bar.logger = logrus.WithField("action", typeName)
 	bar.prop = Properties{}
-	err = bar.prop.parse(properties)
+	err = bar.prop.Parse(properties)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties")
 	}
@@ -131,7 +136,7 @@ func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]i
 
 func (bar *BumpApplicationRevision) Validate(properties map[string]interface{}) error {
 	p := &Properties{}
-	return p.parse(properties)
+	return p.Parse(properties)
 }
 
 func (bar *BumpApplicationRevision) Type() string {
@@ -155,6 +160,6 @@ type Properties struct {
 	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 
-func (p *Properties) parse(prop map[string]interface{}) error {
+func (p *Properties) Parse(prop map[string]interface{}) error {
 	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

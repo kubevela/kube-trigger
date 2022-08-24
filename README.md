@@ -309,6 +309,8 @@ User experience
 - [ ] Refine health status of CRs
 - [ ] Make it run as Addon, build component definition, and examples
 - [ ] Kubernetes dynamic admission control with validation webhook
+- [ ] Auto-generate usage docs of Sources, Filters, and Actions from CUE markers
+- [ ] Show available Sources, Filters, and Actions in cli
 
 ### v0.1.x
 

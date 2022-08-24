@@ -26,7 +26,7 @@ import (
 var k8sClient *client.Client
 
 // GetClient gets a client. It creates a one if not already created. Subsequent
-// call will return the previously created one.
+// call will return the previously created one. It must not be called concurrently.
 func GetClient() (*client.Client, error) {
 	if k8sClient != nil {
 		return k8sClient, nil

@@ -56,15 +56,14 @@ undeploy:
 	kubectl delete --ignore-not-found -f config/manager
 
 # Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+bin:
+	mkdir -p bin
 
 # Tool Binaries
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+CONTROLLER_GEN ?= bin/controller-gen
 
 # Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.9.0
 
-controller-gen: $(LOCALBIN)
-	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+controller-gen: bin
+	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)

@@ -30,8 +30,6 @@ MAKEFLAGS += --always-make
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
-reviewable: generate checklicense lint svgformat
-
 generate:
 	./make-kt generate
 	./make-mgr manifests generate
@@ -47,3 +45,26 @@ svgformat:
 
 clean:
 	rm -rf bin
+
+reviewable: generate checklicense lint svgformat
+
+checkdiff: generate
+	git --no-pager diff
+	if ! git diff --quiet; then                                     \
+	    echo "Please run 'make reviewable' to include all changes"; \
+	    false;                                                      \
+	fi
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.24.1
+ENVTEST            ?= bin/setup-envtest
+# Location to install dependencies to
+bin:
+	mkdir -p bin
+
+envtest: bin
+	[ -f $(ENVTEST) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+test: envtest
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
+	    go test -coverprofile=cover.out ./...

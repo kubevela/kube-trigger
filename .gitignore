@@ -56,3 +56,7 @@ cscope.*
 
 # Build output
 bin
+
+# etcd
+default.etcd
+
