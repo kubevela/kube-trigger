@@ -1,6 +1,6 @@
 # A Watcher is a group of Source, Filters, and Actions.
 # You can add multiple Watchers.
-watchers:
+triggers:
   - source:
       # Watch Kubernetes events.
       type: k8s-resource-watcher

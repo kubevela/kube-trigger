@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package triggerinstance
 
 import (
 	"context"
@@ -49,29 +49,29 @@ const (
 
 func (r *Reconciler) createDeployment(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	update bool,
 ) error {
 	deployment := template.GetDeployment()
 
-	deployment.Name = kt.Name
-	deployment.Namespace = kt.Namespace
+	deployment.Name = ki.Name
+	deployment.Namespace = ki.Namespace
 	deployment.Labels[CreatedByLabel] = CreatedByControllerLabelValue
 	deployment.Labels[ComponentLabel] = ComponentLabelValue
 	deployment.Labels[VersionLabel] = version.Version
-	deployment.Labels[NameLabel] = kt.Name
-	deployment.Spec.Selector.MatchLabels[NameLabel] = kt.Name
-	deployment.Spec.Template.ObjectMeta.Labels[NameLabel] = kt.Name
+	deployment.Labels[NameLabel] = ki.Name
+	deployment.Spec.Selector.MatchLabels[NameLabel] = ki.Name
+	deployment.Spec.Template.ObjectMeta.Labels[NameLabel] = ki.Name
 	deployment.Spec.Template.Spec.Containers[0].Args = workerConfigToArgs(
 		deployment.Spec.Template.Spec.Containers[0].Args,
-		kt.Spec.WorkerConfig,
+		ki.Spec.WorkerConfig,
 	)
 	// TODO: use a deterministic version of image or let the use specify it
 	// deployment.Spec.Template.Spec.Containers[0].Image = ""
-	deployment.Spec.Template.Spec.ServiceAccountName = kt.Name
-	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = kt.Name
+	deployment.Spec.Template.Spec.ServiceAccountName = ki.Name
+	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = ki.Name
 
-	utils.SetOwnerReference(deployment, *kt)
+	utils.SetOwnerReference(deployment, *ki)
 
 	var err error
 	if update {
@@ -91,7 +91,7 @@ func (r *Reconciler) createDeployment(
 		return err
 	}
 
-	utils.UpdateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(ki, standardv1alpha1.Resource{
 		APIVersion: appsv1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(appsv1.Deployment{}).Name(),
 		Name:       deployment.Name,
@@ -146,23 +146,23 @@ func (r *Reconciler) deleteDeployment(ctx context.Context, namespacedName types.
 
 func (r *Reconciler) ReconcileDeployment(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	req ctrl.Request,
 ) error {
-	if kt.GetUID() == "" {
+	if ki.GetUID() == "" {
 		return r.deleteDeployment(ctx, req.NamespacedName)
 	}
 
 	var err error
 
 	deployment := appsv1.Deployment{}
-	err = r.Get(ctx, utils.GetNamespacedName(kt), &deployment)
+	err = r.Get(ctx, utils.GetNamespacedName(ki), &deployment)
 
 	if err == nil {
-		return r.createDeployment(ctx, kt, true)
+		return r.createDeployment(ctx, ki, true)
 	}
 	if apierrors.IsNotFound(err) {
-		return r.createDeployment(ctx, kt, false)
+		return r.createDeployment(ctx, ki, false)
 	}
 
 	return err

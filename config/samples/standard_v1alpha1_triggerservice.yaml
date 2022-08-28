@@ -1,12 +1,12 @@
 apiVersion: standard.oam.dev/v1alpha1
-kind: KubeTriggerConfig
+kind: TriggerService
 metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
   selector:
     app: kubetrigger-sample
-  watchers:
+  triggers:
     - source:
         type: k8s-resource-watcher
         properties:

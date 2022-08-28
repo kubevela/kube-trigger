@@ -36,10 +36,10 @@ import (
 )
 
 type Config struct {
-	Watchers []WatchMeta `json:"watchers"`
+	Triggers []TriggerMeta `json:"triggers"`
 }
 
-type WatchMeta struct {
+type TriggerMeta struct {
 	Source  sourcetype.SourceMeta   `json:"source"`
 	Filters []filtertype.FilterMeta `json:"filters"`
 	Actions []actiontype.ActionMeta `json:"actions"`
@@ -86,7 +86,7 @@ func NewFromFileOrDir(path string) (*Config, error) {
 				return nil, errors.Wrapf(err, "reading %s failed", f)
 			}
 			logger.Infof("loaded config from %s", f)
-			c.Watchers = append(c.Watchers, subConfig.Watchers...)
+			c.Triggers = append(c.Triggers, subConfig.Triggers...)
 		}
 	} else {
 		c, err = parseFromFile(path)
@@ -135,9 +135,9 @@ func (c *Config) Parse(jsonByte []byte) error {
 		return errors.Wrapf(err, "cannot unmarshal config")
 	}
 
-	var newWatchers []WatchMeta
+	var newTriggers []TriggerMeta
 	// Insert Raw field
-	for _, w := range c.Watchers {
+	for _, w := range c.Triggers {
 		var newActions []actiontype.ActionMeta
 		for _, a := range w.Actions {
 			b, err := json.Marshal(a.Properties)
@@ -158,11 +158,11 @@ func (c *Config) Parse(jsonByte []byte) error {
 			newFilters = append(newFilters, f)
 		}
 		w.Filters = newFilters
-		newWatchers = append(newWatchers, w)
+		newTriggers = append(newTriggers, w)
 	}
-	c.Watchers = newWatchers
+	c.Triggers = newTriggers
 
-	logger.Debugf("configuration parsed: %v", c.Watchers)
+	logger.Debugf("configuration parsed: %v", c.Triggers)
 
 	return nil
 }
@@ -174,7 +174,7 @@ func (c *Config) Validate(
 	actionReg *actionregistry.Registry,
 ) error {
 	// TODO(charlie0129): gather all errors before returning
-	for _, w := range c.Watchers {
+	for _, w := range c.Triggers {
 		s, ok := sourceReg.Get(w.Source)
 		if !ok {
 			return fmt.Errorf("no such source found: %s", w.Source.Type)

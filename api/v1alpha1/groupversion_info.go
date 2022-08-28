@@ -38,6 +38,6 @@ var (
 )
 
 var (
-	KubeTriggerKind       = reflect.TypeOf(KubeTrigger{}).Name()
-	KubeTriggerConfigKind = reflect.TypeOf(KubeTriggerConfig{}).Name()
+	KubeTriggerKind       = reflect.TypeOf(TriggerInstance{}).Name()
+	KubeTriggerConfigKind = reflect.TypeOf(TriggerService{}).Name()
 )

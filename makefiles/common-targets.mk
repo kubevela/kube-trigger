@@ -58,14 +58,10 @@ package: build
 	cp LICENSE "$(BIN_VERBOSE_DIR)/LICENSE"
 	cp "$(OUTPUT)" "$(BIN_VERBOSE_DIR)/$(BIN_BASENAME)"
 	cd $(BIN_VERBOSE_DIR) && if [ "$(OS)" == "windows" ]; then \
-	    zip "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE;     \
-	else                                                     \
-	    tar czf "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE; \
+	    zip "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE;       \
+	else                                                       \
+	    tar czf "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE;   \
 	fi
-
-dirty-build: # @HELP same as build, but using build cache is allowed
-dirty-build:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) build DIRTY_BUILD=true
 
 docker-build-%:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) \
@@ -95,16 +91,18 @@ all-docker-build-push:
 docker-build: # @HELP build docker image
 docker-build:
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
-	TMPFILE=$$(mktemp) && \
+	TMPFILE=Dockerfile && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
-	    docker build                     \
-	    -f $${TMPFILE}                   \
-	    --build-arg "ARCH=$(ARCH)"       \
-	    --build-arg "OS=$(OS)"           \
-	    --build-arg "VERSION=$(VERSION)" \
-	    --build-arg "GOFLAGS=$(GOFLAGS)" \
-	    --build-arg "GOPROXY=$(GOPROXY)" \
-	    --build-arg "ENTRY=$(ENTRY)"     \
+	    DOCKER_BUILDKIT=1                        \
+	    docker build                             \
+	    -f $${TMPFILE}                           \
+	    --build-arg "ARCH=$(ARCH)"               \
+	    --build-arg "OS=$(OS)"                   \
+	    --build-arg "VERSION=$(VERSION)"         \
+	    --build-arg "GOFLAGS=$(GOFLAGS)"         \
+	    --build-arg "GOPROXY=$(GOPROXY)"         \
+	    --build-arg "ENTRY=$(ENTRY)"             \
+	    --build-arg "DIRTY_BUILD=$(DIRTY_BUILD)" \
 	    $(addprefix -t ,$(IMGTAGS)) .
 
 docker-push-%:

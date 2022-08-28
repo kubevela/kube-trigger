@@ -1,6 +1,6 @@
 // Add as many watchers as you want.
 // We add 1 watcher as an example.
-watchers: [
+triggers: [
 	{
 		// Watch what event?
 		source: {

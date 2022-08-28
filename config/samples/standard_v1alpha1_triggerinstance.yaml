@@ -1,5 +1,5 @@
 apiVersion: standard.oam.dev/v1alpha1
-kind: KubeTrigger
+kind: TriggerInstance
 metadata:
   name: kubetrigger-sample
   namespace: default

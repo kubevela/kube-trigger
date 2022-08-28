@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// KubeTriggerSpec defines the desired state of KubeTrigger.
-type KubeTriggerSpec struct {
+// TriggerInstanceSpec defines the desired state of TriggerInstance.
+type TriggerInstanceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Cache size for filters and actions.
@@ -72,8 +72,8 @@ type WorkerConfig struct {
 	WorkerCount *int `json:"workerCount,omitempty"`
 }
 
-// KubeTriggerStatus defines the observed state of KubeTrigger.
-type KubeTriggerStatus struct {
+// TriggerInstanceStatus defines the observed state of TriggerInstance.
+type TriggerInstanceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	// TODO(charlie0129): add status fields
 	// - If a kube-trigger instance is working fine
@@ -97,25 +97,25 @@ type Resource struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// KubeTrigger is the Schema for the kubetriggers API.
-type KubeTrigger struct {
+// TriggerInstance is the Schema for the kubetriggers API.
+type TriggerInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KubeTriggerSpec   `json:"spec,omitempty"`
-	Status KubeTriggerStatus `json:"status,omitempty"`
+	Spec   TriggerInstanceSpec   `json:"spec,omitempty"`
+	Status TriggerInstanceStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// KubeTriggerList contains a list of KubeTrigger.
-type KubeTriggerList struct {
+// TriggerInstanceList contains a list of TriggerInstance.
+type TriggerInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []KubeTrigger `json:"items"`
+	Items           []TriggerInstance `json:"items"`
 }
 
 //nolint:gochecknoinits
 func init() {
-	SchemeBuilder.Register(&KubeTrigger{}, &KubeTriggerList{})
+	SchemeBuilder.Register(&TriggerInstance{}, &TriggerInstanceList{})
 }

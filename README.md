@@ -60,7 +60,7 @@ know the format first. We will use yaml format as an example (json and cue are a
 #   - multiple Filters
 #   - multiple Actions
 # You can add multiple Watchers. They will run simultaneously.
-watchers:
+triggers:
   - source: # One Source
       # Which Source? (What type of event Source do you want?)
       type: k8s-resource-watcher
@@ -96,7 +96,7 @@ An example config file looks like this:
 ```yaml
 # A Watcher is a group of Source, Filters, and Actions.
 # You can add multiple Watchers.
-watchers:
+triggers:
   - source:
       # Watch Kubernetes events.
       type: k8s-resource-watcher
@@ -135,19 +135,19 @@ Let's assume your config file is `config.yaml`, to run kube-trigger:
 
 ### In-Cluster
 
-We have two CRDs: *KubeTrigger* and *KubeTriggerConfig*.
+We have two CRDs: *TriggerInstance* and *TriggerService*.
 
-- *KubeTrigger* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
+- *TriggerInstance* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
   provided). Advanced kube-trigger Instance Configuration (next section) can be provided in it.
-- *KubeTriggerConfig* is used to provide one or more configs (same as the config file you use when running as
-  standalone) to a *KubeTrigger* instance.
+- *TriggerService* is used to provide one or more configs (same as the config file you use when running as
+  standalone) to a *TriggerInstance*.
 
-So we know *KubeTriggerConfig* is what actually provides a config, this is what we will be discussing.
+So we know *TriggerService* is what actually provides a config, this is what we will be discussing.
 
 ```yaml
-# You can find this file in config/samples/standard_v1alpha1_kubetriggerconfig.yaml
+# You can find this file in config/samples/standard_v1alpha1_triggerservice.yaml
 apiVersion: standard.oam.dev/v1alpha1
-kind: KubeTriggerConfig
+kind: TriggerService
 metadata:
   name: kubetrigger-sample-config
   namespace: default
