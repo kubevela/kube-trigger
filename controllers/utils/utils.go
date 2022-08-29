@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func SetOwnerReference(obj metav1.Object, kt standardv1alpha1.KubeTrigger) {
+func SetOwnerReference(obj metav1.Object, kt standardv1alpha1.TriggerInstance) {
 	t := true
 	ownerReference := metav1.OwnerReference{
 		APIVersion: standardv1alpha1.GroupVersion.String(),
@@ -44,7 +44,7 @@ func GetNamespacedName(kt metav1.Object) types.NamespacedName {
 	}
 }
 
-func UpdateResource(kt *standardv1alpha1.KubeTrigger, res standardv1alpha1.Resource) {
+func UpdateResource(kt *standardv1alpha1.TriggerInstance, res standardv1alpha1.Resource) {
 	if kt == nil {
 		return
 	}

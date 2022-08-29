@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: kubetriggers.standard.oam.dev
+  name: triggerinstances.standard.oam.dev
 spec:
   group: standard.oam.dev
   names:
-    kind: KubeTrigger
-    listKind: KubeTriggerList
-    plural: kubetriggers
-    singular: kubetrigger
+    kind: TriggerInstance
+    listKind: TriggerInstanceList
+    plural: triggerinstances
+    singular: triggerinstance
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: KubeTrigger is the Schema for the kubetriggers API.
+        description: TriggerInstance is the Schema for the kubetriggers API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: KubeTriggerSpec defines the desired state of KubeTrigger.
+            description: TriggerInstanceSpec defines the desired state of TriggerInstance.
             properties:
               logLevel:
                 type: string
@@ -75,7 +75,7 @@ spec:
                 type: object
             type: object
           status:
-            description: KubeTriggerStatus defines the observed state of KubeTrigger.
+            description: TriggerInstanceStatus defines the observed state of TriggerInstance.
             properties:
               createdResources:
                 description: 'Important: Run "make" to regenerate code after modifying

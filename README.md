@@ -55,32 +55,17 @@ No matter you are running kube-trigger as standalone or in-cluster, the config f
 know the format first. We will use yaml format as an example (json and cue are also supported).
 
 ```yaml
-# A Watcher is a group of 
-#   - one Source
-#   - multiple Filters
-#   - multiple Actions
-# You can add multiple Watchers. They will run simultaneously.
-watchers:
-  - source: # One Source
-      # Which Source? (What type of event Source do you want?)
-      type: k8s-resource-watcher
-      # Source-specific configuration. Refer to each Source for details.
-      # For example, we can tell k8s-resource-watcher what resources to watch.
-      properties:
-      # ...
-    filters: # An array of Filters
-      # What Filters to use? They will be logically ANDed together.
-      - type: cue-validator
-        # Filter-specific configuration. Refer to each Filter for details.
-        properties:
-        # ...
-    actions: # An array of Actions
-      # What Actions to use? They all of them will be executed when an event happens.
-      - type: bump-application-revision
-        # Action-specific configuration. Refer to each Action for details.
-        properties:
-        # ...
-
+# A trigger is a group of Source, Filters, and Actions.
+# You can add multiple triggers.
+triggers:
+  - your-source-type:
+      # ... properties
+    filters:
+      - your-filter-0-type:
+          # ... properties
+    actions:
+      - your-action-0-type:
+          # ... properties
 ```
 
 ### Standalone
@@ -94,24 +79,20 @@ config file.
 An example config file looks like this:
 
 ```yaml
-# A Watcher is a group of Source, Filters, and Actions.
-# You can add multiple Watchers.
-watchers:
-  - source:
-      # Watch Kubernetes events.
-      type: k8s-resource-watcher
-      properties:
-        # We are interested in ConfigMap events.
-        apiVersion: v1
-        kind: ConfigMap
-        namespace: default
-        # Only watch update event.
-        events:
-          - update
+# A trigger is a group of Source, Filters, and Actions.
+# You can add multiple triggers.
+triggers:
+  - k8s-resource-watcher:
+      # We are interested in ConfigMap events.
+      apiVersion: "v1"
+      kind: ConfigMap
+      namespace: default
+      # Only watch update event.
+      events:
+        - update
     filters:
       # Filter the events above.
-      - type: cue-validator
-        properties:
+      - cue-validator:
           # Filter by validating the object data using CUE.
           # For example, we are filtering by ConfigMap names (metadata.name) from above.
           # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
@@ -119,13 +100,11 @@ watchers:
             metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - type: bump-application-revision
-        properties:
+      - bump-application-revision:
           namespace: default
           # Select Applications to bump using labels.
           labelSelectors:
             my-label: my-value
-
 ```
 
 Let's assume your config file is `config.yaml`, to run kube-trigger:
@@ -135,50 +114,40 @@ Let's assume your config file is `config.yaml`, to run kube-trigger:
 
 ### In-Cluster
 
-We have two CRDs: *KubeTrigger* and *KubeTriggerConfig*.
+We have two CRDs: *TriggerInstance* and *TriggerService*.
 
-- *KubeTrigger* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
+- *TriggerInstance* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
   provided). Advanced kube-trigger Instance Configuration (next section) can be provided in it.
-- *KubeTriggerConfig* is used to provide one or more configs (same as the config file you use when running as
-  standalone) to a *KubeTrigger* instance.
+- *TriggerService* is used to provide one or more configs (same as the config file you use when running as
+  standalone) to a *TriggerInstance*.
 
-So we know *KubeTriggerConfig* is what actually provides a config, this is what we will be discussing.
+So we know *TriggerService* is what actually provides a config, this is what we will be discussing.
 
 ```yaml
-# You can find this file in config/samples/standard_v1alpha1_kubetriggerconfig.yaml
+# You can find this file in config/samples/standard_v1alpha1_triggerservice.yaml
 apiVersion: standard.oam.dev/v1alpha1
-kind: KubeTriggerConfig
+kind: TriggerService
 metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
-  # Provide this config to these (using selectors) KubeTrigger instances.
-  # KubeTrigger should be created first, then when you apply this KubeTriggerConfig
-  # the KubeTrigger instances selected by selectors will be given the config
-  # defined in this file.
-  # Label selector (the labels in KubeTrigger).
   selector:
     app: kubetrigger-sample
-  # Familiar? This section is exactly the same as what we have seen above.
-  watchers:
-    - source:
-        type: k8s-resource-watcher
-        properties:
-          apiVersion: "v1"
-          kind: ConfigMap
-          namespace: default
-          events:
-            - update
+  triggers:
+    - k8s-resource-watcher:
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        events:
+          - update
       filters:
-        - type: cue-validator
-          properties:
+        - cue-validator:
             template: |
               // Filter by object name.
               // I used regular expressions here.
               metadata: name: =~"this-will-trigger-update-.*"
       actions:
-        - type: bump-application-revision
-          properties:
+        - bump-application-revision:
             namespace: default
             labelSelectors:
               my-label: my-value
@@ -293,7 +262,7 @@ Default: `100`
 - [x] Make the configuration as CRD, launch new process/pod for new watcher
 - [x] Notification for more than one app: selector from compose of Namespace; Labels; Name
 - [x] Refine README, quick starts
-- [ ] Refactor CRD according to [#2](https://github.com/kubevela/kube-trigger/issues/2)
+- [x] Refactor CRD according to [#2](https://github.com/kubevela/kube-trigger/issues/2)
 
 ### v0.0.1-beta.x
 

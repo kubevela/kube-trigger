@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package triggerinstance
 
 import (
 	"context"
@@ -32,13 +32,13 @@ import (
 
 func (r *Reconciler) createConfigMap(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 ) error {
 	cm := template.GetConfigMap()
-	cm.Name = kt.Name
-	cm.Namespace = kt.Namespace
+	cm.Name = ki.Name
+	cm.Namespace = ki.Namespace
 
-	utils.SetOwnerReference(cm, *kt)
+	utils.SetOwnerReference(cm, *ki)
 
 	var err error
 	logger.Infof("creating new ConfigMap: %s", types.NamespacedName{
@@ -50,7 +50,7 @@ func (r *Reconciler) createConfigMap(
 		return err
 	}
 
-	utils.UpdateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(ki, standardv1alpha1.Resource{
 		APIVersion: v1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(v1.ConfigMap{}).Name(),
 		Name:       cm.Name,
@@ -72,20 +72,20 @@ func (r *Reconciler) deleteConfigMap(ctx context.Context, namespacedName types.N
 
 func (r *Reconciler) ReconcileConfigMap(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	req ctrl.Request,
 ) error {
-	if kt.GetUID() == "" {
+	if ki.GetUID() == "" {
 		return r.deleteConfigMap(ctx, req.NamespacedName)
 	}
 
 	var err error
 
 	cm := v1.ConfigMap{}
-	err = r.Get(ctx, utils.GetNamespacedName(kt), &cm)
+	err = r.Get(ctx, utils.GetNamespacedName(ki), &cm)
 
 	if apierrors.IsNotFound(err) {
-		return r.createConfigMap(ctx, kt)
+		return r.createConfigMap(ctx, ki)
 	}
 
 	return err

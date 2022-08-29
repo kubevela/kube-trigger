@@ -43,20 +43,20 @@ Standalone:
 In-Cluster:
 
 ```shell
-# Install CRDs: KubeTrigger and KubeTriggerConfig
-# - *KubeTrigger* is what creates a kube-trigger instance (similar to running 
+# Install CRDs: TriggerInstance and TriggerService
+# - *TriggerInstance* is what creates a kube-trigger instance (similar to running 
 #   `./kube-trigger` in-cluster but no config is provided). 
-# - *KubeTriggerConfig* is used to provide one or more configs (same as the
-#   config file you use when running as standalone) to a *KubeTrigger* instance.
+# - *TriggerService* is used to provide one or more configs (same as the
+#   config file you use when running as standalone) to a *TriggerInstance*.
 kubectl apply -f config/crd
 # Create namespace
 kubectl apply -f config/manager/ns.yaml
 # Run controllers
 kubectl apply -f config/manager
 # Create a KubeTrigger instance
-kubectl apply -f config/samples/standard_v1alpha1_kubetrigger.yaml
-# Add config to the KubeTrigger instance by creating a KubeTriggerConfig
-kubectl apply -f config/samples/standard_v1alpha1_kubetriggerconfig.yaml
+kubectl apply -f config/samples/standard_v1alpha1_triggerinstance.yaml
+# Add config to the KubeTrigger instance by creating a TriggerService
+kubectl apply -f config/samples/standard_v1alpha1_triggerservice.yaml
 ```
 
 3. **Watch ApplicationRevision changes** so that you can see what it does.

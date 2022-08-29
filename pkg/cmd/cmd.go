@@ -120,6 +120,8 @@ func runCli(cmd *cobra.Command, args []string) error {
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
 
+	logger.Infof("kube-trigger version=%s", version.Version)
+
 	// Create registries for Sources, Filers, and Actions.
 	sourceReg := sourceregistry.NewWithBuiltinSources()
 	filterReg := filterregistry.NewWithBuiltinFilters(opt.RegistrySize)
@@ -148,7 +150,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	// Run watchers.
-	for _, w := range conf.Watchers {
+	for _, w := range conf.Triggers {
 		// Make this Source type exists.
 		s, ok := sourceReg.Get(w.Source)
 		if !ok {

@@ -13,7 +13,12 @@
 # limitations under the License.
 
 # Note: the ${BIN} needs to be replaced with the actual binary,
-# otherwise it won't work. Refer to Makefile for how it can be done.
+# otherwise it won't work. A valid Dockerfile will be generated
+# using this template. Refer to Makefile for how it can be done.
+
+# syntax = docker/dockerfile:1.2
+# You need to enable Docker BuildKit for this to work.
+# Also refer to Makefile for how it can be done.
 
 ARG BUILD_IMAGE=golang:1.17
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
@@ -27,7 +32,8 @@ COPY go.sum go.sum
 
 ARG GOPROXY
 ENV GOPROXY=${GOPROXY}
-RUN go mod download
+RUN --mount=type=cache,target=/root/go/pkg \
+        go mod download
 
 COPY build       build
 COPY hack        hack
@@ -45,12 +51,14 @@ ARG GOFLAGS
 ARG DIRTY_BUILD
 ARG ENTRY
 
-RUN ARCH=${TARGETARCH:-${ARCH:-amd64}} \
-        OS=${TARGETOS:-${OS:-linux}}   \
-        OUTPUT=${BIN}                  \
-        VERSION=${VERSION}             \
-        GOFLAGS=${GOFLAGS}             \
-        /bin/sh build/build.sh         \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+        ARCH=${TARGETARCH:-${ARCH:-amd64}}          \
+        OS=${TARGETOS:-${OS:-linux}}                \
+        OUTPUT=${BIN}                               \
+        VERSION=${VERSION}                          \
+        GOFLAGS=${GOFLAGS}                          \
+        DIRTY_BUILD=${DIRTY_BUILD}                  \
+        /bin/sh build/build.sh                      \
         ${ENTRY}
 
 FROM ${BASE_IMAGE}

@@ -36,7 +36,7 @@ OS          := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 # Use git tags to set the version string
 VERSION     ?= $(shell git describe --tags --always --dirty)
-IMG_VERSION ?= $(shell bash -c "\
+IMG_VERSION ?= $(shell bash -c " \
 if [[ ! $(VERSION) =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$$ ]]; then \
   echo latest;     \
 else               \

@@ -59,7 +59,7 @@ type Controller struct {
 	informer  cache.SharedIndexInformer
 
 	eventHandler   eventhandler.EventHandler
-	sourceConf     config.Config
+	sourceConf     config.Properties
 	filterRegistry *filterregistry.Registry
 	filters        []filtertypes.FilterMeta
 	listenEvents   map[string]bool
@@ -71,7 +71,7 @@ func init() {
 }
 
 // Setup prepares controllers
-func Setup(ctrlConf config.Config, eh eventhandler.EventHandler) *Controller {
+func Setup(ctrlConf config.Properties, eh eventhandler.EventHandler) *Controller {
 	conf := ctrl.GetConfigOrDie()
 	ctx := context.Background()
 	mapper, err := apiutil.NewDiscoveryRESTMapper(conf)

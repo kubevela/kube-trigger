@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package triggerinstance
 
 import (
 	"context"
@@ -32,15 +32,15 @@ import (
 
 func (r *Reconciler) createServiceAccount(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	update bool,
 ) error {
 	sa := template.GetServiceAccount()
 
-	sa.Name = kt.Name
-	sa.Namespace = kt.Namespace
+	sa.Name = ki.Name
+	sa.Namespace = ki.Namespace
 
-	utils.SetOwnerReference(sa, *kt)
+	utils.SetOwnerReference(sa, *ki)
 
 	var err error
 	if update {
@@ -60,7 +60,7 @@ func (r *Reconciler) createServiceAccount(
 		return err
 	}
 
-	utils.UpdateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(ki, standardv1alpha1.Resource{
 		APIVersion: v1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(v1.ServiceAccount{}).Name(),
 		Name:       sa.Name,
@@ -82,23 +82,23 @@ func (r *Reconciler) deleteServiceAccount(ctx context.Context, namespacedName ty
 
 func (r *Reconciler) ReconcileServiceAccount(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	req ctrl.Request,
 ) error {
-	if kt.GetUID() == "" {
+	if ki.GetUID() == "" {
 		return r.deleteServiceAccount(ctx, req.NamespacedName)
 	}
 
 	var err error
 
 	sa := v1.ServiceAccount{}
-	err = r.Get(ctx, utils.GetNamespacedName(kt), &sa)
+	err = r.Get(ctx, utils.GetNamespacedName(ki), &sa)
 
 	if err == nil {
-		return r.createServiceAccount(ctx, kt, true)
+		return r.createServiceAccount(ctx, ki, true)
 	}
 	if apierrors.IsNotFound(err) {
-		return r.createServiceAccount(ctx, kt, false)
+		return r.createServiceAccount(ctx, ki, false)
 	}
 
 	return err

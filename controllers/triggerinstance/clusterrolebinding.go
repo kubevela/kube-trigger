@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package triggerinstance
 
 import (
 	"context"
@@ -32,18 +32,18 @@ import (
 
 func (r *Reconciler) createClusterRoleBinding(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	update bool,
 ) error {
 	crb := template.GetClusterRoleBinding()
 
 	// TODO(charlie0129): allow user to set custom privileges instead of cluster-admin.
 
-	crb.Name = kt.Name
-	crb.Namespace = kt.Namespace
+	crb.Name = ki.Name
+	crb.Namespace = ki.Namespace
 	// It must have one subject.
-	crb.Subjects[0].Name = kt.Name
-	crb.Subjects[0].Namespace = kt.Namespace
+	crb.Subjects[0].Name = ki.Name
+	crb.Subjects[0].Namespace = ki.Namespace
 
 	var err error
 	if update {
@@ -63,7 +63,7 @@ func (r *Reconciler) createClusterRoleBinding(
 		return err
 	}
 
-	utils.UpdateResource(kt, standardv1alpha1.Resource{
+	utils.UpdateResource(ki, standardv1alpha1.Resource{
 		APIVersion: rbacv1.SchemeGroupVersion.String(),
 		Kind:       reflect.TypeOf(rbacv1.ClusterRoleBinding{}).Name(),
 		Name:       crb.Name,
@@ -88,24 +88,24 @@ func (r *Reconciler) deleteClusterRoleBinding(
 
 func (r *Reconciler) ReconcileClusterRoleBinding(
 	ctx context.Context,
-	kt *standardv1alpha1.KubeTrigger,
+	ki *standardv1alpha1.TriggerInstance,
 	req ctrl.Request,
 ) error {
-	if kt.GetUID() == "" {
+	if ki.GetUID() == "" {
 		return r.deleteClusterRoleBinding(ctx, req.NamespacedName)
 	}
 
 	var err error
 
 	crb := rbacv1.ClusterRoleBinding{}
-	err = r.Get(ctx, utils.GetNamespacedName(kt), &crb)
+	err = r.Get(ctx, utils.GetNamespacedName(ki), &crb)
 
 	if err == nil {
-		return r.createClusterRoleBinding(ctx, kt, true)
+		return r.createClusterRoleBinding(ctx, ki, true)
 	}
 
 	if errors.IsNotFound(err) {
-		return r.createClusterRoleBinding(ctx, kt, false)
+		return r.createClusterRoleBinding(ctx, ki, false)
 	}
 
 	return err

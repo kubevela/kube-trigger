@@ -41,8 +41,8 @@ const (
 )
 
 const (
-	// typeName is the name of this action
-	typeName = "patch-k8s-objects"
+	// TypeName is the name of this action
+	TypeName = "patch-k8s-objects"
 )
 
 // PatchK8sObjects patches k8s objects.
@@ -175,7 +175,7 @@ func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string,
 
 func (pko *PatchK8sObjects) Init(c types.Common, properties map[string]interface{}) error {
 	var err error
-	pko.logger = logrus.WithField("action", typeName)
+	pko.logger = logrus.WithField("action", TypeName)
 	pko.prop = Properties{}
 	// Parse properties.
 	err = pko.prop.parse(properties)
@@ -194,7 +194,7 @@ func (pko *PatchK8sObjects) Validate(properties map[string]interface{}) error {
 }
 
 func (pko *PatchK8sObjects) Type() string {
-	return typeName
+	return TypeName
 }
 
 func (pko *PatchK8sObjects) New() types.Action {
@@ -208,17 +208,23 @@ func (pko *PatchK8sObjects) AllowConcurrency() bool {
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
 //go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
+//+kubebuilder:object:generate=true
 type Properties struct {
-	PatchTarget      PatchTarget `json:"patchTarget"`
-	Patch            string      `json:"patch"`
-	AllowConcurrency bool        `json:"allowConcurrency"`
+	PatchTarget PatchTarget `json:"patchTarget"`
+	Patch       string      `json:"patch"`
+	//+optional
+	AllowConcurrency bool `json:"allowConcurrency"`
 }
 
+//+kubebuilder:object:generate=true
 type PatchTarget struct {
-	APIVersion     string            `json:"apiVersion"`
-	Kind           string            `json:"kind"`
-	Namespace      string            `json:"namespace"`
-	Name           string            `json:"name"`
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	//+optional
+	Namespace string `json:"namespace"`
+	//+optional
+	Name string `json:"name"`
+	//+optional
 	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubetrigger
+package triggerinstance
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Reconciler reconciles a KubeTrigger object.
+// Reconciler reconciles a TriggerInstance object.
 type Reconciler struct {
 	client.Client
 	StatusWriter client.StatusWriter
@@ -52,41 +52,41 @@ var (
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logrus.SetLevel(logrus.DebugLevel)
 
-	kt := standardv1alpha1.KubeTrigger{}
-	if err := r.Get(ctx, req.NamespacedName, &kt); err != nil && !apierrors.IsNotFound(err) {
-		logger.Error(err, "unable to fetch KubeTrigger CRD")
+	ki := standardv1alpha1.TriggerInstance{}
+	if err := r.Get(ctx, req.NamespacedName, &ki); err != nil && !apierrors.IsNotFound(err) {
+		logger.Error(err, "unable to fetch TriggerInstance CRD")
 		return ctrl.Result{}, err
 	}
 	logger.Infof("received reconcile request: %s", req.String())
-	logger.Debugf("obj: %#v", kt)
+	logger.Debugf("obj: %#v", ki)
 
 	defer func() {
-		if kt.GetUID() == "" {
+		if ki.GetUID() == "" {
 			return
 		}
-		err := r.StatusWriter.Update(ctx, &kt)
-		logger.Debugf("updated status: %v", kt.Status)
+		err := r.StatusWriter.Update(ctx, &ki)
+		logger.Debugf("updated status: %v", ki.Status)
 		if err != nil {
-			logger.Errorf("cannot update KubeTrigger: %s", err)
+			logger.Errorf("cannot update TriggerInstance: %s", err)
 		}
 	}()
 
-	if err := r.ReconcileClusterRoleBinding(ctx, &kt, req); err != nil {
+	if err := r.ReconcileClusterRoleBinding(ctx, &ki, req); err != nil {
 		logger.Errorf("reconcile ClusterRoleBinding failed: %s", err)
 		return ctrl.Result{}, err
 	}
 
-	if err := r.ReconcileServiceAccount(ctx, &kt, req); err != nil {
+	if err := r.ReconcileServiceAccount(ctx, &ki, req); err != nil {
 		logger.Errorf("reconcile ServiceAccount failed: %s", err)
 		return ctrl.Result{}, err
 	}
 
-	if err := r.ReconcileConfigMap(ctx, &kt, req); err != nil {
+	if err := r.ReconcileConfigMap(ctx, &ki, req); err != nil {
 		logger.Errorf("reconcile ServiceAccount failed: %s", err)
 		return ctrl.Result{}, err
 	}
 
-	if err := r.ReconcileDeployment(ctx, &kt, req); err != nil {
+	if err := r.ReconcileDeployment(ctx, &ki, req); err != nil {
 		logger.Errorf("reconcile Deployment failed: %s", err)
 		return ctrl.Result{}, err
 	}
@@ -98,6 +98,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO(charlie0129): also listen to other resource events
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&standardv1alpha1.KubeTrigger{}).
+		For(&standardv1alpha1.TriggerInstance{}).
 		Complete(r)
 }

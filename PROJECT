@@ -10,7 +10,7 @@ resources:
   controller: true
   domain: oam.dev
   group: standard
-  kind: KubeTrigger
+  kind: TriggerInstance
   path: github.com/kubevela/kube-trigger/api/v1alpha1
   version: v1alpha1
 - api:
@@ -19,7 +19,7 @@ resources:
   controller: true
   domain: oam.dev
   group: standard
-  kind: KubeTriggerConfig
+  kind: TriggerService
   path: github.com/kubevela/kube-trigger/api/v1alpha1
   version: v1alpha1
 version: "3"

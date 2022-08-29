@@ -1,30 +1,26 @@
 apiVersion: standard.oam.dev/v1alpha1
-kind: KubeTriggerConfig
+kind: TriggerService
 metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
   selector:
     app: kubetrigger-sample
-  watchers:
-    - source:
-        type: k8s-resource-watcher
-        properties:
-          apiVersion: "v1"
-          kind: ConfigMap
-          namespace: default
-          events:
-            - update
+  triggers:
+    - k8s-resource-watcher:
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        events:
+          - update
       filters:
-        - type: cue-validator
-          properties:
+        - cue-validator:
             template: |
               // Filter by object name.
               // I used regular expressions here.
               metadata: name: =~"this-will-trigger-update-.*"
       actions:
-        - type: bump-application-revision
-          properties:
+        - bump-application-revision:
             namespace: default
             labelSelectors:
               my-label: my-value

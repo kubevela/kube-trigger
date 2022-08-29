@@ -31,7 +31,7 @@ import (
 
 const (
 	// TODO(charlie0129): auto generate this
-	typeName              = "bump-application-revision"
+	TypeName              = "bump-application-revision"
 	initialPublishVersion = "1"
 )
 
@@ -122,7 +122,7 @@ func (bar *BumpApplicationRevision) bumpApp(ctx context.Context, app *v1beta1.Ap
 
 func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]interface{}) error {
 	var err error
-	bar.logger = logrus.WithField("action", typeName)
+	bar.logger = logrus.WithField("action", TypeName)
 	bar.prop = Properties{}
 	err = bar.prop.Parse(properties)
 	if err != nil {
@@ -140,7 +140,7 @@ func (bar *BumpApplicationRevision) Validate(properties map[string]interface{}) 
 }
 
 func (bar *BumpApplicationRevision) Type() string {
-	return typeName
+	return TypeName
 }
 
 func (bar *BumpApplicationRevision) New() types.Action {
@@ -154,9 +154,13 @@ func (bar *BumpApplicationRevision) AllowConcurrency() bool {
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
 //go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
+//+kubebuilder:object:generate=true
 type Properties struct {
-	Namespace      string            `json:"namespace"`
-	Name           string            `json:"name"`
+	//+optional
+	Namespace string `json:"namespace"`
+	//+optional
+	Name string `json:"name"`
+	//+optional
 	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 

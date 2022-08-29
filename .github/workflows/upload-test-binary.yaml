@@ -19,6 +19,7 @@ env:
 
 jobs:
   detect-noop:
+    name: Detect No-op Changes
     runs-on: ubuntu-latest
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
@@ -33,9 +34,19 @@ jobs:
           concurrent_skipping: false
 
   upload-test-binary:
+    name: Build and Upload Test Binaries
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - linux-amd64
+          - darwin-amd64
+          - darwin-arm64
+        binary:
+          - kube-trigger
+          - manager
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -64,31 +75,19 @@ jobs:
       - name: Get Version
         id: get_version
         run: |
-          export VERSION=$(./make-kt version)
+          VERSION=$(./make-kt version)
           echo ::set-output name=VERSION::${VERSION}
 
-      - name: Build Binaries for linux and darwin
+      - name: Build Binary
         env:
           DIRTY_BUILD: true
         run: |
-          ./make-kt build-linux_amd64
-          ./make-kt build-darwin_amd64
-          ./make-kt build-darwin_arm64
+          PLATFORM=${{ matrix.platform }}
+          BINARY=${{ matrix.binary }}
+          make -f ${BINARY/-/}.mk build-${PLATFORM/-/_}
 
-      - name: Upload Artifacts (linux-amd64)
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-linux-amd64
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-linux-amd64
-
-      - name: Upload Artifacts (darwin-amd64)
-        uses: actions/upload-artifact@v3
-        with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-amd64
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-amd64
-
-      - name: Upload Artifacts (darwin-arm64)
-        uses: actions/upload-artifact@v3
-        with:
-          name: kube-trigger-${{ steps.get_version.outputs.VERSION }}-darwin-arm64
-          path: bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*-darwin-arm64
+          name: ${{ matrix.binary }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.platform }}
+          path: bin/${{ matrix.binary }}-${{ steps.get_version.outputs.VERSION }}/${{ matrix.binary }}-*-${{ matrix.platform }}
