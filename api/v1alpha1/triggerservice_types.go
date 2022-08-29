@@ -17,8 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/kubevela/kube-trigger/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -31,19 +31,8 @@ type TriggerServiceSpec struct {
 	Selector map[string]string `json:"selector"`
 	// Config for kube-trigger
 	//+optional
-	Triggers []Trigger `json:"triggers"`
-}
-
-type Trigger struct {
-	Source  Meta   `json:"source"`
-	Filters []Meta `json:"filters"`
-	Actions []Meta `json:"actions"`
-}
-
-type Meta struct {
-	Type string `json:"type"`
-	//+kubebuilder:pruning:PreserveUnknownFields
-	Properties *runtime.RawExtension `json:"properties"`
+	//+kubebuilder:object:generate=true
+	Triggers []config.TriggerMetaWrapper `json:"triggers"`
 }
 
 // TriggerServiceStatus defines the observed state of TriggerService.
@@ -54,7 +43,8 @@ type TriggerServiceStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // TriggerService is the Schema for the kubetriggerconfigs API.
 type TriggerService struct {
 	metav1.TypeMeta   `json:",inline"`

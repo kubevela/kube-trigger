@@ -1,21 +1,17 @@
-# A Watcher is a group of Source, Filters, and Actions.
-# You can add multiple Watchers.
+# A trigger is a group of Source, Filters, and Actions.
+# You can add multiple triggers.
 triggers:
-  - source:
-      # Watch Kubernetes events.
-      type: k8s-resource-watcher
-      properties:
-        # We are interested in ConfigMap events.
-        apiVersion: v1
-        kind: ConfigMap
-        namespace: default
-        # Only watch update event.
-        events:
-          - update
+  - k8s-resource-watcher:
+      # We are interested in ConfigMap events.
+      apiVersion: "v1"
+      kind: ConfigMap
+      namespace: default
+      # Only watch update event.
+      events:
+        - update
     filters:
       # Filter the events above.
-      - type: cue-validator
-        properties:
+      - cue-validator:
           # Filter by validating the object data using CUE.
           # For example, we are filtering by ConfigMap names (metadata.name) from above.
           # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
@@ -23,8 +19,7 @@ triggers:
             metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - type: bump-application-revision
-        properties:
+      - bump-application-revision:
           namespace: default
           # Select Applications to bump using labels.
           labelSelectors:

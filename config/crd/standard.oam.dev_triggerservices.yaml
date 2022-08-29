@@ -48,44 +48,79 @@ spec:
                     actions:
                       items:
                         properties:
-                          properties:
+                          bump-application-revision:
+                            properties:
+                              labelSelectors:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              name:
+                                type: string
+                              namespace:
+                                type: string
                             type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          type:
-                            type: string
-                        required:
-                        - properties
-                        - type
+                          patch-k8s-objects:
+                            properties:
+                              allowConcurrency:
+                                type: boolean
+                              patch:
+                                type: string
+                              patchTarget:
+                                properties:
+                                  apiVersion:
+                                    type: string
+                                  kind:
+                                    type: string
+                                  labelSelectors:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                required:
+                                - apiVersion
+                                - kind
+                                type: object
+                            required:
+                            - patch
+                            - patchTarget
+                            type: object
                         type: object
                       type: array
                     filters:
                       items:
                         properties:
-                          properties:
+                          cue-validator:
+                            properties:
+                              template:
+                                type: string
+                            required:
+                            - template
                             type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          type:
-                            type: string
-                        required:
-                        - properties
-                        - type
                         type: object
                       type: array
-                    source:
+                    k8s-resource-watcher:
                       properties:
-                        properties:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        type:
+                        apiVersion:
+                          type: string
+                        events:
+                          items:
+                            type: string
+                          type: array
+                        kind:
+                          type: string
+                        namespace:
                           type: string
                       required:
-                      - properties
-                      - type
+                      - apiVersion
+                      - events
+                      - kind
                       type: object
                   required:
                   - actions
                   - filters
-                  - source
                   type: object
                 type: array
             required:

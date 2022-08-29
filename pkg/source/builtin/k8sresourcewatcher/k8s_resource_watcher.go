@@ -43,7 +43,7 @@ func (w *K8sResourceWatcher) New() sourcetypes.Source {
 func (w *K8sResourceWatcher) Init(properties map[string]interface{}, eh eventhandler.EventHandler) error {
 	var err error
 
-	ctrlConf := &config.Config{}
+	ctrlConf := &config.Properties{}
 	err = ctrlConf.Parse(properties)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
@@ -58,7 +58,7 @@ func (w *K8sResourceWatcher) Init(properties map[string]interface{}, eh eventhan
 }
 
 func (w *K8sResourceWatcher) Validate(properties map[string]interface{}) error {
-	ctrlConf := &config.Config{}
+	ctrlConf := &config.Properties{}
 	return ctrlConf.Parse(properties)
 }
 

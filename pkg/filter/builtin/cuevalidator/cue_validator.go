@@ -38,7 +38,7 @@ type CUEValidator struct {
 var _ types.Filter = &CUEValidator{}
 
 const (
-	typeName = "cue-validator"
+	TypeName = "cue-validator"
 )
 
 func (c *CUEValidator) ApplyToObject(_ interface{}, obj interface{}) (bool, string, error) {
@@ -95,7 +95,7 @@ func (c *CUEValidator) Init(properties map[string]interface{}) error {
 
 	c.c = gocodec.New(c.r, nil)
 
-	c.logger = logrus.WithField("filter", typeName)
+	c.logger = logrus.WithField("filter", TypeName)
 	c.logger.Debugf("initialized")
 
 	return nil
@@ -107,13 +107,14 @@ func (c *CUEValidator) Validate(properties map[string]interface{}) error {
 }
 
 func (c *CUEValidator) Type() string {
-	return typeName
+	return TypeName
 }
 
 func (c *CUEValidator) New() types.Filter {
 	return &CUEValidator{}
 }
 
+//+kubebuilder:object:generate=true
 type Properties struct {
 	Template string `json:"template"`
 }
