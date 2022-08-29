@@ -14,7 +14,7 @@ env:
 
 jobs:
   kube-trigger:
-    name: Release kube-trigger binaries
+    name: Release kube-trigger Binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -41,7 +41,7 @@ jobs:
       - name: Get Version
         id: get_version
         run: |
-          export VERSION=$(./make-kt version)
+          VERSION=$(./make-kt version)
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binaries for All Platforms

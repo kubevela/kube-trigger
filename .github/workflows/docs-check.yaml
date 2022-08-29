@@ -15,6 +15,7 @@ on:
 
 jobs:
   checks:
+    name: Check Docs
     runs-on: ubuntu-latest
     steps:
       - name: Install xmllint
