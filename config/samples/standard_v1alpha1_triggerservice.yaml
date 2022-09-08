@@ -4,8 +4,10 @@ metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
+  # If you ignore selectors, you can use the default TriggerInstance,
+  # given the related options are enabled using manager args.
   selector:
-    app: kubetrigger-sample
+    instance: kubetrigger-sample
   triggers:
     - k8s-resource-watcher:
         apiVersion: "v1"

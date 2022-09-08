@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/controllers/config"
 	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
 	"github.com/kubevela/kube-trigger/controllers/utils"
 	"github.com/pkg/errors"
@@ -39,11 +40,16 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Config config.Config
 }
 
 var (
 	logger           = logrus.WithField("controller", "kube-trigger-config")
 	defaultExtension = ".json"
+)
+
+var (
+	ErrNoTriggerInstanceSelected = errors.New("no TriggerInstance selected. Check your spec.selector")
 )
 
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggerconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -74,13 +80,39 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	kil := standardv1alpha1.TriggerInstanceList{}
 	var labelMatcher client.MatchingLabels = ktc.Spec.Selector
-	var listOptions []client.ListOption
-	listOptions = append(listOptions, client.InNamespace(ktc.Namespace), labelMatcher)
-	if err := r.List(ctx, &kil, listOptions...); err != nil {
-		return ctrl.Result{}, err
+
+	// If the selector provided in the TriggerService is empty
+	// and the user want to use the default instance,
+	// give the user the default TriggerInstance.
+	//
+	// Note that if the user have provided selectors, but it does not
+	// select anything. It is considered invalid. Don't provide the
+	// default TriggerInstance.
+	if len(labelMatcher) == 0 && r.Config.ServiceUseDefaultInstance {
+		defaultObjKey := types.NamespacedName{
+			Namespace: triggerinstance.DefaultInstanceNamespace,
+			Name:      triggerinstance.DefaultInstanceName,
+		}
+		logger.Warnf("no TriggerInstance selected in %s, the default one %s will be used instead",
+			req.String(), defaultObjKey.String())
+		defaultInstance := standardv1alpha1.TriggerInstance{}
+		err := r.Get(ctx, defaultObjKey, &defaultInstance)
+		if err != nil {
+			return ctrl.Result{}, errors.Wrapf(err, "cannot get the deault instance")
+		}
+		kil.Items = append(kil.Items, defaultInstance)
+	} else {
+		var listOptions []client.ListOption
+		listOptions = append(listOptions, client.InNamespace(ktc.Namespace), labelMatcher)
+		if err := r.List(ctx, &kil, listOptions...); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
+
 	if len(kil.Items) == 0 {
-		logger.Warnf("no TriggerInstance selected, check your selector in %s", req.String())
+		// TODO(charlie0129): check this error in validation webhook. Notify the user even before TriggerService is applied.
+		logger.Error(ErrNoTriggerInstanceSelected)
+		return ctrl.Result{}, ErrNoTriggerInstanceSelected
 	}
 
 	for _, kt := range kil.Items {

@@ -21,6 +21,7 @@ import (
 	"os"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/controllers/config"
 	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
 	"github.com/kubevela/kube-trigger/controllers/triggerservice"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,14 +50,23 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
+	var (
+		metricsAddr          string
+		enableLeaderElection bool
+		probeAddr            string
+		controllerConfig     config.Config
+	)
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&controllerConfig.CreateDefaultInstance, "create-default-instance", false,
+		"Always create a default TriggerInstance.")
+	flag.BoolVar(&controllerConfig.ServiceUseDefaultInstance, "service-use-default-instance", false,
+		"TriggerServices with a empty selector will select the default instance.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -93,6 +103,7 @@ func main() {
 		Client:       mgr.GetClient(),
 		StatusWriter: mgr.GetClient().Status(),
 		Scheme:       mgr.GetScheme(),
+		Config:       controllerConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerInstance")
 		os.Exit(1)
@@ -100,6 +111,7 @@ func main() {
 	if err = (&triggerservice.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Config: controllerConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerService")
 		os.Exit(1)

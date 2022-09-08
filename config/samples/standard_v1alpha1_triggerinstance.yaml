@@ -4,5 +4,5 @@ metadata:
   name: kubetrigger-sample
   namespace: default
   labels:
-    app: kubetrigger-sample
+    instance: kubetrigger-sample
 spec:

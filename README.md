@@ -132,7 +132,7 @@ metadata:
   namespace: default
 spec:
   selector:
-    app: kubetrigger-sample
+    instance: kubetrigger-sample
   triggers:
     - k8s-resource-watcher:
         apiVersion: "v1"

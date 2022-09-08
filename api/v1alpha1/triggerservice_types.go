@@ -28,9 +28,9 @@ import (
 type TriggerServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	//+optional
 	Selector map[string]string `json:"selector"`
 	// Config for kube-trigger
-	//+optional
 	//+kubebuilder:object:generate=true
 	Triggers []config.TriggerMetaWrapper `json:"triggers"`
 }
