@@ -124,7 +124,7 @@ spec:
                   type: object
                 type: array
             required:
-            - selector
+            - triggers
             type: object
           status:
             description: TriggerServiceStatus defines the observed state of TriggerService.
