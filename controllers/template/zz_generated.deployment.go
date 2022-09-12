@@ -51,8 +51,9 @@ spec:
           args:
             - -c=/etc/kube-trigger
             - --log-level=debug
+          # The latest tag is automatically replaced when building binaries. See build/build.sh.
+          # DO NOT EDIT.
           image: oamdev/kube-trigger:latest
-          imagePullPolicy: IfNotPresent
           name: kube-trigger
           securityContext:
             allowPrivilegeEscalation: false
