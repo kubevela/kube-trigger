@@ -221,11 +221,11 @@ type PatchTarget struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
 	//+optional
-	Namespace string `json:"namespace"`
+	Namespace string `json:"namespace,omitempty"`
 	//+optional
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	//+optional
-	LabelSelectors map[string]string `json:"labelSelectors"`
+	LabelSelectors map[string]string `json:"labelSelectors,omitempty"`
 }
 
 // parse parses, evaluate, validate, and apply defaults.

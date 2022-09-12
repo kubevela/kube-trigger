@@ -157,11 +157,11 @@ func (bar *BumpApplicationRevision) AllowConcurrency() bool {
 //+kubebuilder:object:generate=true
 type Properties struct {
 	//+optional
-	Namespace string `json:"namespace"`
+	Namespace string `json:"namespace,omitempty"`
 	//+optional
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	//+optional
-	LabelSelectors map[string]string `json:"labelSelectors"`
+	LabelSelectors map[string]string `json:"labelSelectors,omitempty"`
 }
 
 func (p *Properties) Parse(prop map[string]interface{}) error {

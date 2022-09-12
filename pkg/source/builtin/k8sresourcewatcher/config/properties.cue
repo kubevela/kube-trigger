@@ -5,4 +5,4 @@
 apiVersion: string
 kind:       string
 namespace:  *"" | string
-events: [...#eventType]
+events: *[] | [...#eventType]

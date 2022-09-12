@@ -115,7 +115,6 @@ spec:
                           type: string
                       required:
                       - apiVersion
-                      - events
                       - kind
                       type: object
                   required:
