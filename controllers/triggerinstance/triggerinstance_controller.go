@@ -150,7 +150,7 @@ func (r *Reconciler) createDefaultInstance(ctx context.Context) {
 	}
 
 	// Default instance not found, create a default one.
-	// TODO(charlie0129): also check if it is healthy, if not, fix it.
+	// TODO(charlie0129): also check its status and spec, if not right, fix it.
 	defaultInstance.Namespace = DefaultInstanceNamespace
 	defaultInstance.Name = DefaultInstanceName
 	defaultInstance.Labels = map[string]string{

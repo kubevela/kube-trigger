@@ -26,8 +26,9 @@ type Properties struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
 	//+optional
-	Namespace string   `json:"namespace"`
-	Events    []string `json:"events"`
+	Namespace string `json:"namespace,omitempty"`
+	//+optional
+	Events []string `json:"events,omitempty"`
 }
 
 // Parse parses, evaluate, validate, and apply defaults.

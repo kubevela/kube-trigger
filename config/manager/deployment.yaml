@@ -29,7 +29,6 @@ spec:
             - --create-default-instance
             - --service-use-default-instance
           image: oamdev/kube-trigger-manager:latest
-          imagePullPolicy: IfNotPresent
           name: manager
           securityContext:
             allowPrivilegeEscalation: false

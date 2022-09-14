@@ -29,5 +29,5 @@ const propertiesCUETemplate = `// This is a validator for properties of k8s-reso
 apiVersion: string
 kind:       string
 namespace:  *"" | string
-events: [...#eventType]
+events: *[] | [...#eventType]
 `

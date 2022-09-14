@@ -160,6 +160,8 @@ func (r *Reconciler) addOrDeleteConfigToKubeTrigger(
 	}
 
 	keyName := req.Name + defaultExtension
+	// Indicates if the data in cm is actually changed.
+	updated := true
 
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)
@@ -172,15 +174,25 @@ func (r *Reconciler) addOrDeleteConfigToKubeTrigger(
 			logger.Warnf("key %s already exists in cm %s, will be overwritten", keyName, utils.GetNamespacedName(&cm))
 		}
 		logger.Infof("added config entry %s to cm %s", keyName, utils.GetNamespacedName(&cm))
-		cm.Data[keyName] = string(jsonByte)
+		newCfg := string(jsonByte)
+		if cm.Data[keyName] == newCfg {
+			updated = false
+		} else {
+			cm.Data[keyName] = newCfg
+		}
 	}
 
-	err = r.Update(ctx, &cm)
-	if err != nil {
-		return err
+	// Only if the CM is actually changed, then we need to update cm and restart
+	// trigger instance.
+	if updated {
+		err = r.Update(ctx, &cm)
+		if err != nil {
+			return err
+		}
+		return r.restartPod(ctx, ki)
 	}
 
-	return r.restartPod(ctx, ki)
+	return nil
 }
 
 func (r *Reconciler) restartPod(

@@ -64,11 +64,17 @@ For example, $LOG_LEVEL can be used in place of --log-level
 Options have a priority like this: cli-flags > env > default-values`
 )
 
+var logger = logrus.WithField("kubetrigger", "main")
+
 func NewCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:  "kubetrigger",
 		Long: cmdLongHelp,
 		RunE: runCli,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			logger.Infof("kube-trigger version=%s", version.Version)
+			return nil
+		},
 	}
 	addFlags(c.Flags())
 	c.AddCommand(NewVersionCommand())
@@ -101,8 +107,6 @@ func addFlags(f *pflag.FlagSet) {
 	f.Int(FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
 }
 
-var logger = logrus.WithField("kubetrigger", "main")
-
 func runCli(cmd *cobra.Command, args []string) error {
 	var err error
 
@@ -119,8 +123,6 @@ func runCli(cmd *cobra.Command, args []string) error {
 	// Set log level. No need to check error, we validated it previously.
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
-
-	logger.Infof("kube-trigger version=%s", version.Version)
 
 	// Create registries for Sources, Filers, and Actions.
 	sourceReg := sourceregistry.NewWithBuiltinSources()

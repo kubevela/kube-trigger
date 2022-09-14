@@ -1,1 +1,6 @@
-../../controllers/template/yaml/cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-trigger-example
+  namespace: default
+data: { }

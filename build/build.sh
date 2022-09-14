@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Copyright 2022 The KubeVela Authors.
 #
@@ -16,8 +16,7 @@
 
 set -o errexit
 set -o nounset
-# This will not work in POSIX sh
-# set -o pipefail
+set -o pipefail
 
 if [ -z "${OS:-}" ]; then
   echo "OS must be set"
@@ -45,8 +44,20 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
+if [[ ! ${VERSION} =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$ ]]; then
+  IMAGE_VERSION="latest"
+else
+  IMAGE_VERSION="${VERSION}"
+fi
+
+# Replace oamdev/kube-trigger:latest tag with an actual version.
+sed -i -e "s/:latest/:${IMAGE_VERSION}/g" config/triggerinstance/deployment.yaml
+
 echo "# Generating code..."
 go generate ./...
+
+# Revert changes after code generation.
+sed -i -e "s/:${IMAGE_VERSION}/:latest/g" config/triggerinstance/deployment.yaml
 
 printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
   "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
