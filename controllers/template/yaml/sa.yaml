@@ -1,1 +1,5 @@
-../../../config/triggerinstance/sa.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-trigger-example
+  namespace: default
