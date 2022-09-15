@@ -76,7 +76,7 @@ all-docker-build-push: # @HELP build and push images for all platforms
 all-docker-build-push:
 	echo -e "# Building and pushing images for platforms $(IMG_PLATFORMS)"
 	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMGTAGS)"
-	TMPFILE=$$(mktemp) && \
+	TMPFILE=Dockerfile && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
 	    docker buildx build --push       \
 	    -f $${TMPFILE}                   \

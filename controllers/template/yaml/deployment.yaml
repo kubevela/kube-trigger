@@ -1,1 +1,54 @@
-../../../config/triggerinstance/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-trigger-example
+  namespace: default
+  labels:
+    app.kubernetes.io/created-by: kube-trigger-manager
+    app.kubernetes.io/component: kube-trigger
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/name: kube-trigger-example
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-trigger-example
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-trigger-example
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - workingDir: /
+          args:
+            - -c=/etc/kube-trigger
+            - --log-level=debug
+          # The latest tag is automatically replaced when building binaries. See build/build.sh.
+          # DO NOT EDIT.
+          image: oamdev/kube-trigger:latest
+          name: kube-trigger
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          volumeMounts:
+            - mountPath: /etc/kube-trigger
+              name: config
+      serviceAccountName: kube-trigger-example
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: kube-trigger-example
