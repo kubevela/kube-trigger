@@ -106,7 +106,7 @@ func TestParseProperties(t *testing.T) {
 	}
 }
 
-var _ = Describe("Test BumpApplicationRevision", func() {
+var _ = Describe("Test BumpApplicationRevision", Ordered, func() {
 	ctx := context.TODO()
 
 	BeforeEach(func() {
@@ -117,6 +117,16 @@ var _ = Describe("Test BumpApplicationRevision", func() {
 			err := k8sClient.Create(ctx, parseApp(a))
 			Expect(util.IgnoreAlreadyExists(err)).NotTo(HaveOccurred())
 		}
+	})
+
+	AfterAll(func() {
+		By("Clean Up the test Application")
+		for _, a := range apps {
+			err := k8sClient.Delete(ctx, parseApp(a))
+			Expect(err).NotTo(HaveOccurred())
+		}
+		err := k8sClient.Delete(ctx, ns.DeepCopy())
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Bump app with no apprev annotation", func() {
