@@ -27,7 +27,7 @@ import (
 	apitypes "k8s.io/apimachinery/pkg/types"
 )
 
-var _ = Describe("Test context in patch", func() {
+var _ = Describe("Test context in patch", Ordered, func() {
 	ctx := context.TODO()
 	var props map[string]interface{}
 
@@ -47,6 +47,15 @@ var _ = Describe("Test context in patch", func() {
 		cm.Data = map[string]string{"data": ""}
 		err := k8sClient.Create(ctx, &cm)
 		Expect(util.IgnoreAlreadyExists(err)).NotTo(HaveOccurred())
+	})
+
+	AfterAll(func() {
+		By("delete test configmaps")
+		cm := v1.ConfigMap{}
+		cm.Namespace = "default"
+		cm.Name = "test-cm"
+		err := k8sClient.Delete(ctx, &cm)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	test := func(patch string, event, data interface{}, expected string) func() {
@@ -99,7 +108,7 @@ var _ = Describe("Test context in patch", func() {
 	))
 })
 
-var _ = Describe("General tests", func() {
+var _ = Describe("General tests", Ordered, func() {
 	ctx := context.TODO()
 	var props map[string]interface{}
 
@@ -132,6 +141,10 @@ var _ = Describe("General tests", func() {
 
 		err = p.Run(ctx, "", nil, nil, nil)
 		Expect(err).To(HaveOccurred())
+
+		By("delete test configmaps")
+		err = k8sClient.Delete(ctx, &cm)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("test patchTarget.name and patchTarget.labelSelectors", func() {
@@ -212,5 +225,12 @@ var _ = Describe("General tests", func() {
 		}, &cm)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cm.Data["data"]).To(Equal("only test-cm-2"))
+
+		By("delete test configmaps")
+		err = k8sClient.Delete(ctx, &cm1)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = k8sClient.Delete(ctx, &cm2)
+		Expect(err).NotTo(HaveOccurred())
 	})
 })
