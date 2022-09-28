@@ -146,26 +146,26 @@ func (r *Reconciler) createDefaultInstance(ctx context.Context) {
 	}
 	if util.IgnoreNotFound(err) != nil {
 		logger.Errorf("getting default instance failed, the default TriggerInstance may not be created: %s", err)
-		return
+
+		// Default instance not found, create a default one.
+		// TODO(charlie0129): also check its status and spec, if not right, fix it.
+		defaultInstance.Namespace = DefaultInstanceNamespace
+		defaultInstance.Name = DefaultInstanceName
+		defaultInstance.Labels = map[string]string{
+			InstanceNameLabel: DefaultInstanceName,
+		}
+		err = r.Create(ctx, &defaultInstance)
+		if err != nil {
+			logger.Errorf("creating default isntance failed when it not found: %s", err)
+			return
+		}
+
+		logger.Infof("default instance %s/%s with labels %v created",
+			defaultInstance.Namespace,
+			defaultInstance.Name,
+			defaultInstance.Labels)
 	}
 
-	// Default instance not found, create a default one.
-	// TODO(charlie0129): also check its status and spec, if not right, fix it.
-	defaultInstance.Namespace = DefaultInstanceNamespace
-	defaultInstance.Name = DefaultInstanceName
-	defaultInstance.Labels = map[string]string{
-		InstanceNameLabel: DefaultInstanceName,
-	}
-	err = r.Create(ctx, &defaultInstance)
-	if err != nil {
-		logger.Errorf("creating default isntance failed, the default TriggerInstance may not be created: %s", err)
-		return
-	}
-
-	logger.Infof("default instance %s/%s with labels %v created",
-		defaultInstance.Namespace,
-		defaultInstance.Name,
-		defaultInstance.Labels)
 }
 
 // SetupWithManager sets up the controller with the Manager.
