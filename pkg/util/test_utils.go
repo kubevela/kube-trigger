@@ -17,8 +17,14 @@ limitations under the License.
 package util
 
 import (
+	"context"
+	"fmt"
+	"time"
+
+	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func IgnoreAlreadyExists(err error) error {
@@ -30,4 +36,50 @@ func IgnoreAlreadyExists(err error) error {
 
 func IgnoreNotFound(err error) error {
 	return client.IgnoreNotFound(err)
+}
+
+// ReconcileRetry will reconcile with retry
+func ReconcileRetry(r reconcile.Reconciler, req reconcile.Request) {
+	Eventually(func() error {
+		if _, err := r.Reconcile(context.TODO(), req); err != nil {
+			return err
+		}
+		return nil
+	}, 15*time.Second, time.Second).Should(BeNil())
+}
+
+// ReconcileRetryAndExpectErr will reconcile and get error
+func ReconcileRetryAndExpectErr(r reconcile.Reconciler, req reconcile.Request) {
+	Eventually(func() error {
+		if _, err := r.Reconcile(context.TODO(), req); err != nil {
+			return err
+		}
+		return nil
+	}, 3*time.Second, time.Second).ShouldNot(BeNil())
+}
+
+// ReconcileOnce will just reconcile once
+func ReconcileOnce(r reconcile.Reconciler, req reconcile.Request) {
+	if _, err := r.Reconcile(context.TODO(), req); err != nil {
+		fmt.Println(err.Error())
+	}
+}
+
+// ReconcileOnceAfterFinalizer will reconcile for finalizer
+func ReconcileOnceAfterFinalizer(r reconcile.Reconciler, req reconcile.Request) (reconcile.Result, error) {
+	// 1st and 2nd time reconcile to add finalizer
+	if result, err := r.Reconcile(context.TODO(), req); err != nil {
+		return result, err
+	}
+	if result, err := r.Reconcile(context.TODO(), req); err != nil {
+		return result, err
+	}
+	if result, err := r.Reconcile(context.TODO(), req); err != nil {
+		return result, err
+	}
+	if result, err := r.Reconcile(context.TODO(), req); err != nil {
+		return result, err
+	}
+
+	return r.Reconcile(context.TODO(), req)
 }
