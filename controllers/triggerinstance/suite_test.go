@@ -86,14 +86,12 @@ var _ = BeforeSuite(func() {
 		LeaderElectionNamespace: "default",
 		LeaderElectionID:        "test",
 	})
-	var done = make(chan interface{})
 	var ctx context.Context
 	ctx, controllerDone = context.WithCancel(context.Background())
 	go func() {
 		err = mgr.Start(ctx)
 		Expect(err).NotTo(HaveOccurred())
 	}()
-	close(done)
 
 })
 
