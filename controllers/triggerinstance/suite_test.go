@@ -17,14 +17,17 @@ limitations under the License.
 package triggerinstance
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/controllers/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,6 +40,8 @@ import (
 
 var cfg *rest.Config
 var k8sClient client.Client
+var reconciler *Reconciler
+var controllerDone context.CancelFunc
 var testEnv *envtest.Environment
 
 func TestAPIs(t *testing.T) {
@@ -68,10 +73,33 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	reconciler = &Reconciler{
+		Client:       k8sClient,
+		StatusWriter: k8sClient.Status(),
+		Scheme:       scheme.Scheme,
+		Config:       config.Config{},
+	}
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:                  scheme.Scheme,
+		MetricsBindAddress:      "0",
+		LeaderElection:          false,
+		LeaderElectionNamespace: "default",
+		LeaderElectionID:        "test",
+	})
+	var ctx context.Context
+	ctx, controllerDone = context.WithCancel(context.Background())
+	go func() {
+		err = mgr.Start(ctx)
+		Expect(err).NotTo(HaveOccurred())
+	}()
+
 })
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	if controllerDone != nil {
+		controllerDone()
+	}
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })

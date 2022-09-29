@@ -17,8 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"context"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func IgnoreAlreadyExists(err error) error {
@@ -30,4 +33,12 @@ func IgnoreAlreadyExists(err error) error {
 
 func IgnoreNotFound(err error) error {
 	return client.IgnoreNotFound(err)
+}
+
+// ReconcileOnce will just reconcile once.
+func ReconcileOnce(r reconcile.Reconciler, req reconcile.Request) error {
+	if _, err := r.Reconcile(context.TODO(), req); err != nil {
+		return err
+	}
+	return nil
 }
