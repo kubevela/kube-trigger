@@ -142,6 +142,7 @@ func newResourceController(
 			newEvent.Key, err = cache.MetaNamespaceKeyFunc(obj)
 			newEvent.EventType = "create"
 			newEvent.ResourceType = resourceType
+			newEvent.EventObj = obj
 			logrus.WithField("source", krwtypes.TypeName).Tracef("received add event: %v %s", resourceType, newEvent.Key)
 			if err == nil {
 				queue.Add(newEvent)
@@ -151,6 +152,7 @@ func newResourceController(
 			newEvent.Key, err = cache.MetaNamespaceKeyFunc(old)
 			newEvent.EventType = "update"
 			newEvent.ResourceType = resourceType
+			newEvent.EventObj = new
 			logrus.WithField("source", krwtypes.TypeName).Tracef("received update event: %v %s", resourceType, newEvent.Key)
 			if err == nil {
 				queue.Add(newEvent)
@@ -160,8 +162,9 @@ func newResourceController(
 			newEvent.Key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			newEvent.EventType = "delete"
 			newEvent.ResourceType = resourceType
+			newEvent.EventObj = obj
 			newEvent.Namespace = utils.GetObjectMetaData(obj).GetNamespace()
-			logrus.WithField("source", krwtypes.TypeName).Tracef("received delete event: %v d%s", resourceType, newEvent.Key)
+			logrus.WithField("source", krwtypes.TypeName).Tracef("received delete event: %v %s", resourceType, newEvent.Key)
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -237,14 +240,11 @@ func (c *Controller) processNextItem() bool {
 }
 
 func (c *Controller) processItem(newEvent event.InformerEvent) error {
-	// Ignore if it exists, we want deleting event as well.
-	obj, _, err := c.informer.GetIndexer().GetByKey(newEvent.Key)
-	if err != nil {
-		return fmt.Errorf("error fetching object with key %s from store: %v", newEvent.Key, err)
-	}
+	// Fetching (create,update,delete) event Obj of k8s
+	c.logger.Debugf("Fetching obj  (%+v) with newEvent key=%s and eventType=%s from event", newEvent.EventObj, newEvent.Key, newEvent.EventType)
 
 	// Get object's metadata
-	objectMeta := utils.GetObjectMetaData(obj)
+	objectMeta := utils.GetObjectMetaData(newEvent.EventObj)
 
 	// Hold status type for default critical alerts
 	var status string
@@ -320,7 +320,7 @@ func (c *Controller) processItem(newEvent event.InformerEvent) error {
 			Kind:      newEvent.ResourceType,
 			Info:      "Deleted",
 		}
-		c.logger.Debugf("add create event: %s", kbEvent.Message())
+		c.logger.Debugf("add delete event: %s", kbEvent.Message())
 		c.callEventHandler(objectMeta, kbEvent)
 		return nil
 	}

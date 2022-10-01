@@ -37,4 +37,5 @@ type InformerEvent struct {
 	EventType    string
 	Namespace    string
 	ResourceType string
+	EventObj     interface{}
 }
