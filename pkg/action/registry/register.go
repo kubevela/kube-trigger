@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/action/builtin/bumpapplicationrevision"
 	"github.com/kubevela/kube-trigger/pkg/action/builtin/patchk8sobjects"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
@@ -31,8 +32,8 @@ func RegisterBuiltinActions(reg *Registry) {
 
 func registerFromInstance(reg *Registry, act types.Action) {
 	ins := act
-	insMeta := types.ActionMeta{
-		Type: ins.Type(),
+	insMeta := v1alpha1.ActionMeta{
+		Template: ins.Template(),
 	}
-	reg.RegisterType(insMeta, ins)
+	reg.RegisterTemplate(insMeta, ins)
 }

@@ -43,10 +43,10 @@ jobs:
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: Show Make Variables
-        run: ./make-kt variables
+        run: ./hack/make-kt.sh variables
 
       - name: Build and Push Images
-        run: ./make-kt all-docker-build-push
+        run: ./hack/make-kt.sh all-docker-build-push
 
   manager:
     name: Release manager Images

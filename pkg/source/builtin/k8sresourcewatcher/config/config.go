@@ -16,22 +16,26 @@ limitations under the License.
 
 package config
 
-import utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
+import (
+	utilcue "github.com/kubevela/kube-trigger/pkg/util/cue"
+	"k8s.io/apimachinery/pkg/runtime"
+)
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
+//
 //go:generate ../../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
-//+kubebuilder:object:generate=true
 type Properties struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
 	//+optional
 	Namespace string `json:"namespace,omitempty"`
 	//+optional
-	Events []string `json:"events,omitempty"`
+	Events         []string          `json:"events,omitempty"`
+	MatchingLabels map[string]string `json:"matchingLabels,omitempty"`
 }
 
 // Parse parses, evaluate, validate, and apply defaults.
-func (c *Properties) Parse(conf map[string]interface{}) error {
+func (c *Properties) Parse(conf *runtime.RawExtension) error {
 	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, conf, c)
 }

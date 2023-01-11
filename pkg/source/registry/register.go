@@ -21,6 +21,7 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/types"
 )
 
+// RegisterBuiltinSources register builtin sources.
 func RegisterBuiltinSources(reg *Registry) {
 	registerFromInstance(reg, &k8sresourcewatcher.K8sResourceWatcher{})
 }

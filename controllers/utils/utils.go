@@ -17,58 +17,27 @@ limitations under the License.
 package utils
 
 import (
-	"time"
-
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 )
 
-func SetOwnerReference(obj metav1.Object, kt standardv1alpha1.TriggerInstance) {
-	t := true
-	ownerReference := metav1.OwnerReference{
-		APIVersion: standardv1alpha1.GroupVersion.String(),
-		Kind:       standardv1alpha1.KubeTriggerKind,
-		Name:       kt.Name,
-		UID:        kt.GetUID(),
-		Controller: &t,
-	}
-
-	obj.SetOwnerReferences([]metav1.OwnerReference{ownerReference})
+// SetOwnerReference set owner reference for trigger instance.
+func SetOwnerReference(obj metav1.Object, kt *standardv1alpha1.TriggerInstance) {
+	obj.SetOwnerReferences([]metav1.OwnerReference{{
+		APIVersion:         standardv1alpha1.GroupVersion.String(),
+		Kind:               standardv1alpha1.TriggerInstanceKind,
+		Name:               kt.Name,
+		UID:                kt.GetUID(),
+		BlockOwnerDeletion: pointer.BoolPtr(true),
+	}})
 }
 
+// GetNamespacedName get namespaced name from resource.
 func GetNamespacedName(kt metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: kt.GetNamespace(),
 		Name:      kt.GetName(),
 	}
-}
-
-func UpdateResource(kt *standardv1alpha1.TriggerInstance, res standardv1alpha1.Resource) {
-	if kt == nil {
-		return
-	}
-
-	res.LastUpdateTime = metav1.NewTime(time.Now())
-
-	var newCRs []standardv1alpha1.Resource
-	var haveCR bool
-
-	for _, cr := range kt.Status.CreatedResources {
-		if cr.Kind == res.Kind &&
-			cr.APIVersion == res.APIVersion &&
-			cr.Namespace == res.Namespace &&
-			cr.Name == res.Name {
-			newCRs = append(newCRs, res)
-			haveCR = true
-			continue
-		}
-		newCRs = append(newCRs, cr)
-	}
-
-	if !haveCR {
-		newCRs = append(newCRs, res)
-	}
-
-	kt.Status.CreatedResources = newCRs
 }

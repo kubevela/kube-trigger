@@ -20,11 +20,7 @@ import (
 	"context"
 
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
-)
-
-const (
-	TypeFieldName       = "type"
-	PropertiesFieldName = "properties"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Source is an interface for sources. Anything that implements this interface
@@ -34,11 +30,11 @@ type Source interface {
 	New() Source
 
 	// Validate validates properties.
-	Validate(properties map[string]interface{}) error
+	Validate(properties *runtime.RawExtension) error
 
 	// Init initializes this instance using user-provided properties.
 	// Call the EventHandler when an event happened.
-	Init(properties map[string]interface{}, eh eventhandler.EventHandler) error
+	Init(properties *runtime.RawExtension, eh eventhandler.EventHandler) error
 
 	// Run starts this Source. You should handle the context so that you can
 	// know when to exit.

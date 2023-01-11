@@ -17,18 +17,20 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/filter/builtin/cuevalidator"
 	"github.com/kubevela/kube-trigger/pkg/filter/types"
 )
 
+// RegisterBuiltinFilters registers builtin filters into registry.
 func RegisterBuiltinFilters(reg *Registry) {
 	registerFromInstance(reg, &cuevalidator.CUEValidator{})
 }
 
 func registerFromInstance(reg *Registry, act types.Filter) {
 	ins := act
-	insMeta := types.FilterMeta{
-		Type: ins.Type(),
+	insMeta := v1alpha1.FilterMeta{
+		Template: ins.Template(),
 	}
-	reg.RegisterType(insMeta, ins)
+	reg.RegisterTemplate(insMeta, ins)
 }

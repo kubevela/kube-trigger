@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme" //nolint
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -62,10 +63,6 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&controllerConfig.CreateDefaultInstance, "create-default-instance", false,
-		"Always create a default TriggerInstance.")
-	flag.BoolVar(&controllerConfig.ServiceUseDefaultInstance, "service-use-default-instance", false,
-		"TriggerServices with a empty selector will select the default instance.")
 
 	opts := zap.Options{
 		Development: true,

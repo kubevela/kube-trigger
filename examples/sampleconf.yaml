@@ -1,25 +1,29 @@
 # A trigger is a group of Source, Filters, and Actions.
 # You can add multiple triggers.
 triggers:
-  - k8s-resource-watcher:
-      # We are interested in ConfigMap events.
-      apiVersion: "v1"
-      kind: ConfigMap
-      namespace: default
-      # Only watch update event.
-      events:
-        - update
+  - source:
+      template: k8s-resource-watcher
+      properties:
+        # We are interested in ConfigMap events.
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        # Only watch update event.
+        events:
+          - update
     filters:
-      # Filter the events above.
-      - cue-validator:
-          # Filter by validating the object data using CUE.
-          # For example, we are filtering by ConfigMap names (metadata.name) from above.
-          # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
-          template: |
-            metadata: name: =~"this-will-trigger-update-.*"
+      - template: cue-validator
+        # Filter the events above.
+        properties:
+            # Filter by validating the object data using CUE.
+            # For example, we are filtering by ConfigMap names (metadata.name) from above.
+            # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
+            template: |
+              metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - bump-application-revision:
+      - template: bump-application-revision
+        properties:
           namespace: default
           # Select Applications to bump using labels.
           labelSelectors:

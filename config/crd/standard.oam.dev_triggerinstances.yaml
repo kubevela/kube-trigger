@@ -41,6 +41,7 @@ spec:
                 description: Cache size for filters and actions.
                 type: integer
               workerConfig:
+                description: WorkerConfig defines the worker config
                 properties:
                   actionRetry:
                     type: boolean
@@ -77,37 +78,13 @@ spec:
           status:
             description: TriggerInstanceStatus defines the observed state of TriggerInstance.
             properties:
-              createdResources:
+              healthy:
                 description: 'Important: Run "make" to regenerate code after modifying
                   this file TODO(charlie0129): add status fields - If a kube-trigger
                   instance is working fine - statistics - running jobs count - success
-                  jobs count - failed jobs count'
-                items:
-                  properties:
-                    apiVersion:
-                      type: string
-                    kind:
-                      type: string
-                    lastUpdateTime:
-                      format: date-time
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  required:
-                  - apiVersion
-                  - kind
-                  - lastUpdateTime
-                  - name
-                  - namespace
-                  type: object
-                type: array
-              healthy:
-                description: 'TODO: make it useful'
+                  jobs count - failed jobs count TODO: make it useful'
                 type: boolean
             required:
-            - createdResources
             - healthy
             type: object
         type: object

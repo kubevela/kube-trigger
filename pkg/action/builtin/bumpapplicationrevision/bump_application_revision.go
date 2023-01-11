@@ -26,6 +26,7 @@ import (
 	"github.com/oam-dev/kubevela-core-api/pkg/oam"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -120,7 +121,7 @@ func (bar *BumpApplicationRevision) bumpApp(ctx context.Context, app *v1beta1.Ap
 	return bar.c.Update(ctx, app)
 }
 
-func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]interface{}) error {
+func (bar *BumpApplicationRevision) Init(c types.Common, properties *runtime.RawExtension) error {
 	var err error
 	bar.logger = logrus.WithField("action", TypeName)
 	bar.prop = Properties{}
@@ -134,12 +135,12 @@ func (bar *BumpApplicationRevision) Init(c types.Common, properties map[string]i
 	return nil
 }
 
-func (bar *BumpApplicationRevision) Validate(properties map[string]interface{}) error {
+func (bar *BumpApplicationRevision) Validate(properties *runtime.RawExtension) error {
 	p := &Properties{}
 	return p.Parse(properties)
 }
 
-func (bar *BumpApplicationRevision) Type() string {
+func (bar *BumpApplicationRevision) Template() string {
 	return TypeName
 }
 
@@ -152,18 +153,15 @@ func (bar *BumpApplicationRevision) AllowConcurrency() bool {
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
+//
 //go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
-//+kubebuilder:object:generate=true
 type Properties struct {
-	//+optional
-	Namespace string `json:"namespace,omitempty"`
-	//+optional
-	Name string `json:"name,omitempty"`
-	//+optional
+	Namespace      string            `json:"namespace,omitempty"`
+	Name           string            `json:"name,omitempty"`
 	LabelSelectors map[string]string `json:"labelSelectors,omitempty"`
 }
 
-func (p *Properties) Parse(prop map[string]interface{}) error {
+func (p *Properties) Parse(prop *runtime.RawExtension) error {
 	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

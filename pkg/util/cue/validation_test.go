@@ -17,10 +17,10 @@ limitations under the License.
 package cue
 
 import (
-	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestValidateAndUnMarshal(t *testing.T) {
@@ -29,14 +29,14 @@ func TestValidateAndUnMarshal(t *testing.T) {
 	}
 	cases := map[string]struct {
 		schema   string
-		in       map[string]interface{}
+		in       *runtime.RawExtension
 		out      testType
 		expected testType
 		err      bool
 	}{
 		"successful": {
 			schema: `a: string`,
-			in:     map[string]interface{}{"a": "abc"},
+			in:     &runtime.RawExtension{Raw: []byte(`{"a": "abc"}`)},
 			out: struct {
 				A string `json:"a"`
 			}{},
@@ -47,7 +47,7 @@ func TestValidateAndUnMarshal(t *testing.T) {
 		},
 		"cannot marshal input": {
 			schema: `a: string`,
-			in:     map[string]interface{}{"a": math.Inf(1)},
+			in:     &runtime.RawExtension{Raw: []byte(`"a":b`)},
 			out: struct {
 				A string `json:"a"`
 			}{},
@@ -56,7 +56,7 @@ func TestValidateAndUnMarshal(t *testing.T) {
 		},
 		"cannot validate input": {
 			schema: `a: string`,
-			in:     map[string]interface{}{"a": 1},
+			in:     &runtime.RawExtension{Raw: []byte(`{"a": 1}`)},
 			out: struct {
 				A string `json:"a"`
 			}{},
@@ -65,7 +65,7 @@ func TestValidateAndUnMarshal(t *testing.T) {
 		},
 		"invalid schema": {
 			schema: `a: `,
-			in:     map[string]interface{}{"a": 1},
+			in:     &runtime.RawExtension{Raw: []byte(`{"a": 1}`)},
 			out: struct {
 				A string `json:"a"`
 			}{},

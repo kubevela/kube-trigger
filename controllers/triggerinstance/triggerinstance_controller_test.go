@@ -35,75 +35,50 @@ import (
 var _ = Describe("TriggerinstanceController", Ordered, func() {
 	ctx := context.TODO()
 
-	ki := v1alpha1.TriggerInstance{}
+	ti := v1alpha1.TriggerInstance{}
 	kiJSON, _ := yaml.YAMLToJSON([]byte(normalTriggerInstance))
 
 	BeforeEach(func() {
-		Expect(json.Unmarshal(kiJSON, &ki)).Should(BeNil())
+		Expect(json.Unmarshal(kiJSON, &ti)).Should(BeNil())
 	})
 
 	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, ki.DeepCopy()))
+		Expect(k8sClient.Delete(ctx, ti.DeepCopy()))
 	})
 
 	It("test normal triggerInstance create relevant resource", func() {
-		kiKey := client.ObjectKey{
-			Namespace: ki.Namespace,
-			Name:      ki.Name,
+		tiKey := client.ObjectKey{
+			Namespace: ti.Namespace,
+			Name:      ti.Name,
 		}
-		Expect(k8sClient.Create(ctx, ki.DeepCopy())).Should(BeNil())
-		Expect(util.ReconcileOnce(reconciler, reconcile.Request{NamespacedName: kiKey})).Should(BeNil())
+		Expect(k8sClient.Create(ctx, ti.DeepCopy())).Should(BeNil())
+		Expect(util.ReconcileOnce(reconciler, reconcile.Request{NamespacedName: tiKey})).Should(BeNil())
 
-		newKi := v1alpha1.TriggerInstance{}
-		Expect(k8sClient.Get(ctx, kiKey, &newKi)).Should(BeNil())
-		Expect(newKi.Name).Should(Equal("kubetrigger-test"))
-		Expect(len(newKi.Status.CreatedResources)).Should(Equal(4))
-		for _, createdResource := range newKi.Status.CreatedResources {
-			Expect(createdResource.Name).Should(Equal(newKi.Name))
-		}
+		tiObj := &v1alpha1.TriggerInstance{}
+		Expect(k8sClient.Get(ctx, tiKey, tiObj)).Should(BeNil())
 
-		cm := corev1.ConfigMap{}
-		cmKey := client.ObjectKey{
-			Namespace: ki.Namespace,
-			Name:      ki.Name,
-		}
+		clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+		Expect(k8sClient.Get(ctx, tiKey, clusterRoleBinding)).Should(BeNil())
+		Expect(len(clusterRoleBinding.Subjects)).Should(Equal(1))
+		Expect(clusterRoleBinding.Subjects[0].Name).Should(Equal(tiObj.Name))
+		Expect(clusterRoleBinding.Subjects[0].Namespace).Should(Equal(tiObj.Namespace))
+		Expect(len(clusterRoleBinding.OwnerReferences)).Should(Equal(1))
+		Expect(clusterRoleBinding.OwnerReferences[0].Name).Should(Equal(tiObj.Name))
+		Expect(clusterRoleBinding.OwnerReferences[0].UID).Should(Equal(tiObj.UID))
 
-		Expect(k8sClient.Get(ctx, cmKey, &cm)).Should(BeNil())
-		Expect(len(cm.OwnerReferences)).Should(Equal(1))
-		Expect(cm.OwnerReferences[0].Name).Should(Equal(newKi.Name))
-		Expect(cm.OwnerReferences[0].UID).Should(Equal(newKi.UID))
-
-		clusterRoleBing := rbacv1.ClusterRoleBinding{}
-		crbKey := client.ObjectKey{
-			Namespace: ki.Namespace,
-			Name:      ki.Name,
-		}
-		Expect(k8sClient.Get(ctx, crbKey, &clusterRoleBing)).Should(BeNil())
-		Expect(len(clusterRoleBing.Subjects)).Should(Equal(1))
-		Expect(clusterRoleBing.Subjects[0].Name).Should(Equal(newKi.Name))
-		Expect(clusterRoleBing.Subjects[0].Namespace).Should(Equal(newKi.Namespace))
-
-		sa := corev1.ServiceAccount{}
-		saKey := client.ObjectKey{
-			Namespace: ki.Namespace,
-			Name:      ki.Name,
-		}
-		Expect(k8sClient.Get(ctx, saKey, &sa)).Should(BeNil())
+		sa := &corev1.ServiceAccount{}
+		Expect(k8sClient.Get(ctx, tiKey, sa)).Should(BeNil())
 		Expect(len(sa.OwnerReferences)).Should(Equal(1))
-		Expect(sa.OwnerReferences[0].Name).Should(Equal(newKi.Name))
-		Expect(sa.OwnerReferences[0].UID).Should(Equal(newKi.UID))
+		Expect(sa.OwnerReferences[0].Name).Should(Equal(tiObj.Name))
+		Expect(sa.OwnerReferences[0].UID).Should(Equal(tiObj.UID))
 
-		deploy := appsv1.Deployment{}
-		deployKey := client.ObjectKey{
-			Namespace: ki.Namespace,
-			Name:      ki.Name,
-		}
-		Expect(k8sClient.Get(ctx, deployKey, &deploy)).Should(BeNil())
+		deploy := &appsv1.Deployment{}
+		Expect(k8sClient.Get(ctx, tiKey, deploy)).Should(BeNil())
 		Expect(len(deploy.OwnerReferences)).Should(Equal(1))
-		Expect(deploy.OwnerReferences[0].Name).Should(Equal(newKi.Name))
-		Expect(deploy.OwnerReferences[0].UID).Should(Equal(newKi.UID))
-		Expect(deploy.Spec.Template.Spec.ServiceAccountName).Should(Equal(newKi.Name))
-		Expect(deploy.Spec.Template.Spec.Volumes[0].ConfigMap.Name).Should(Equal(newKi.Name))
+		Expect(deploy.OwnerReferences[0].Name).Should(Equal(tiObj.Name))
+		Expect(deploy.OwnerReferences[0].UID).Should(Equal(tiObj.UID))
+		Expect(deploy.Spec.Template.Spec.ServiceAccountName).Should(Equal(tiObj.Name))
+		Expect(deploy.Spec.Template.Spec.Volumes[0].ConfigMap.Name).Should(Equal(tiObj.Name))
 	})
 })
 

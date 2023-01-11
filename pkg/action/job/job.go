@@ -19,11 +19,13 @@ package job
 import (
 	"context"
 
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/action/registry"
 	"github.com/kubevela/kube-trigger/pkg/action/types"
 	"github.com/kubevela/kube-trigger/pkg/executor"
 )
 
+// Job is the type of executor job.
 type Job struct {
 	action     types.Action
 	sourceType string
@@ -39,7 +41,7 @@ var _ executor.Job = &Job{}
 // method.
 func New(
 	reg *registry.Registry,
-	meta types.ActionMeta,
+	meta v1alpha1.ActionMeta,
 	sourceType string,
 	event interface{},
 	data interface{},
@@ -52,20 +54,22 @@ func New(
 		data:       data,
 		msgs:       msgs,
 	}
-	ret.action, err = reg.CreateOrGetInstance(meta)
+	ret.action, err = reg.NewInstance(meta)
 	if err != nil {
 		return nil, err
 	}
 	return &ret, nil
 }
 
-func (j *Job) Type() string {
+// Template return job template type
+func (j *Job) Template() string {
 	if j.action == nil {
 		return ""
 	}
-	return j.action.Type()
+	return j.action.Template()
 }
 
+// Run execute action
 func (j *Job) Run(ctx context.Context) error {
 	if j.action == nil {
 		return nil
@@ -73,6 +77,7 @@ func (j *Job) Run(ctx context.Context) error {
 	return j.action.Run(ctx, j.sourceType, j.event, j.data, j.msgs)
 }
 
+// AllowConcurrency returns whether the job allows concurrency.
 func (j *Job) AllowConcurrency() bool {
 	if j.action == nil {
 		return true

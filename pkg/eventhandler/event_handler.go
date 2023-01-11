@@ -19,12 +19,11 @@ package eventhandler
 import (
 	"fmt"
 
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/action/job"
 	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
-	actiontypes "github.com/kubevela/kube-trigger/pkg/action/types"
 	"github.com/kubevela/kube-trigger/pkg/executor"
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
 	filterutils "github.com/kubevela/kube-trigger/pkg/filter/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -44,9 +43,10 @@ import (
 // in it.
 type EventHandler func(sourceType string, event interface{}, data interface{}) error
 
+// Config is the config for trigger
 type Config struct {
-	Filters        []filtertypes.FilterMeta
-	Actions        []actiontypes.ActionMeta
+	Filters        []v1alpha1.FilterMeta
+	Actions        []v1alpha1.ActionMeta
 	FilterRegistry *filterregistry.Registry
 	ActionRegistry *actionregistry.Registry
 	Executor       *executor.Executor
@@ -59,6 +59,7 @@ func New() EventHandler {
 	}
 }
 
+// NewFromConfig creates a new EventHandler from config.
 func NewFromConfig(c Config) EventHandler {
 	filterLogger := logrus.WithField("eventhandler", "applyfilters")
 	actionLogger := logrus.WithField("eventhandler", "addactionjob")

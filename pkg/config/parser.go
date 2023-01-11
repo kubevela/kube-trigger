@@ -17,7 +17,7 @@ limitations under the License.
 package config
 
 import (
-	"io/ioutil"
+	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -30,21 +30,23 @@ import (
 var logger = logrus.WithField("config", "parser")
 
 var parsers = map[string]func([]byte) (*Config, error){
-	".cue":  CUEParser,
-	".yaml": YAMLParser,
-	".yml":  YAMLParser,
-	".json": JSONParser,
+	".cue":  cueParser,
+	".yaml": yamlParser,
+	".yml":  yamlParser,
+	".json": jsonParser,
 }
 
 var (
+	// ErrUnsupportedExtension is returned when the file extension is not supported.
 	ErrUnsupportedExtension = errors.New("extension not supported")
 )
 
+// New news a config
 func New() *Config {
 	return &Config{}
 }
 
-//nolint:nestif,govet // .
+// NewFromFileOrDir news a config from file or dir.
 func NewFromFileOrDir(path string) (*Config, error) {
 	c := &Config{}
 
@@ -82,7 +84,7 @@ func NewFromFileOrDir(path string) (*Config, error) {
 
 func findFilesInDir(dir string) ([]string, error) {
 	var files []string
-	fs, err := ioutil.ReadDir(dir)
+	fs, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func parseFromFile(path string) (*Config, error) {
 		return nil, ErrUnsupportedExtension
 	}
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot read config file content")
 	}
@@ -111,7 +113,7 @@ func parseFromFile(path string) (*Config, error) {
 	return parser(data)
 }
 
-func CUEParser(data []byte) (*Config, error) {
+func cueParser(data []byte) (*Config, error) {
 	c := cuecontext.New()
 	v := c.CompileString(string(data))
 	jsonByte, err := v.MarshalJSON()
@@ -120,29 +122,25 @@ func CUEParser(data []byte) (*Config, error) {
 	}
 
 	conf := &Config{}
-	err = conf.Parse(jsonByte)
+	err = json.Unmarshal(jsonByte, conf)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
 }
 
-func JSONParser(data []byte) (*Config, error) {
+func jsonParser(data []byte) (*Config, error) {
 	conf := &Config{}
-	err := conf.Parse(data)
+	err := json.Unmarshal(data, conf)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
 }
 
-func YAMLParser(data []byte) (*Config, error) {
-	jsonByte, err := yaml.ToJSON(data)
-	if err != nil {
-		return nil, err
-	}
+func yamlParser(data []byte) (*Config, error) {
 	conf := &Config{}
-	err = conf.Parse(jsonByte)
+	err := yaml.Unmarshal(data, conf)
 	if err != nil {
 		return nil, err
 	}

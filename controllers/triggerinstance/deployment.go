@@ -25,24 +25,14 @@ import (
 	"github.com/kubevela/kube-trigger/controllers/template"
 	"github.com/kubevela/kube-trigger/controllers/utils"
 	"github.com/kubevela/kube-trigger/pkg/cmd"
-	"github.com/kubevela/kube-trigger/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	CreatedByLabel                = "app.kubernetes.io/created-by"
-	CreatedByControllerLabelValue = "kube-trigger-manager"
-
-	ComponentLabel      = "app.kubernetes.io/component"
-	ComponentLabelValue = "kube-trigger"
-
-	// VersionLabel is controller version that created this pod.
-	VersionLabel = "app.kubernetes.io/version"
-
+	createdByLabel                = "app.kubernetes.io/created-by"
+	createdByControllerLabelValue = "kube-trigger-manager"
 	// NameLabel is to store name of the crd.
 	NameLabel = "app.kubernetes.io/name"
 )
@@ -56,9 +46,7 @@ func (r *Reconciler) createDeployment(
 
 	deployment.Name = ki.Name
 	deployment.Namespace = ki.Namespace
-	deployment.Labels[CreatedByLabel] = CreatedByControllerLabelValue
-	deployment.Labels[ComponentLabel] = ComponentLabelValue
-	deployment.Labels[VersionLabel] = version.Version
+	deployment.Labels[createdByLabel] = createdByControllerLabelValue
 	deployment.Labels[NameLabel] = ki.Name
 	deployment.Spec.Selector.MatchLabels[NameLabel] = ki.Name
 	deployment.Spec.Template.ObjectMeta.Labels[NameLabel] = ki.Name
@@ -71,7 +59,7 @@ func (r *Reconciler) createDeployment(
 	deployment.Spec.Template.Spec.ServiceAccountName = ki.Name
 	deployment.Spec.Template.Spec.Volumes[0].ConfigMap.Name = ki.Name
 
-	utils.SetOwnerReference(deployment, *ki)
+	utils.SetOwnerReference(deployment, ki)
 
 	var err error
 	if update {
@@ -90,13 +78,6 @@ func (r *Reconciler) createDeployment(
 	if err != nil {
 		return err
 	}
-
-	utils.UpdateResource(ki, standardv1alpha1.Resource{
-		APIVersion: appsv1.SchemeGroupVersion.String(),
-		Kind:       reflect.TypeOf(appsv1.Deployment{}).Name(),
-		Name:       deployment.Name,
-		Namespace:  deployment.Namespace,
-	})
 
 	return nil
 }
@@ -134,29 +115,9 @@ func flagToArg(flag string, value interface{}) string {
 	return fmt.Sprintf("--%s=%v", flag, value)
 }
 
-func (r *Reconciler) deleteDeployment(ctx context.Context, namespacedName types.NamespacedName) error {
-	deployment := template.GetDeployment()
-
-	deployment.Name = namespacedName.Name
-	deployment.Namespace = namespacedName.Namespace
-
-	logger.Infof("deleting existing Deployment: %s", namespacedName.String())
-	return client.IgnoreNotFound(r.Delete(ctx, deployment))
-}
-
-func (r *Reconciler) ReconcileDeployment(
-	ctx context.Context,
-	ki *standardv1alpha1.TriggerInstance,
-	req ctrl.Request,
-) error {
-	if ki.GetUID() == "" {
-		return r.deleteDeployment(ctx, req.NamespacedName)
-	}
-
-	var err error
-
+func (r *Reconciler) reconcileDeployment(ctx context.Context, ki *standardv1alpha1.TriggerInstance) error {
 	deployment := appsv1.Deployment{}
-	err = r.Get(ctx, utils.GetNamespacedName(ki), &deployment)
+	err := r.Get(ctx, utils.GetNamespacedName(ki), &deployment)
 
 	if err == nil {
 		return r.createDeployment(ctx, ki, true)

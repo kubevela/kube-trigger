@@ -19,6 +19,7 @@ package types
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,12 +30,12 @@ type Action interface {
 	New() Action
 
 	// Validate validates properties.
-	Validate(properties map[string]interface{}) error
+	Validate(properties *runtime.RawExtension) error
 
 	// Init initializes this instance using user-provided properties and common things.
 	// Typically, this will only be called once and the initialized instance
 	// will be cached. Subsequent calls will use the Run() method in cached instances.
-	Init(c Common, properties map[string]interface{}) error
+	Init(c Common, properties *runtime.RawExtension) error
 
 	// Run executes this Action.
 	//
@@ -55,9 +56,9 @@ type Action interface {
 	// will be called multiple times, you should not store any states in your Action.
 	Run(ctx context.Context, sourceType string, event interface{}, data interface{}, messages []string) error
 
-	// Type returns the type of this Action. Since this is an Action, please name
+	// Template returns the type of this Action. Since this is an Action, please name
 	// your action as do-something, instead of something-doer.
-	Type() string
+	Template() string
 
 	// AllowConcurrency indicates if this Action can be executed concurrently.
 	// If not, only one instance of this Action type can run at a time.
@@ -67,18 +68,4 @@ type Action interface {
 // Common is some common things that are passed to Actions when they initialize.
 type Common struct {
 	Client client.Client
-}
-
-// ActionMeta is what users type in their configurations, specifying what action
-// they want to use and what properties they provided.
-type ActionMeta struct {
-	// Type is the name (identifier) of this action.
-	Type string `json:"type"`
-
-	// Properties are user-provided parameters. You should parse it yourself.
-	Properties map[string]interface{} `json:"properties"`
-
-	// Raw is the raw string representation of this action. Typically, you will
-	// not use it. This is for identifying action instances.
-	Raw string `json:"raw,omitempty"`
 }
