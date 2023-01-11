@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// IgnoreAlreadyExists ignores error of already exists
 func IgnoreAlreadyExists(err error) error {
 	if apierrors.IsAlreadyExists(err) {
 		return nil
@@ -31,6 +32,7 @@ func IgnoreAlreadyExists(err error) error {
 	return err
 }
 
+// IgnoreNotFound ignores error of not found
 func IgnoreNotFound(err error) error {
 	return client.IgnoreNotFound(err)
 }

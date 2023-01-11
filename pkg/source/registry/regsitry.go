@@ -47,9 +47,9 @@ func (r *Registry) Register(meta types.SourceMeta, initial types.Source) {
 	r.reg.Store(meta.Type, initial)
 }
 
-// Get gets a Souce.
-func (r *Registry) Get(meta types.SourceMeta) (types.Source, bool) {
-	f, ok := r.reg.Load(meta.Type)
+// Get gets a Source.
+func (r *Registry) Get(typ string) (types.Source, bool) {
+	f, ok := r.reg.Load(typ)
 	if !ok {
 		return nil, ok
 	}

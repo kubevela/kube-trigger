@@ -19,21 +19,23 @@ package triggerservice
 import (
 	"context"
 	"fmt"
-	"reflect"
 
-	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/controllers/config"
-	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
-	"github.com/kubevela/kube-trigger/controllers/utils"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/controllers/config"
+	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
 )
 
 // Reconciler reconciles a TriggerService object.
@@ -44,12 +46,8 @@ type Reconciler struct {
 }
 
 var (
-	logger           = logrus.WithField("controller", "kube-trigger-config")
-	defaultExtension = ".json"
-)
-
-var (
-	ErrNoTriggerInstanceSelected = errors.New("no TriggerInstance selected. Check your spec.selector")
+	logger                  = logrus.WithField("controller", "trigger-service")
+	triggerServiceFinalizer = "trigger.oam.dev/trigger-service-finalizer"
 )
 
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggerconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -61,157 +59,134 @@ var (
 
 //+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the TriggerService object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
+// Reconcile reconciles a TriggerService object.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	ktc := standardv1alpha1.TriggerService{}
-	if err := r.Get(ctx, req.NamespacedName, &ktc); err != nil && !apierrors.IsNotFound(err) {
-		logger.Error(err, "unable to fetch TriggerService CRD")
+	ts := &standardv1alpha1.TriggerService{}
+	logger = logger.WithField("trigger-service", req.NamespacedName)
+	if err := r.Get(ctx, req.NamespacedName, ts); err != nil && !apierrors.IsNotFound(err) {
+		logger.Error(err, "failed to get TriggerService")
 		return ctrl.Result{}, err
 	}
-	logger.Infof("received reconcile request: %s", req.String())
-
-	kil := standardv1alpha1.TriggerInstanceList{}
-	var labelMatcher client.MatchingLabels = ktc.Spec.Selector
-
-	// If the selector provided in the TriggerService is empty
-	// and the user want to use the default instance,
-	// give the user the default TriggerInstance.
-	//
-	// Note that if the user have provided selectors, but it does not
-	// select anything. It is considered invalid. Don't provide the
-	// default TriggerInstance.
-	if len(labelMatcher) == 0 && r.Config.ServiceUseDefaultInstance {
-		defaultObjKey := types.NamespacedName{
-			Namespace: triggerinstance.DefaultInstanceNamespace,
-			Name:      triggerinstance.DefaultInstanceName,
+	logger.Infof("Reconciling TriggerService %s", req.Name)
+	if ts.ObjectMeta.GetDeletionTimestamp() != nil {
+		if !meta.FinalizerExists(ts, triggerServiceFinalizer) {
+			meta.AddFinalizer(ts, triggerServiceFinalizer)
+			return ctrl.Result{}, r.Update(ctx, ts)
 		}
-		logger.Warnf("no TriggerInstance selected in %s, the default one %s will be used instead",
-			req.String(), defaultObjKey.String())
-		defaultInstance := standardv1alpha1.TriggerInstance{}
-		err := r.Get(ctx, defaultObjKey, &defaultInstance)
-		if err != nil {
-			return ctrl.Result{}, errors.Wrapf(err, "cannot get the deault instance")
+	}
+
+	ti := &standardv1alpha1.TriggerInstance{}
+	if ts.Spec.InstanceRef != "" {
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      ts.Spec.InstanceRef,
+			Namespace: ts.Namespace,
+		}, ti); err != nil {
+			logger.Error(err, "failed to get TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
+			return ctrl.Result{}, err
 		}
-		kil.Items = append(kil.Items, defaultInstance)
 	} else {
-		var listOptions []client.ListOption
-		listOptions = append(listOptions, client.InNamespace(ktc.Namespace), labelMatcher)
-		if err := r.List(ctx, &kil, listOptions...); err != nil {
-			return ctrl.Result{}, err
+		// use TriggerInstance with the same name as the TriggerService, if not exists, create one
+		if err := r.Get(ctx, req.NamespacedName, ti); err != nil {
+			if apierrors.IsNotFound(err) {
+				ti = &standardv1alpha1.TriggerInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      req.Name,
+						Namespace: req.Namespace,
+					},
+				}
+				if err := r.Create(ctx, ti); err != nil {
+					logger.Error(err, "failed to create TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
+					return ctrl.Result{}, err
+				}
+			} else {
+				logger.Error(err, "failed to get TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
-	if len(kil.Items) == 0 {
-		// TODO(charlie0129): check this error in validation webhook. Notify the user even before TriggerService is applied.
-		logger.Error(ErrNoTriggerInstanceSelected)
-		return ctrl.Result{}, ErrNoTriggerInstanceSelected
-	}
-
-	for _, kt := range kil.Items {
-		err := r.addOrDeleteConfigToKubeTrigger(ctx, ktc, kt, req)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	err := r.handleTriggerConfig(ctx, ts, ti)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) addOrDeleteConfigToKubeTrigger(
-	ctx context.Context,
-	ks standardv1alpha1.TriggerService,
-	ki standardv1alpha1.TriggerInstance,
-	req ctrl.Request,
-) error {
-	// Find TriggerInstance ConfigMap
-	cm := v1.ConfigMap{}
-	var foundCM bool
-	for _, res := range ki.Status.CreatedResources {
-		if res.APIVersion != v1.SchemeGroupVersion.String() ||
-			res.Kind != reflect.TypeOf(v1.ConfigMap{}).Name() {
-			continue
-		}
-		foundCM = true
-		err := r.Get(ctx, types.NamespacedName{
-			Namespace: res.Namespace,
-			Name:      res.Name,
-		}, &cm)
-		if err != nil {
-			return err
-		}
-		break
-	}
-	if !foundCM {
-		return fmt.Errorf("no ConfigMap found in TriggerInstance: %s", utils.GetNamespacedName(&ki))
-	}
-
+func (r *Reconciler) handleTriggerConfig(ctx context.Context, ts *standardv1alpha1.TriggerService, ti *standardv1alpha1.TriggerInstance) error {
 	// Add TriggerService into ConfigMap
-	jsonByte, err := json.Marshal(ks.Spec)
+	jsonByte, err := json.Marshal(ts.Spec)
 	if err != nil {
-		return errors.Wrapf(err, "cannot marshal watchers in %s", utils.GetNamespacedName(&ks))
+		return fmt.Errorf("failed to marshal TriggerService %s: %w", ts.Name, err)
 	}
-
-	keyName := req.Name + defaultExtension
-	// Indicates if the data in cm is actually changed.
-	updated := true
-
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
-	if ks.GetUID() == "" {
-		logger.Infof("deleted config entry %s from cm %s", keyName, utils.GetNamespacedName(&cm))
-		delete(cm.Data, keyName)
-	} else {
-		if _, ok := cm.Data[keyName]; ok {
-			logger.Warnf("key %s already exists in cm %s, will be overwritten", keyName, utils.GetNamespacedName(&cm))
-		}
-		logger.Infof("added config entry %s to cm %s", keyName, utils.GetNamespacedName(&cm))
-		newCfg := string(jsonByte)
-		if cm.Data[keyName] == newCfg {
-			updated = false
+	// Find TriggerInstance ConfigMap
+	cm := &v1.ConfigMap{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ti.Namespace, Name: ti.Name}, cm); err != nil {
+		if apierrors.IsNotFound(err) {
+			cm = &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ti.Name,
+					Namespace: ti.Namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         ti.APIVersion,
+							Kind:               ti.Kind,
+							Name:               ti.Name,
+							UID:                ti.UID,
+							BlockOwnerDeletion: pointer.BoolPtr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					ts.Name: string(jsonByte),
+				},
+			}
+			if err := r.Create(ctx, cm); err != nil {
+				return err
+			}
 		} else {
-			cm.Data[keyName] = newCfg
+			return fmt.Errorf("failed to get TriggerInstance ConfigMap: %w", err)
 		}
 	}
-
-	// Only if the CM is actually changed, then we need to update cm and restart
-	// trigger instance.
-	if updated {
-		err = r.Update(ctx, &cm)
-		if err != nil {
+	if meta.FinalizerExists(ts, triggerServiceFinalizer) {
+		delete(cm.Data, ts.Name)
+		if err := r.Update(ctx, cm); err != nil {
 			return err
 		}
-		return r.restartPod(ctx, ki)
+		logger.Infof("delete config entry %s from cm %s", ts.Name, ti.Name)
+		meta.RemoveFinalizer(ts, triggerServiceFinalizer)
+		return r.Update(ctx, ts)
 	}
-
-	return nil
+	if data, ok := cm.Data[ts.Name]; ok {
+		if data == string(jsonByte) {
+			return nil
+		}
+		logger.Warnf("key %s already exists in cm %s, will be overwritten", ts.Name, ti.Name)
+	}
+	cm.Data[ts.Name] = string(jsonByte)
+	logger.Infof("add config entry %s from cm %s", ts.Name, ti.Name)
+	if err := r.Update(ctx, cm); err != nil {
+		return err
+	}
+	return r.restartPod(ctx, ti)
 }
 
-func (r *Reconciler) restartPod(
-	ctx context.Context,
-	ki standardv1alpha1.TriggerInstance,
-) error {
+func (r *Reconciler) restartPod(ctx context.Context, ti *standardv1alpha1.TriggerInstance) error {
 	var err error
 
 	pods := v1.PodList{}
-	err = r.List(ctx, &pods, client.InNamespace(ki.Namespace), client.MatchingLabels{
-		triggerinstance.NameLabel: ki.Name,
+	err = r.List(ctx, &pods, client.InNamespace(ti.Namespace), client.MatchingLabels{
+		triggerinstance.NameLabel: ti.Name,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot list pods")
+		return errors.Wrapf(err, "failed to list pods")
 	}
 
 	for _, pod := range pods.Items {
 		err = r.Delete(ctx, pod.DeepCopy())
-		logger.Infof("restrting TriggerInstance %s due to config changes", utils.GetNamespacedName(&ki))
+		logger.Infof("restarting TriggerInstance due to config changes")
 		if err != nil {
 			return errors.Wrapf(err, "cannot delete pod: %s/%s", pod.Namespace, pod.Name)
 		}

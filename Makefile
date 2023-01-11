@@ -31,8 +31,8 @@ MAKEFLAGS += --always-make
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
 generate:
-	./make-kt generate
-	./make-mgr manifests generate
+	./hack/make-kt.sh generate
+	./hack/make-mgr.sh manifests generate
 
 lint:
 	build/lint.sh

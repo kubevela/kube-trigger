@@ -27,6 +27,7 @@ import (
 	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type K8sResourceWatcher struct {
@@ -40,7 +41,7 @@ func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	return &K8sResourceWatcher{}
 }
 
-func (w *K8sResourceWatcher) Init(properties map[string]interface{}, eh eventhandler.EventHandler) error {
+func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhandler.EventHandler) error {
 	var err error
 
 	ctrlConf := &config.Properties{}
@@ -57,7 +58,7 @@ func (w *K8sResourceWatcher) Init(properties map[string]interface{}, eh eventhan
 	return nil
 }
 
-func (w *K8sResourceWatcher) Validate(properties map[string]interface{}) error {
+func (w *K8sResourceWatcher) Validate(properties *runtime.RawExtension) error {
 	ctrlConf := &config.Properties{}
 	return ctrlConf.Parse(properties)
 }

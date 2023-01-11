@@ -17,7 +17,8 @@ limitations under the License.
 package client
 
 import (
-	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
+	v1beta1 "github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"

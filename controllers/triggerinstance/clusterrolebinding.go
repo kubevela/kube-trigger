@@ -18,7 +18,6 @@ package triggerinstance
 
 import (
 	"context"
-	"reflect"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/template"
@@ -26,8 +25,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *Reconciler) createClusterRoleBinding(
@@ -44,6 +41,7 @@ func (r *Reconciler) createClusterRoleBinding(
 	// It must have one subject.
 	crb.Subjects[0].Name = ki.Name
 	crb.Subjects[0].Namespace = ki.Namespace
+	utils.SetOwnerReference(crb, ki)
 
 	var err error
 	if update {
@@ -63,42 +61,12 @@ func (r *Reconciler) createClusterRoleBinding(
 		return err
 	}
 
-	utils.UpdateResource(ki, standardv1alpha1.Resource{
-		APIVersion: rbacv1.SchemeGroupVersion.String(),
-		Kind:       reflect.TypeOf(rbacv1.ClusterRoleBinding{}).Name(),
-		Name:       crb.Name,
-		Namespace:  crb.Namespace,
-	})
-
 	return nil
 }
 
-func (r *Reconciler) deleteClusterRoleBinding(
-	ctx context.Context,
-	namespacedName types.NamespacedName,
-) error {
-	crb := template.GetClusterRoleBinding()
-
-	crb.Name = namespacedName.Name
-	crb.Namespace = namespacedName.Namespace
-
-	logger.Infof("deleting existing ClusterRoleBinding: %s", namespacedName.String())
-	return client.IgnoreNotFound(r.Delete(ctx, crb))
-}
-
-func (r *Reconciler) ReconcileClusterRoleBinding(
-	ctx context.Context,
-	ki *standardv1alpha1.TriggerInstance,
-	req ctrl.Request,
-) error {
-	if ki.GetUID() == "" {
-		return r.deleteClusterRoleBinding(ctx, req.NamespacedName)
-	}
-
-	var err error
-
+func (r *Reconciler) reconcileClusterRoleBinding(ctx context.Context, ki *standardv1alpha1.TriggerInstance) error {
 	crb := rbacv1.ClusterRoleBinding{}
-	err = r.Get(ctx, utils.GetNamespacedName(ki), &crb)
+	err := r.Get(ctx, utils.GetNamespacedName(ki), &crb)
 
 	if err == nil {
 		return r.createClusterRoleBinding(ctx, ki, true)

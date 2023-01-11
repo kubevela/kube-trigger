@@ -35,98 +35,77 @@ spec:
           spec:
             description: TriggerServiceSpec defines the desired state of TriggerService.
             properties:
-              selector:
-                additionalProperties:
-                  type: string
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
-                type: object
+              instanceRef:
+                type: string
               triggers:
                 description: Config for kube-trigger
                 items:
+                  description: TriggerMeta is the meta data of a trigger.
                   properties:
                     actions:
                       items:
+                        description: ActionMeta is what users type in their configurations,
+                          specifying what action they want to use and what properties
+                          they provided.
                         properties:
-                          bump-application-revision:
-                            properties:
-                              labelSelectors:
-                                additionalProperties:
-                                  type: string
-                                type: object
-                              name:
-                                type: string
-                              namespace:
-                                type: string
+                          properties:
+                            description: Properties are user-provided parameters.
+                              You should parse it yourself.
                             type: object
-                          patch-k8s-objects:
-                            properties:
-                              allowConcurrency:
-                                type: boolean
-                              patch:
-                                type: string
-                              patchTarget:
-                                properties:
-                                  apiVersion:
-                                    type: string
-                                  kind:
-                                    type: string
-                                  labelSelectors:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
-                                  name:
-                                    type: string
-                                  namespace:
-                                    type: string
-                                required:
-                                - apiVersion
-                                - kind
-                                type: object
-                            required:
-                            - patch
-                            - patchTarget
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          raw:
+                            description: Raw is the raw string representation of this
+                              action. Typically, you will not use it. This is for
+                              identifying action instances.
+                            type: string
+                          template:
+                            description: Type is the template (identifier) of this
+                              action.
+                            type: string
+                        required:
+                        - template
                         type: object
                       type: array
                     filters:
                       items:
+                        description: FilterMeta is what users type in their configurations,
+                          specifying what filter they want to use and what properties
+                          they provided.
                         properties:
-                          cue-validator:
-                            properties:
-                              template:
-                                type: string
-                            required:
-                            - template
+                          properties:
+                            description: Properties are user-provided parameters.
+                              You should parse it yourself.
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          template:
+                            description: Template is the template (identifier) of
+                              this filter.
+                            type: string
+                        required:
+                        - template
                         type: object
                       type: array
-                    k8s-resource-watcher:
+                    source:
+                      description: Source defines the Source of trigger.
                       properties:
-                        apiVersion:
-                          type: string
-                        events:
-                          items:
-                            type: string
-                          type: array
-                        kind:
-                          type: string
-                        namespace:
+                        properties:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        template:
+                          description: SourceTemplate is the type of source template
                           type: string
                       required:
-                      - apiVersion
-                      - kind
+                      - properties
+                      - template
                       type: object
                   required:
                   - actions
                   - filters
+                  - source
                   type: object
                 type: array
             required:
             - triggers
-            type: object
-          status:
-            description: TriggerServiceStatus defines the observed state of TriggerService.
             type: object
         type: object
     served: true

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	filtertypes "github.com/kubevela/kube-trigger/pkg/filter/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/event"
 	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
@@ -61,7 +61,7 @@ type Controller struct {
 	eventHandler   eventhandler.EventHandler
 	sourceConf     config.Properties
 	filterRegistry *filterregistry.Registry
-	filters        []filtertypes.FilterMeta
+	filters        []v1alpha1.FilterMeta
 	listenEvents   map[string]bool
 	controllerType string
 }

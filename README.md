@@ -58,14 +58,16 @@ know the format first. We will use yaml format as an example (json and cue are a
 # A trigger is a group of Source, Filters, and Actions.
 # You can add multiple triggers.
 triggers:
-  - your-source-type:
+  - source:
+      template: <your-source-template>
+      properties: ...
       # ... properties
     filters:
-      - your-filter-0-type:
-          # ... properties
+      - template: <your-filter-template>
+        properties: ...
     actions:
-      - your-action-0-type:
-          # ... properties
+      - template: <your-action-template>
+        properties: ...
 ```
 
 ### Standalone
@@ -82,25 +84,29 @@ An example config file looks like this:
 # A trigger is a group of Source, Filters, and Actions.
 # You can add multiple triggers.
 triggers:
-  - k8s-resource-watcher:
-      # We are interested in ConfigMap events.
-      apiVersion: "v1"
-      kind: ConfigMap
-      namespace: default
-      # Only watch update event.
-      events:
-        - update
+  - source:
+      template: k8s-resource-watcher
+      properties:
+        # We are interested in ConfigMap events.
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        # Only watch update event.
+        events:
+          - update
     filters:
-      # Filter the events above.
-      - cue-validator:
-          # Filter by validating the object data using CUE.
-          # For example, we are filtering by ConfigMap names (metadata.name) from above.
-          # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
-          template: |
-            metadata: name: =~"this-will-trigger-update-.*"
+      - template: cue-validator
+        # Filter the events above.
+        properties:
+            # Filter by validating the object data using CUE.
+            # For example, we are filtering by ConfigMap names (metadata.name) from above.
+            # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
+            template: |
+              metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - bump-application-revision:
+      - template: bump-application-revision
+        properties:
           namespace: default
           # Select Applications to bump using labels.
           labelSelectors:
@@ -134,20 +140,24 @@ spec:
   selector:
     instance: kubetrigger-sample
   triggers:
-    - k8s-resource-watcher:
-        apiVersion: "v1"
-        kind: ConfigMap
-        namespace: default
-        events:
-          - update
+    - source:
+        template: k8s-resource-watcher
+        properties:
+          apiVersion: "v1"
+          kind: ConfigMap
+          namespace: default
+          events:
+            - update
       filters:
-        - cue-validator:
+        - template: cue-validator
+          properties:
             template: |
               // Filter by object name.
               // I used regular expressions here.
               metadata: name: =~"this-will-trigger-update-.*"
       actions:
-        - bump-application-revision:
+        - template: bump-application-revision
+          properties:
             namespace: default
             labelSelectors:
               my-label: my-value

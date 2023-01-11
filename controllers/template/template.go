@@ -54,18 +54,22 @@ func init() {
 	utilruntime.Must(yaml.Unmarshal([]byte(saTemplate), &serviceAccount))
 }
 
+// GetClusterRoleBinding get cluster role binding
 func GetClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	return clusterRoleBinding.DeepCopy()
 }
 
+// GetConfigMap get config map
 func GetConfigMap() *corev1.ConfigMap {
 	return configMap.DeepCopy()
 }
 
+// GetDeployment get deployment
 func GetDeployment() *appsv1.Deployment {
 	return deployment.DeepCopy()
 }
 
+// GetServiceAccount get service account
 func GetServiceAccount() *corev1.ServiceAccount {
 	return serviceAccount.DeepCopy()
 }

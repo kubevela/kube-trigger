@@ -18,27 +18,23 @@ package patchk8sobjects_test
 
 import (
 	"context"
+	"fmt"
 
 	pko "github.com/kubevela/kube-trigger/pkg/action/builtin/patchk8sobjects"
 	"github.com/kubevela/kube-trigger/pkg/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	apitypes "k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("Test context in patch", Ordered, func() {
 	ctx := context.TODO()
-	var props map[string]interface{}
+	var props *runtime.RawExtension
 
 	BeforeEach(func() {
-		props = map[string]interface{}{
-			"patchTarget": map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "ConfigMap",
-				"namespace":  "default",
-			},
-		}
+		props = &runtime.RawExtension{}
 
 		By("create test configmaps")
 		cm := v1.ConfigMap{}
@@ -61,7 +57,8 @@ var _ = Describe("Test context in patch", Ordered, func() {
 	test := func(patch string, event, data interface{}, expected string) func() {
 		return func() {
 			p := pko.PatchK8sObjects{}
-			props["patch"] = patch
+			str := fmt.Sprintf(`{"patch": "%s", "patchTarget": {"apiVersion": "v1", "kind": "ConfigMap", "namespace": "default"}}`, patch)
+			props.UnmarshalJSON([]byte(str))
 			err := p.Init(actionCommon, props)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -80,7 +77,7 @@ var _ = Describe("Test context in patch", Ordered, func() {
 	}
 
 	It("no context", test(
-		`output: data: data: "no context"`,
+		`output: data: data: \"no context\"`,
 		nil,
 		nil,
 		"no context",
@@ -110,11 +107,11 @@ var _ = Describe("Test context in patch", Ordered, func() {
 
 var _ = Describe("General tests", Ordered, func() {
 	ctx := context.TODO()
-	var props map[string]interface{}
+	var props *runtime.RawExtension
 
 	It("invalid prop", func() {
 		p := pko.PatchK8sObjects{}
-		props = make(map[string]interface{})
+		props = &runtime.RawExtension{}
 		err := p.Init(actionCommon, props)
 		Expect(err).To(HaveOccurred())
 	})
@@ -128,14 +125,7 @@ var _ = Describe("General tests", Ordered, func() {
 		Expect(util.IgnoreAlreadyExists(err)).NotTo(HaveOccurred())
 
 		p := pko.PatchK8sObjects{}
-		props = map[string]interface{}{
-			"patchTarget": map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "ConfigMap",
-				"namespace":  "default",
-			},
-			"patch": ":,./,",
-		}
+		props = &runtime.RawExtension{Raw: []byte(`{"patch": ":,./,", "patchTarget": {"apiVersion": "v1", "kind": "ConfigMap", "namespace": "default"}}`)}
 		err = p.Init(actionCommon, props)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -164,15 +154,7 @@ var _ = Describe("General tests", Ordered, func() {
 
 		By("Name restrictions: only test-cm-1 should be patched")
 		p := pko.PatchK8sObjects{}
-		props = map[string]interface{}{
-			"patchTarget": map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "ConfigMap",
-				"namespace":  "default",
-				"name":       "test-cm-1",
-			},
-			"patch": `output: data: data: "only test-cm-1"`,
-		}
+		props = &runtime.RawExtension{Raw: []byte(`{"patch": "output: data: data: \"only test-cm-1\"", "patchTarget": {"name": "test-cm-1", "apiVersion": "v1", "kind": "ConfigMap", "namespace": "default"}}`)}
 		err = p.Init(actionCommon, props)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -195,17 +177,7 @@ var _ = Describe("General tests", Ordered, func() {
 		Expect(cm.Data["data"]).To(Equal(""))
 
 		By("Label selectors: only test-cm-2 should be patched")
-		props = map[string]interface{}{
-			"patchTarget": map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "ConfigMap",
-				"namespace":  "default",
-				"labelSelectors": map[string]string{
-					"my-label": "my-value",
-				},
-			},
-			"patch": `output: data: data: "only test-cm-2"`,
-		}
+		props = &runtime.RawExtension{Raw: []byte(`{"patch": "output: data: data: \"only test-cm-2\"", "patchTarget": {"labelSelectors": {"my-label": "my-value"},"apiVersion": "v1", "kind": "ConfigMap", "namespace": "default"}}`)}
 		err = p.Init(actionCommon, props)
 		Expect(err).NotTo(HaveOccurred())
 

@@ -18,8 +18,4 @@ package config
 
 // Config contains options for controllers.
 type Config struct {
-	// CreateDefaultInstance will make the controller always create a default TriggerInstance.
-	CreateDefaultInstance bool
-	// ServiceUseDefaultInstance will make TriggerService use the default TriggerInstance if spec.selector is empty.
-	ServiceUseDefaultInstance bool
 }

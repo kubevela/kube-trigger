@@ -37,6 +37,7 @@ type TriggerInstanceSpec struct {
 	// TODO(charlie0129): add RBAC config, container image
 }
 
+// WorkerConfig defines the worker config
 type WorkerConfig struct {
 	//+optional
 	ActionRetry *bool `json:"actionRetry"`
@@ -81,17 +82,8 @@ type TriggerInstanceStatus struct {
 	//   - running jobs count
 	//   - success jobs count
 	//   - failed jobs count
-	CreatedResources []Resource `json:"createdResources"`
 	// TODO: make it useful
 	Healthy bool `json:"healthy"`
-}
-
-type Resource struct {
-	APIVersion     string      `json:"apiVersion"`
-	Kind           string      `json:"kind"`
-	Name           string      `json:"name"`
-	Namespace      string      `json:"namespace"`
-	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
 }
 
 //+kubebuilder:object:root=true

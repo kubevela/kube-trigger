@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,21 +38,17 @@ import (
 
 func TestParseProperties(t *testing.T) {
 	cases := map[string]struct {
-		prop     map[string]interface{}
+		prop     *runtime.RawExtension
 		expected bar.Properties
 		err      bool
 	}{
 		"valid empty prop": {
-			prop:     map[string]interface{}{},
+			prop:     &runtime.RawExtension{Raw: []byte(`{}`)},
 			expected: bar.Properties{},
 			err:      false,
 		},
 		"valid prop with labelSelectors": {
-			prop: map[string]interface{}{
-				"labelSelectors": map[string]string{
-					"app": "none",
-				},
-			},
+			prop: &runtime.RawExtension{Raw: []byte(`{"labelSelectors": {"app": "none"}}`)},
 			expected: bar.Properties{
 				LabelSelectors: map[string]string{
 					"app": "none",
@@ -60,14 +57,7 @@ func TestParseProperties(t *testing.T) {
 			err: false,
 		},
 		"valid prop with all fields": {
-			prop: map[string]interface{}{
-				"name":      "name",
-				"namespace": "namespace",
-				"labelSelectors": map[string]string{
-					"app": "none",
-				},
-				"random-field": "",
-			},
+			prop: &runtime.RawExtension{Raw: []byte(`{"name": "name", "namespace": "namespace", "random-field":"", "labelSelectors": {"app": "none"}}`)},
 			expected: bar.Properties{
 				Name:      "name",
 				Namespace: "namespace",
@@ -78,14 +68,7 @@ func TestParseProperties(t *testing.T) {
 			err: false,
 		},
 		"invalid prop type": {
-			prop: map[string]interface{}{
-				"name":      1,
-				"namespace": struct{ A string }{},
-				"labelSelectors": map[string]int{
-					"app": 3,
-				},
-				"random-field": "",
-			},
+			prop:     &runtime.RawExtension{Raw: []byte(`{"name": 1, "namespace", "namespace", "random-field":"", "labelSelectors": {"app": 3}}`)},
 			expected: bar.Properties{},
 			err:      true,
 		},
@@ -131,9 +114,7 @@ var _ = Describe("Test BumpApplicationRevision", Ordered, func() {
 
 	It("Bump app with no apprev annotation", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(actionCommon, map[string]interface{}{
-			"name": "no-annotation",
-		})
+		err := b.Init(actionCommon, &runtime.RawExtension{Raw: []byte(`{"name": "no-annotation"}`)})
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Run(ctx, "", nil, nil, nil)
@@ -160,9 +141,7 @@ var _ = Describe("Test BumpApplicationRevision", Ordered, func() {
 
 	It("Bump all apps in a namespace", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(actionCommon, map[string]interface{}{
-			"namespace": "multiple-apps",
-		})
+		err := b.Init(actionCommon, &runtime.RawExtension{Raw: []byte(`{"namespace": "multiple-apps"}`)})
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Run(ctx, "", nil, nil, nil)
@@ -181,11 +160,7 @@ var _ = Describe("Test BumpApplicationRevision", Ordered, func() {
 
 	It("Bump apps using selectors", func() {
 		b := bar.BumpApplicationRevision{}
-		err := b.Init(actionCommon, map[string]interface{}{
-			"labelSelectors": map[string]string{
-				"my-label": "my-value",
-			},
-		})
+		err := b.Init(actionCommon, &runtime.RawExtension{Raw: []byte(`{"labelSelectors": {"my-label": "my-value"}}`)})
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Run(ctx, "", nil, nil, nil)

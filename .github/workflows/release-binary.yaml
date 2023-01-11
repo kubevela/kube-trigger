@@ -36,16 +36,16 @@ jobs:
             ${{ runner.os }}-golang-
 
       - name: Show Make Variables
-        run: ./make-kt variables
+        run: ./hack/make-kt.sh variables
 
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(./make-kt version)
+          VERSION=$(./hack/make-kt.sh version)
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binaries for All Platforms
-        run: ./make-kt all-build
+        run: ./hack/make-kt.sh all-build
 
       - name: Attach Binaries to Release
         uses: softprops/action-gh-release@v1

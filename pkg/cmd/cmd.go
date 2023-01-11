@@ -37,6 +37,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
+// nolint:revive
 const (
 	FlagLogLevel    = "log-level"
 	FlagConfig      = "config"
@@ -66,6 +67,7 @@ Options have a priority like this: cli-flags > env > default-values`
 
 var logger = logrus.WithField("kubetrigger", "main")
 
+// NewCommand news a command
 func NewCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:  "kubetrigger",
@@ -77,11 +79,11 @@ func NewCommand() *cobra.Command {
 		},
 	}
 	addFlags(c.Flags())
-	c.AddCommand(NewVersionCommand())
+	c.AddCommand(newVersionCommand())
 	return c
 }
 
-func NewVersionCommand() *cobra.Command {
+func newVersionCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "version",
 		Short: "show kube-trigger version and exit",
@@ -111,11 +113,11 @@ func runCli(cmd *cobra.Command, args []string) error {
 	var err error
 
 	// Read options from env and cli, and fall back to defaults.
-	opt, err := NewOption().
-		WithDefaults().
-		WithEnvVariables().
-		WithCliFlags(cmd.Flags()).
-		Validate()
+	opt, err := newOption().
+		withDefaults().
+		withEnvVariables().
+		withCliFlags(cmd.Flags()).
+		validate()
 	if err != nil {
 		return errors.Wrap(err, "error when paring flags")
 	}
@@ -142,7 +144,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	defer utilruntime.HandleCrash()
 
 	// Create an executor for running Action jobs.
-	exe, err := executor.New(opt.GetExecutorConfig())
+	exe, err := executor.New(opt.getExecutorConfig())
 	if err != nil {
 		return errors.Wrap(err, "error when creating executor")
 	}
@@ -154,9 +156,9 @@ func runCli(cmd *cobra.Command, args []string) error {
 	// Run watchers.
 	for _, w := range conf.Triggers {
 		// Make this Source type exists.
-		s, ok := sourceReg.Get(w.Source)
+		s, ok := sourceReg.Get(string(w.Source.Template))
 		if !ok {
-			return fmt.Errorf("source type %s does not exist", w.Source.Type)
+			return fmt.Errorf("source type %s does not exist", w.Source.Template)
 		}
 
 		// New Source instance.
@@ -200,7 +202,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	case <-ctx.Done():
 		logger.Infof("context cancelled, stopping")
 	case <-sigterm:
-		logger.Infof("recived termination signel, stopping")
+		logger.Infof("received termination signal, stopping")
 	}
 
 	return nil

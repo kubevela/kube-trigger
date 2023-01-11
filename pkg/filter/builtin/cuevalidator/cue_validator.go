@@ -20,11 +20,13 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/encoding/gocode/gocodec"
-	"github.com/kubevela/kube-trigger/pkg/filter/types"
-	utilscue "github.com/kubevela/kube-trigger/pkg/util/cue"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/kubevela/kube-trigger/pkg/filter/types"
+	utilscue "github.com/kubevela/kube-trigger/pkg/util/cue"
 )
 
 type CUEValidator struct {
@@ -74,7 +76,7 @@ func (c *CUEValidator) ApplyToObject(_ interface{}, obj interface{}) (bool, stri
 	return true, "", nil
 }
 
-func (c *CUEValidator) Init(properties map[string]interface{}) error {
+func (c *CUEValidator) Init(properties *runtime.RawExtension) error {
 	p := Properties{}
 	err := p.parseProperties(properties)
 	if err != nil {
@@ -101,12 +103,12 @@ func (c *CUEValidator) Init(properties map[string]interface{}) error {
 	return nil
 }
 
-func (c *CUEValidator) Validate(properties map[string]interface{}) error {
+func (c *CUEValidator) Validate(properties *runtime.RawExtension) error {
 	p := Properties{}
 	return p.parseProperties(properties)
 }
 
-func (c *CUEValidator) Type() string {
+func (c *CUEValidator) Template() string {
 	return TypeName
 }
 
@@ -114,7 +116,6 @@ func (c *CUEValidator) New() types.Filter {
 	return &CUEValidator{}
 }
 
-//+kubebuilder:object:generate=true
 type Properties struct {
 	Template string `json:"template"`
 }
@@ -122,6 +123,6 @@ type Properties struct {
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
 //go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
-func (p *Properties) parseProperties(properties map[string]interface{}) error {
+func (p *Properties) parseProperties(properties *runtime.RawExtension) error {
 	return utilscue.ValidateAndUnMarshal(propertiesCUETemplate, properties, p)
 }

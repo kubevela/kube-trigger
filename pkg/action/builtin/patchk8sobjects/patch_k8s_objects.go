@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -173,7 +174,7 @@ func (pko *PatchK8sObjects) updateObject(ctx context.Context, contextStr string,
 	return pko.c.Update(ctx, &un)
 }
 
-func (pko *PatchK8sObjects) Init(c types.Common, properties map[string]interface{}) error {
+func (pko *PatchK8sObjects) Init(c types.Common, properties *runtime.RawExtension) error {
 	var err error
 	pko.logger = logrus.WithField("action", TypeName)
 	pko.prop = Properties{}
@@ -188,12 +189,12 @@ func (pko *PatchK8sObjects) Init(c types.Common, properties map[string]interface
 	return nil
 }
 
-func (pko *PatchK8sObjects) Validate(properties map[string]interface{}) error {
+func (pko *PatchK8sObjects) Validate(properties *runtime.RawExtension) error {
 	p := &Properties{}
 	return p.parse(properties)
 }
 
-func (pko *PatchK8sObjects) Type() string {
+func (pko *PatchK8sObjects) Template() string {
 	return TypeName
 }
 
@@ -206,9 +207,9 @@ func (pko *PatchK8sObjects) AllowConcurrency() bool {
 }
 
 // This will make properties.cue into our go code. We will use it to validate user-provided config.
+//
 //go:generate ../../../../hack/generate-go-const-from-file.sh properties.cue propertiesCUETemplate properties
 
-//+kubebuilder:object:generate=true
 type Properties struct {
 	PatchTarget PatchTarget `json:"patchTarget"`
 	Patch       string      `json:"patch"`
@@ -216,7 +217,6 @@ type Properties struct {
 	AllowConcurrency bool `json:"allowConcurrency"`
 }
 
-//+kubebuilder:object:generate=true
 type PatchTarget struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
@@ -229,6 +229,6 @@ type PatchTarget struct {
 }
 
 // parse parses, evaluate, validate, and apply defaults.
-func (p *Properties) parse(prop map[string]interface{}) error {
+func (p *Properties) parse(prop *runtime.RawExtension) error {
 	return utilcue.ValidateAndUnMarshal(propertiesCUETemplate, prop, p)
 }

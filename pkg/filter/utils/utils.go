@@ -17,8 +17,8 @@ limitations under the License.
 package utils
 
 import (
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/filter/registry"
-	"github.com/kubevela/kube-trigger/pkg/filter/types"
 	"github.com/pkg/errors"
 )
 
@@ -28,18 +28,18 @@ import (
 func ApplyFilters(
 	event interface{},
 	data interface{},
-	filters []types.FilterMeta,
+	filters []v1alpha1.FilterMeta,
 	reg *registry.Registry,
 ) (bool, []string, error) {
 	var msgs []string
 	for _, f := range filters {
-		fInstance, err := reg.CreateOrGetInstance(f)
+		fInstance, err := reg.NewInstance(f)
 		if err != nil {
-			return false, msgs, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Type)
+			return false, msgs, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Template)
 		}
 		kept, msg, err := fInstance.ApplyToObject(event, data)
 		if err != nil {
-			return false, msgs, errors.Wrapf(err, "error when applying filter %s to %v", f.Type, event)
+			return false, msgs, errors.Wrapf(err, "error when applying filter %s to %v", f.Template, event)
 		}
 		if !kept {
 			return false, msgs, nil

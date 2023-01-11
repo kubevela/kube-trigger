@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 
 	"cuelang.org/go/cue/cuecontext"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ValidateAndUnMarshal validates the input against the CUE schema, and unmarshal
 // the input cue to output. output must be a pointer.
-func ValidateAndUnMarshal(schema string, input map[string]interface{}, output interface{}) error {
-	inputStr, err := json.Marshal(input)
+func ValidateAndUnMarshal(schema string, input *runtime.RawExtension, output interface{}) error {
+	inputStr, err := input.MarshalJSON()
 	if err != nil {
 		return err
 	}

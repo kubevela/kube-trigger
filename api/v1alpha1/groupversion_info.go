@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the standard v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=standard.oam.dev
+// +kubebuilder:object:generate=true
+// +groupName=standard.oam.dev
 package v1alpha1
 
 import (
@@ -38,6 +38,8 @@ var (
 )
 
 var (
-	KubeTriggerKind       = reflect.TypeOf(TriggerInstance{}).Name()
-	KubeTriggerConfigKind = reflect.TypeOf(TriggerService{}).Name()
+	// TriggerInstanceKind is the kind of TriggerInstance.
+	TriggerInstanceKind = reflect.TypeOf(TriggerInstance{}).Name()
+	// TriggerServiceKind is the kind of TriggerService.
+	TriggerServiceKind = reflect.TypeOf(TriggerService{}).Name()
 )

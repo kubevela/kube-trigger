@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-type Option struct {
+type option struct {
 	LogLevel string
 	Config   string
 
@@ -72,11 +72,11 @@ const (
 	envStrRegistrySize = "REGISTRY_SIZE"
 )
 
-func NewOption() *Option {
-	return &Option{}
+func newOption() *option {
+	return &option{}
 }
 
-func (o *Option) WithDefaults() *Option {
+func (o *option) withDefaults() *option {
 	o.LogLevel = defaultLogLevel
 	o.Config = defaultConfig
 	o.QueueSize = defaultQueueSize
@@ -91,7 +91,7 @@ func (o *Option) WithDefaults() *Option {
 }
 
 //nolint:gocognit
-func (o *Option) WithEnvVariables() *Option {
+func (o *option) withEnvVariables() *option {
 	if v, ok := os.LookupEnv(envStrLogLevel); ok && v != "" {
 		o.LogLevel = v
 	}
@@ -126,7 +126,7 @@ func (o *Option) WithEnvVariables() *Option {
 }
 
 //nolint:gocognit
-func (o *Option) WithCliFlags(flags *pflag.FlagSet) *Option {
+func (o *option) withCliFlags(flags *pflag.FlagSet) *option {
 	if v, err := flags.GetString(FlagLogLevel); err == nil && flags.Changed(FlagLogLevel) {
 		o.LogLevel = v
 	}
@@ -160,7 +160,7 @@ func (o *Option) WithCliFlags(flags *pflag.FlagSet) *Option {
 	return o
 }
 
-func (o *Option) Validate() (*Option, error) {
+func (o *option) validate() (*option, error) {
 	_, err := logrus.ParseLevel(o.LogLevel)
 	if err != nil {
 		return nil, err
@@ -192,7 +192,7 @@ func (o *Option) Validate() (*Option, error) {
 	return o, nil
 }
 
-func (o *Option) GetExecutorConfig() executor.Config {
+func (o *option) getExecutorConfig() executor.Config {
 	return executor.Config{
 		QueueSize:            o.QueueSize,
 		Workers:              o.Workers,
