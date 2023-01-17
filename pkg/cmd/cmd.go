@@ -156,9 +156,9 @@ func runCli(cmd *cobra.Command, args []string) error {
 	// Run watchers.
 	for _, w := range conf.Triggers {
 		// Make this Source type exists.
-		s, ok := sourceReg.Get(string(w.Source.Template))
+		s, ok := sourceReg.Get(w.Source.Type)
 		if !ok {
-			return fmt.Errorf("source type %s does not exist", w.Source.Template)
+			return fmt.Errorf("source type %s does not exist", w.Source.Type)
 		}
 
 		// New Source instance.

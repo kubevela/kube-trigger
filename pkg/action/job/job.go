@@ -61,12 +61,12 @@ func New(
 	return &ret, nil
 }
 
-// Template return job template type
-func (j *Job) Template() string {
+// Type return job type
+func (j *Job) Type() string {
 	if j.action == nil {
 		return ""
 	}
-	return j.action.Template()
+	return j.action.Type()
 }
 
 // Run execute action

@@ -60,8 +60,8 @@ type TriggerMeta struct {
 // ActionMeta is what users type in their configurations, specifying what action
 // they want to use and what properties they provided.
 type ActionMeta struct {
-	// Type is the template (identifier) of this action.
-	Template string `json:"template"`
+	// Type is the type (identifier) of this action.
+	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -75,8 +75,8 @@ type ActionMeta struct {
 // FilterMeta is what users type in their configurations, specifying what filter
 // they want to use and what properties they provided.
 type FilterMeta struct {
-	// Template is the template (identifier) of this filter.
-	Template string `json:"template"`
+	// Type is the type (identifier) of this filter.
+	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -85,29 +85,23 @@ type FilterMeta struct {
 
 // Source defines the Source of trigger.
 type Source struct {
-	Template SourceTemplate `json:"template"`
+	Type string `json:"type"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Properties *runtime.RawExtension `json:"properties"`
 }
 
-// SourceTemplate is the type of source template
-type SourceTemplate string
-
 const (
 	// SourceTypeResourceWatcher is the source type for K8sResourceWatcher.
-	SourceTypeResourceWatcher SourceTemplate = "k8s-resource-watcher"
+	SourceTypeResourceWatcher string = "k8s-resource-watcher"
 	// SourceTypeWebhookTrigger is the source type for WebhookTrigger.
-	SourceTypeWebhookTrigger SourceTemplate = "webhook-trigger"
+	SourceTypeWebhookTrigger string = "webhook-trigger"
 )
-
-// ActionTemplate is the type pf action template
-type ActionTemplate string
 
 const (
 	// ActionTypeBumpApplicationRevision is the source type for BumpApplicationRevision.
-	ActionTypeBumpApplicationRevision ActionTemplate = "bump-application-revision"
+	ActionTypeBumpApplicationRevision string = "bump-application-revision"
 	// ActionTypePatchResource is the source type for WebhookTrigger.
-	ActionTypePatchResource ActionTemplate = "patch-resource"
+	ActionTypePatchResource string = "patch-resource"
 )
 
 func init() {

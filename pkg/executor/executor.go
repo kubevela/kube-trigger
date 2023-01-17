@@ -47,7 +47,7 @@ type Executor struct {
 
 // Job is an Action to be executed by the workers in the Executor.
 type Job interface {
-	Template() string
+	Type() string
 	Run(ctx context.Context) error
 	AllowConcurrency() bool
 }
@@ -106,9 +106,9 @@ func (e *Executor) setJobStatus(j Job, status bool) {
 	// TODO(charlie0129): we are simply use action type to prevent concurrent
 	// runs. This is too strict. Ideally, we would the action hash/ID to do so.
 	if status {
-		e.runningJobs.Store(j.Template(), true)
+		e.runningJobs.Store(j.Type(), true)
 	} else {
-		e.runningJobs.Delete(j.Template())
+		e.runningJobs.Delete(j.Type())
 	}
 }
 
@@ -121,7 +121,7 @@ func (e *Executor) setJobNotRunning(j Job) {
 }
 
 func (e *Executor) getJobStatus(j Job) bool {
-	v, ok := e.runningJobs.Load(j.Template())
+	v, ok := e.runningJobs.Load(j.Type())
 	if !ok {
 		return false
 	}
@@ -133,14 +133,14 @@ func (e *Executor) requeueJob(j Job) {
 		e.queue.AddRateLimited(j)
 		return
 	}
-	e.logger.Errorf("requeue job %s failed, it failed %d times, too many retries", j.Template(), e.queue.NumRequeues(j))
+	e.logger.Errorf("requeue job %s failed, it failed %d times, too many retries", j.Type(), e.queue.NumRequeues(j))
 	e.queue.Forget(j)
 }
 
 // AddJob adds a job to the queue.
 func (e *Executor) AddJob(j Job) error {
 	if e.queue.Len() >= e.queueSize {
-		return fmt.Errorf("queue full with size %d, cannot add job %s", e.queue.Len(), j.Template())
+		return fmt.Errorf("queue full with size %d, cannot add job %s", e.queue.Len(), j.Type())
 	}
 	e.queue.Add(j)
 	return nil
@@ -162,12 +162,12 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		return true
 	}
 
-	e.logger.Infof("job picked up by a worker, going to run job: %s", j.Template())
+	e.logger.Infof("job picked up by a worker, going to run job: %s", j.Type())
 
 	// This job does not allow concurrent runs, and it is already running.
 	// Requeue it to run it later.
 	if !j.AllowConcurrency() && e.getJobStatus(j) {
-		e.logger.Infof("same job %s is already running, will run later", j.Template())
+		e.logger.Infof("same job %s is already running, will run later", j.Type())
 		e.requeueJob(j)
 		return true
 	}
@@ -181,12 +181,12 @@ func (e *Executor) runJob(ctx context.Context) bool {
 	e.setJobNotRunning(j)
 
 	if err == nil && timeoutCtx.Err() == nil {
-		e.logger.Infof("job %s finished", j.Template())
+		e.logger.Infof("job %s finished", j.Type())
 		e.queue.Forget(j)
 	} else {
-		e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Template(), err, timeoutCtx.Err())
+		e.logger.Errorf("job %s failed: jobErr=%s, ctxErr=%s", j.Type(), err, timeoutCtx.Err())
 		if e.allowRetries {
-			e.logger.Infof("will retry job %s later", j.Template())
+			e.logger.Infof("will retry job %s later", j.Type())
 			e.requeueJob(j)
 		}
 	}

@@ -42,32 +42,32 @@ func (c *Config) Validate(
 ) error {
 	// TODO(charlie0129): gather all errors before returning
 	for _, w := range c.Triggers {
-		s, ok := sourceReg.Get(string(w.Source.Template))
+		s, ok := sourceReg.Get(w.Source.Type)
 		if !ok {
-			return fmt.Errorf("no such source found: %s", w.Source.Template)
+			return fmt.Errorf("no such source found: %s", w.Source.Type)
 		}
 		err := s.Validate(w.Source.Properties)
 		if err != nil {
-			return errors.Wrapf(err, "cannot validate source %s", w.Source.Template)
+			return errors.Wrapf(err, "cannot validate source %s", w.Source.Type)
 		}
 		for _, a := range w.Actions {
-			s, ok := actionReg.GetTemplate(a)
+			s, ok := actionReg.GetType(a)
 			if !ok {
-				return fmt.Errorf("no such action found: %s", w.Source.Template)
+				return fmt.Errorf("no such action found: %s", w.Source.Type)
 			}
 			err := s.Validate(a.Properties)
 			if err != nil {
-				return errors.Wrapf(err, "cannot validate action %s", w.Source.Template)
+				return errors.Wrapf(err, "cannot validate action %s", w.Source.Type)
 			}
 		}
 		for _, f := range w.Filters {
-			s, ok := filterReg.GetTemplate(f)
+			s, ok := filterReg.GetType(f)
 			if !ok {
-				return fmt.Errorf("no such filter found: %s", w.Source.Template)
+				return fmt.Errorf("no such filter found: %s", w.Source.Type)
 			}
 			err := s.Validate(f.Properties)
 			if err != nil {
-				return errors.Wrapf(err, "cannot validate filter %s", w.Source.Template)
+				return errors.Wrapf(err, "cannot validate filter %s", w.Source.Type)
 			}
 		}
 	}

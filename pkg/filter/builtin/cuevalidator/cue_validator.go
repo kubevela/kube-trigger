@@ -108,7 +108,7 @@ func (c *CUEValidator) Validate(properties *runtime.RawExtension) error {
 	return p.parseProperties(properties)
 }
 
-func (c *CUEValidator) Template() string {
+func (c *CUEValidator) Type() string {
 	return TypeName
 }
 

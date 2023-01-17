@@ -140,7 +140,7 @@ func (bar *BumpApplicationRevision) Validate(properties *runtime.RawExtension) e
 	return p.Parse(properties)
 }
 
-func (bar *BumpApplicationRevision) Template() string {
+func (bar *BumpApplicationRevision) Type() string {
 	return TypeName
 }
 

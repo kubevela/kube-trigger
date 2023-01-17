@@ -8,21 +8,33 @@ spec:
   # given the related options are enabled using manager args.
   selector:
     instance: kubetrigger-sample
+  # A trigger is a group of Source, Filters, and Actions.
+  # You can add multiple triggers.
   triggers:
-    - k8s-resource-watcher:
-        apiVersion: "v1"
-        kind: ConfigMap
-        namespace: default
-        events:
-          - update
+    - source:
+        type: k8s-resource-watcher
+        properties:
+          # We are interested in ConfigMap events.
+          apiVersion: "v1"
+          kind: ConfigMap
+          namespace: default
+          # Only watch update event.
+          events:
+            - update
       filters:
-        - cue-validator:
-            template: |
-              // Filter by object name.
-              // I used regular expressions here.
-              metadata: name: =~"this-will-trigger-update-.*"
+        - type: cue-validator
+          # Filter the events above.
+          properties:
+              # Filter by validating the object data using CUE.
+              # For example, we are filtering by ConfigMap names (metadata.name) from above.
+              # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
+              template: |
+                metadata: name: =~"this-will-trigger-update-.*"
       actions:
-        - bump-application-revision:
+        # Bump Application Revision to update Application.
+        - type: bump-application-revision
+          properties:
             namespace: default
+            # Select Applications to bump using labels.
             labelSelectors:
               my-label: my-value

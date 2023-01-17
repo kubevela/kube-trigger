@@ -33,7 +33,7 @@ func RegisterBuiltinActions(reg *Registry) {
 func registerFromInstance(reg *Registry, act types.Action) {
 	ins := act
 	insMeta := v1alpha1.ActionMeta{
-		Template: ins.Template(),
+		Type: ins.Type(),
 	}
-	reg.RegisterTemplate(insMeta, ins)
+	reg.RegisterType(insMeta, ins)
 }
