@@ -42,4 +42,6 @@ var (
 	TriggerInstanceKind = reflect.TypeOf(TriggerInstance{}).Name()
 	// TriggerServiceKind is the kind of TriggerService.
 	TriggerServiceKind = reflect.TypeOf(TriggerService{}).Name()
+	// EventListenerKind is the kind of EventListener.
+	EventListenerKind = reflect.TypeOf(EventListener{}).Name()
 )

@@ -107,7 +107,6 @@ type TriggerInstanceList struct {
 	Items           []TriggerInstance `json:"items"`
 }
 
-//nolint:gochecknoinits
 func init() {
 	SchemeBuilder.Register(&TriggerInstance{}, &TriggerInstanceList{})
 }
