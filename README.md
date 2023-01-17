@@ -59,14 +59,14 @@ know the format first. We will use yaml format as an example (json and cue are a
 # You can add multiple triggers.
 triggers:
   - source:
-      template: <your-source-template>
+      type: <your-source-type>
       properties: ...
       # ... properties
     filters:
-      - template: <your-filter-template>
+      - type: <your-filter-type>
         properties: ...
     actions:
-      - template: <your-action-template>
+      - type: <your-action-type>
         properties: ...
 ```
 
@@ -85,7 +85,7 @@ An example config file looks like this:
 # You can add multiple triggers.
 triggers:
   - source:
-      template: k8s-resource-watcher
+      type: k8s-resource-watcher
       properties:
         # We are interested in ConfigMap events.
         apiVersion: "v1"
@@ -95,7 +95,7 @@ triggers:
         events:
           - update
     filters:
-      - template: cue-validator
+      - type: cue-validator
         # Filter the events above.
         properties:
             # Filter by validating the object data using CUE.
@@ -105,7 +105,7 @@ triggers:
               metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - template: bump-application-revision
+      - type: bump-application-revision
         properties:
           namespace: default
           # Select Applications to bump using labels.
@@ -141,7 +141,7 @@ spec:
     instance: kubetrigger-sample
   triggers:
     - source:
-        template: k8s-resource-watcher
+        type: k8s-resource-watcher
         properties:
           apiVersion: "v1"
           kind: ConfigMap
@@ -149,14 +149,14 @@ spec:
           events:
             - update
       filters:
-        - template: cue-validator
+        - type: cue-validator
           properties:
             template: |
               // Filter by object name.
               // I used regular expressions here.
               metadata: name: =~"this-will-trigger-update-.*"
       actions:
-        - template: bump-application-revision
+        - type: bump-application-revision
           properties:
             namespace: default
             labelSelectors:

@@ -35,11 +35,11 @@ func ApplyFilters(
 	for _, f := range filters {
 		fInstance, err := reg.NewInstance(f)
 		if err != nil {
-			return false, msgs, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Template)
+			return false, msgs, errors.Wrapf(err, "filter %s CreateOrGetInstance failed", f.Type)
 		}
 		kept, msg, err := fInstance.ApplyToObject(event, data)
 		if err != nil {
-			return false, msgs, errors.Wrapf(err, "error when applying filter %s to %v", f.Template, event)
+			return false, msgs, errors.Wrapf(err, "error when applying filter %s to %v", f.Type, event)
 		}
 		if !kept {
 			return false, msgs, nil

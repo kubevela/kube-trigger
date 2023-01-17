@@ -2,7 +2,7 @@
 # You can add multiple triggers.
 triggers:
   - source:
-      template: k8s-resource-watcher
+      type: k8s-resource-watcher
       properties:
         # We are interested in ConfigMap events.
         apiVersion: "v1"
@@ -12,7 +12,7 @@ triggers:
         events:
           - update
     filters:
-      - template: cue-validator
+      - type: cue-validator
         # Filter the events above.
         properties:
             # Filter by validating the object data using CUE.
@@ -22,7 +22,7 @@ triggers:
               metadata: name: =~"this-will-trigger-update-.*"
     actions:
       # Bump Application Revision to update Application.
-      - template: bump-application-revision
+      - type: bump-application-revision
         properties:
           namespace: default
           # Select Applications to bump using labels.

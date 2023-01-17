@@ -58,9 +58,9 @@ func New(capacity int) *Registry {
 //
 // If this type does not exist, it errors out.
 func (r *Registry) NewInstance(meta v1alpha1.ActionMeta) (types.Action, error) {
-	initial, ok := r.GetTemplate(meta)
+	initial, ok := r.GetType(meta)
 	if !ok {
-		return nil, fmt.Errorf("action %s does not exist", meta.Template)
+		return nil, fmt.Errorf("action %s does not exist", meta.Type)
 	}
 	newInstance := initial.New()
 	c, err := client.GetClient()
@@ -74,14 +74,14 @@ func (r *Registry) NewInstance(meta v1alpha1.ActionMeta) (types.Action, error) {
 	return newInstance, err
 }
 
-// RegisterTemplate registers an uninitialized one.
-func (r *Registry) RegisterTemplate(meta v1alpha1.ActionMeta, initial types.Action) {
-	r.reg.Store(meta.Template, initial)
+// RegisterType registers an uninitialized one.
+func (r *Registry) RegisterType(meta v1alpha1.ActionMeta, initial types.Action) {
+	r.reg.Store(meta.Type, initial)
 }
 
-// GetTemplate gets an uninitialized one.
-func (r *Registry) GetTemplate(meta v1alpha1.ActionMeta) (types.Action, bool) {
-	f, ok := r.reg.Load(meta.Template)
+// GetType gets an uninitialized one.
+func (r *Registry) GetType(meta v1alpha1.ActionMeta) (types.Action, bool) {
+	f, ok := r.reg.Load(meta.Type)
 	if !ok {
 		return nil, ok
 	}

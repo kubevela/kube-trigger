@@ -52,7 +52,7 @@ type Filter interface {
 	// can, for example, send this message to webhooks.
 	ApplyToObject(event interface{}, data interface{}) (bool, string, error)
 
-	// Template returns the template of this Filter. Name your filter as something-doer,
+	// Type returns the type of this Filter. Name your filter as something-doer,
 	// instead of do-something.
-	Template() string
+	Type() string
 }

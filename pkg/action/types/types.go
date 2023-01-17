@@ -56,9 +56,9 @@ type Action interface {
 	// will be called multiple times, you should not store any states in your Action.
 	Run(ctx context.Context, sourceType string, event interface{}, data interface{}, messages []string) error
 
-	// Template returns the type of this Action. Since this is an Action, please name
+	// Type returns the type of this Action. Since this is an Action, please name
 	// your action as do-something, instead of something-doer.
-	Template() string
+	Type() string
 
 	// AllowConcurrency indicates if this Action can be executed concurrently.
 	// If not, only one instance of this Action type can run at a time.

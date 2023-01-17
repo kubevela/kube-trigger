@@ -30,7 +30,7 @@ func RegisterBuiltinFilters(reg *Registry) {
 func registerFromInstance(reg *Registry, act types.Filter) {
 	ins := act
 	insMeta := v1alpha1.FilterMeta{
-		Template: ins.Template(),
+		Type: ins.Type(),
 	}
-	reg.RegisterTemplate(insMeta, ins)
+	reg.RegisterType(insMeta, ins)
 }

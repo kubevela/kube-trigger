@@ -194,7 +194,7 @@ func (pko *PatchK8sObjects) Validate(properties *runtime.RawExtension) error {
 	return p.parse(properties)
 }
 
-func (pko *PatchK8sObjects) Template() string {
+func (pko *PatchK8sObjects) Type() string {
 	return TypeName
 }
 
