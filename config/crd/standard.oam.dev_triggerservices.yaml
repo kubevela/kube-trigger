@@ -58,12 +58,11 @@ spec:
                               action. Typically, you will not use it. This is for
                               identifying action instances.
                             type: string
-                          template:
-                            description: Type is the template (identifier) of this
-                              action.
+                          type:
+                            description: Type is the type (identifier) of this action.
                             type: string
                         required:
-                        - template
+                        - type
                         type: object
                       type: array
                     filters:
@@ -77,12 +76,11 @@ spec:
                               You should parse it yourself.
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                          template:
-                            description: Template is the template (identifier) of
-                              this filter.
+                          type:
+                            description: Type is the type (identifier) of this filter.
                             type: string
                         required:
-                        - template
+                        - type
                         type: object
                       type: array
                     source:
@@ -91,12 +89,11 @@ spec:
                         properties:
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
-                        template:
-                          description: SourceTemplate is the type of source template
+                        type:
                           type: string
                       required:
                       - properties
-                      - template
+                      - type
                       type: object
                   required:
                   - actions
