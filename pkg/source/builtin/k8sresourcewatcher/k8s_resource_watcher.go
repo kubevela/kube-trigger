@@ -18,60 +18,83 @@ package k8sresourcewatcher
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 
-	"github.com/kubevela/kube-trigger/pkg/eventhandler"
-	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/config"
-	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
-	krwtypes "github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
-	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
+	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
+	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
+	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
 )
 
 type K8sResourceWatcher struct {
-	resourceController *controller.Controller
-	logger             *logrus.Entry
+	configs       map[string]*types.Config
+	eventHandlers map[string][]eventhandler.EventHandler
+	logger        *logrus.Entry
 }
 
 var _ sourcetypes.Source = &K8sResourceWatcher{}
 
 func (w *K8sResourceWatcher) New() sourcetypes.Source {
-	return &K8sResourceWatcher{}
+	return &K8sResourceWatcher{
+		configs:       make(map[string]*types.Config),
+		eventHandlers: make(map[string][]eventhandler.EventHandler),
+	}
+}
+
+func (w *K8sResourceWatcher) Parse(properties *runtime.RawExtension) (*types.Config, error) {
+	props, err := properties.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	ctrlConf := &types.Config{}
+	err = json.Unmarshal(props, ctrlConf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error when parsing properties for %s", w.Type())
+	}
+	return ctrlConf, nil
 }
 
 func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhandler.EventHandler) error {
 	var err error
 
-	ctrlConf := &config.Properties{}
-	err = ctrlConf.Parse(properties)
+	props, err := properties.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	ctrlConf := &types.Config{}
+	err = json.Unmarshal(props, ctrlConf)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
 	}
+	if orig, ok := w.configs[ctrlConf.Key()]; ok {
+		orig.Merge(*ctrlConf)
+		w.configs[ctrlConf.Key()] = orig
+	} else {
+		w.configs[ctrlConf.Key()] = ctrlConf
+	}
+	w.eventHandlers[ctrlConf.Key()] = append(w.eventHandlers[ctrlConf.Key()], eh)
 
-	w.resourceController = controller.Setup(*ctrlConf, eh)
-
-	w.logger = logrus.WithField("source", krwtypes.TypeName)
+	w.logger = logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
 
 	w.logger.Debugf("initialized")
 	return nil
 }
 
-func (w *K8sResourceWatcher) Validate(properties *runtime.RawExtension) error {
-	ctrlConf := &config.Properties{}
-	return ctrlConf.Parse(properties)
-}
-
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {
-	if w.resourceController == nil {
-		return fmt.Errorf("controller has not been setup")
+	for k, config := range w.configs {
+		go func(c *types.Config, handlers []eventhandler.EventHandler) {
+			resourceController := controller.Setup(*c, handlers)
+			resourceController.Run(ctx.Done())
+		}(config, w.eventHandlers[k])
 	}
-	w.logger.Debugf("running")
-	w.resourceController.Run(ctx.Done())
 	return nil
 }
 
 func (w *K8sResourceWatcher) Type() string {
-	return krwtypes.TypeName
+	return v1alpha1.SourceTypeResourceWatcher
 }

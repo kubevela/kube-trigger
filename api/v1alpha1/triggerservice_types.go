@@ -52,30 +52,15 @@ type TriggerServiceList struct {
 
 // TriggerMeta is the meta data of a trigger.
 type TriggerMeta struct {
-	Source  Source       `json:"source"`
-	Filters []FilterMeta `json:"filters"`
-	Actions []ActionMeta `json:"actions"`
+	Source Source     `json:"source"`
+	Filter string     `json:"filter"`
+	Action ActionMeta `json:"action"`
 }
 
 // ActionMeta is what users type in their configurations, specifying what action
 // they want to use and what properties they provided.
 type ActionMeta struct {
 	// Type is the type (identifier) of this action.
-	Type string `json:"type"`
-
-	// Properties are user-provided parameters. You should parse it yourself.
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Properties *runtime.RawExtension `json:"properties,omitempty"`
-
-	// Raw is the raw string representation of this action. Typically, you will
-	// not use it. This is for identifying action instances.
-	Raw string `json:"raw,omitempty"`
-}
-
-// FilterMeta is what users type in their configurations, specifying what filter
-// they want to use and what properties they provided.
-type FilterMeta struct {
-	// Type is the type (identifier) of this filter.
 	Type string `json:"type"`
 
 	// Properties are user-provided parameters. You should parse it yourself.
@@ -92,16 +77,9 @@ type Source struct {
 
 const (
 	// SourceTypeResourceWatcher is the source type for K8sResourceWatcher.
-	SourceTypeResourceWatcher string = "k8s-resource-watcher"
+	SourceTypeResourceWatcher string = "resource-watcher"
 	// SourceTypeWebhookTrigger is the source type for WebhookTrigger.
 	SourceTypeWebhookTrigger string = "webhook-trigger"
-)
-
-const (
-	// ActionTypeBumpApplicationRevision is the source type for BumpApplicationRevision.
-	ActionTypeBumpApplicationRevision string = "bump-application-revision"
-	// ActionTypePatchResource is the source type for WebhookTrigger.
-	ActionTypePatchResource string = "patch-resource"
 )
 
 func init() {

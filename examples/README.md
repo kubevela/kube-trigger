@@ -10,7 +10,7 @@ updated whenever the ConfigMaps that are referenced by `ref-objects` are updated
 
 ## What we want to achieve?
 
-- use a `k8s-resource-watcher` Source to listen to update events of ConfigMaps
+- use a `resource-watcher` Source to listen to update events of ConfigMaps
 - use a `cue-validator` Filter to only keep the ConfigMaps that we are interested in
 - trigger an `bump-application-revision` Action to update Application.
 

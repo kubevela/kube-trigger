@@ -17,15 +17,15 @@ limitations under the License.
 package eventhandler
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/pkg/action/job"
-	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
-	"github.com/kubevela/kube-trigger/pkg/executor"
-	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
-	filterutils "github.com/kubevela/kube-trigger/pkg/filter/utils"
 	"github.com/sirupsen/logrus"
+
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/pkg/action"
+	"github.com/kubevela/kube-trigger/pkg/executor"
+	"github.com/kubevela/kube-trigger/pkg/filter"
 )
 
 // EventHandler is given to Source to be called. Source is responsible to call
@@ -34,22 +34,19 @@ import (
 // sourceType is what type the Source is.
 //
 // event is what event happened, containing a brief event object. Do not include
-// complex objects in it. For example, a k8s-resource-watcher Source may contain
+// complex objects in it. For example, a resource-watcher Source may contain
 // what event happened (create, update, delete) in it.
 //
 // data is the detailed event, for machines to process, e.g. passed to filters to
 // do filtering . You may put complex objects in it. For example,
-// a k8s-resource-watcher Source may contain the entire object that is changed
+// a resource-watcher Source may contain the entire object that is changed
 // in it.
 type EventHandler func(sourceType string, event interface{}, data interface{}) error
 
 // Config is the config for trigger
 type Config struct {
-	Filters        []v1alpha1.FilterMeta
-	Actions        []v1alpha1.ActionMeta
-	FilterRegistry *filterregistry.Registry
-	ActionRegistry *actionregistry.Registry
-	Executor       *executor.Executor
+	Handler  map[v1alpha1.ActionMeta]string
+	Executor *executor.Executor
 }
 
 // New create a new EventHandler that does nothing.
@@ -60,15 +57,19 @@ func New() EventHandler {
 }
 
 // NewFromConfig creates a new EventHandler from config.
-func NewFromConfig(c Config) EventHandler {
+func NewFromConfig(ctx context.Context, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor) EventHandler {
 	filterLogger := logrus.WithField("eventhandler", "applyfilters")
 	actionLogger := logrus.WithField("eventhandler", "addactionjob")
 	return func(sourceType string, event interface{}, data interface{}) error {
+		// TODO: use handler to handle
 		// Apply filters
-		kept, msgs, err := filterutils.ApplyFilters(event, data, c.Filters, c.FilterRegistry)
+		context := map[string]interface{}{
+			"event": event,
+			"data":  data,
+		}
+		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
 		if err != nil {
 			filterLogger.Errorf("error when applying filters to event %v: %s", event, err)
-			return err
 		}
 		if !kept {
 			filterLogger.Debugf("event %v is filtered out", event)
@@ -76,20 +77,17 @@ func NewFromConfig(c Config) EventHandler {
 			return fmt.Errorf("event is filtered out")
 		}
 		filterLogger.Infof("event passed filters")
-		filterLogger.Infof("filters left these messages: %v", msgs)
 
 		// Run actions
-		for _, act := range c.Actions {
-			//nolint:govet // ignore
-			newJob, err := job.New(c.ActionRegistry, act, sourceType, event, data, msgs)
-			if err != nil {
-				actionLogger.Errorf("error when creating new job: %s", err)
-				continue
-			}
-			err = c.Executor.AddJob(newJob)
-			if err != nil {
-				actionLogger.Errorf("error when adding job to executor: %s", err)
-			}
+		newJob, err := action.New(actionMeta, context)
+		if err != nil {
+			actionLogger.Errorf("error when creating new job: %s", err)
+			return err
+		}
+		err = executor.AddJob(newJob)
+		if err != nil {
+			actionLogger.Errorf("error when adding job to executor: %s", err)
+			return err
 		}
 
 		return nil
