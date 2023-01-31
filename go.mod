@@ -4,9 +4,9 @@ go 1.19
 
 require (
 	cloud.google.com/go v0.102.0
-	cuelang.org/go v0.5.0-beta.2
+	cuelang.org/go v0.5.0-beta.2.0.20230130095913-d573e0c2f041
 	github.com/crossplane/crossplane-runtime v0.14.1-0.20210722005935-0b469fcc77cd
-	github.com/kubevela/pkg v0.0.0-20230130104427-904315a728a5
+	github.com/kubevela/pkg v0.0.0-20230131121707-c4ab62d075a0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/oam-dev/kubevela-core-api v1.6.0-alpha.1

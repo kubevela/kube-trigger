@@ -109,7 +109,7 @@ func addFlags(f *pflag.FlagSet) {
 }
 
 func runCli(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 	var err error
 
 	// Read options from env and cli, and fall back to defaults.

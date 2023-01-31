@@ -97,7 +97,7 @@ func (j *Job) ID() string {
 // Run execute action
 func (j *Job) Run(ctx context.Context) error {
 	str := strings.Join([]string{j.template, j.properties, j.context}, "\n")
-	v, err := cuex.DefaultCompiler.Get().CompileString(ctx, str)
+	v, err := cuex.CompileString(ctx, str)
 	if err != nil {
 		return err
 	}

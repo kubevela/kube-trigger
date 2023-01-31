@@ -32,8 +32,7 @@ func ApplyFilter(ctx context.Context, contextData map[string]interface{}, filter
 		return false, err
 	}
 	contextTemplate := fmt.Sprintf("context: %s", string(contextByte))
-	compiler := cuex.DefaultCompiler.Get()
-	filterVal, err := compiler.CompileString(ctx, fmt.Sprintf("filter: {\n%s\n%s\n}", filter, contextTemplate))
+	filterVal, err := cuex.CompileString(ctx, fmt.Sprintf("filter: {\n%s\n%s\n}", filter, contextTemplate))
 	if err != nil {
 		return false, err
 	}
