@@ -77,7 +77,7 @@ build: gen-dockerignore
 	    --env DBG_BUILD="$(DBG_BUILD)"     \
 	    --env OUTPUT="$(OUTPUT)"           \
 	    --env GOFLAGS="$(GOFLAGS)"         \
-		--env GOPROXY="$(GOPROXY)"         \
+	    --env GOPROXY="$(GOPROXY)"         \
 	    --env HTTP_PROXY="$(HTTP_PROXY)"   \
 	    --env HTTPS_PROXY="$(HTTPS_PROXY)" \
 	    $(BUILD_IMAGE)                     \

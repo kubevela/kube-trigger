@@ -28,7 +28,7 @@ BIN           := kube-trigger
 # Docker image tag
 IMGTAGS  ?= $(addsuffix /$(BIN):$(IMG_VERSION),$(REGISTRY))
 
-include makefiles/common-targets.mk
+include makefiles/common.mk
 
 generate: # @HELP run go generate
 generate:

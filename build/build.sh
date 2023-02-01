@@ -37,12 +37,6 @@ if [ -z "${OUTPUT:-}" ]; then
   exit 1
 fi
 
-export CGO_ENABLED=0
-export GOARCH="${ARCH}"
-export GOOS="${OS}"
-export GO111MODULE=on
-export GOFLAGS="${GOFLAGS:-} -mod=mod "
-
 # Set docker image version tag to current git tag, only if it fits semetic versioning.
 if echo "${VERSION}" | grep -Eq '^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$'; then
   IMAGE_VERSION="${VERSION}"
@@ -61,27 +55,42 @@ cleanup() {
 
 trap cleanup EXIT
 
-echo "# Generating code..."
-go generate ./...
+export CGO_ENABLED=0
+export GOARCH="${ARCH}"
+export GOOS="${OS}"
+export GO111MODULE=on
+export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
 printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
   "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
 
-LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-}"
+echo "# Generating code..."
+go generate ./...
 
 if [ -z "${DBG_BUILD:-}" ]; then
-  # If user don't want debug build, 
-  # remove all unnecessary info from binary and invalidate build cache.
-  LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-} -s -w"
+  # release build
+  # trim paths, disable symbols and DWARF.
+  goasmflags="all=-trimpath=$(pwd)"
+  gogcflags="all=-trimpath=$(pwd)"
+  goldflags="-s -w"
+
   echo "# Building for release..."
 else
+  # debug build
+  # disable optimizations and inlining
+  gogcflags="all=-N -l"
+  goasmflags=""
+  goldflags=""
+
   echo "# Building for debug..."
 fi
 
 # Set some version info.
-GO_LDFLAGS="${LDFLAGS_EXTRA} -X $(go list -m)/pkg/version.Version=${VERSION}"
+always_ldflags="-X $(go list -m)/pkg/version.Version=${VERSION}"
 
-go build                   \
-  -ldflags "${GO_LDFLAGS}" \
-  -o "${OUTPUT}"           \
+go build \
+  -gcflags="${gogcflags}" \
+  -asmflags="${goasmflags}" \
+  -ldflags="${always_ldflags} ${goldflags}" \
+  -o "${OUTPUT}" \
   "$@"

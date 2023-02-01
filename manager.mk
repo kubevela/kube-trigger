@@ -28,7 +28,7 @@ BIN           := manager
 # Docker image tag
 IMGTAGS  ?= $(addsuffix /kube-trigger-$(BIN):$(IMG_VERSION),$(REGISTRY))
 
-include makefiles/common-targets.mk
+include makefiles/common.mk
 
 manifests: # @HELP Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
 manifests: controller-gen

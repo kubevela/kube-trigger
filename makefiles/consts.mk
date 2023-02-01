@@ -39,7 +39,8 @@ OS          := $(if $(GOOS),$(GOOS),$(if $(shell go env GOOS),$(shell go env GOO
 ARCH        := $(if $(GOARCH),$(GOARCH),$(if $(shell go env GOARCH),$(shell go env GOARCH),amd64))
 
 # You can set these variables from env variables
-# Include debug info in binary
+
+# Optimzie binary for debugging, otherwise for release
 DBG_BUILD   ?=
 
 # Use full binary name with os-arch in it
