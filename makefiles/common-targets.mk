@@ -55,28 +55,32 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 # overwrite previous checksums
 	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
+GOCACHE    ?= $(if $(shell go env GOOS),$(shell go env GOOS),$$(pwd)/bin/gocache)
+GOMODCACHE ?= $(if $(shell go env GOMODCACHE),$(shell go env GOMODCACHE),$$(pwd)/bin/gomodcache)
+
 build: # @HELP build binary for current platform
 build: gen-dockerignore
-	docker run                               \
-	    -i                                   \
-	    --rm                                 \
-	    -u $$(id -u):$$(id -g)               \
-	    -v $$(pwd):/src                      \
-	    -w /src                              \
-	    -v $$(go env GOCACHE):/gocache       \
-	    -v $$(go env GOMODCACHE):/gomodcache \
-	    --env GOCACHE="/gocache"             \
-	    --env GOMODCACHE="/gomodcache"       \
-	    --env ARCH="$(ARCH)"                 \
-	    --env OS="$(OS)"                     \
-	    --env VERSION="$(VERSION)"           \
-	    --env DBG_BUILD="$(DBG_BUILD)"       \
-	    --env OUTPUT="$(OUTPUT)"             \
-	    --env GOFLAGS="$(GOFLAGS)"           \
-		--env GOPROXY="$(GOPROXY)"           \
-	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
-	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
-	    $(BUILD_IMAGE)                       \
+	mkdir -p bin "$(GOCACHE)" "$(GOMODCACHE)"
+	docker run                             \
+	    -i                                 \
+	    --rm                               \
+	    -u $$(id -u):$$(id -g)             \
+	    -v $$(pwd):/src                    \
+	    -w /src                            \
+	    -v $(GOCACHE):/gocache             \
+	    -v $(GOMODCACHE):/gomodcache       \
+	    --env GOCACHE="/gocache"           \
+	    --env GOMODCACHE="/gomodcache"     \
+	    --env ARCH="$(ARCH)"               \
+	    --env OS="$(OS)"                   \
+	    --env VERSION="$(VERSION)"         \
+	    --env DBG_BUILD="$(DBG_BUILD)"     \
+	    --env OUTPUT="$(OUTPUT)"           \
+	    --env GOFLAGS="$(GOFLAGS)"         \
+		--env GOPROXY="$(GOPROXY)"         \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"   \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)" \
+	    $(BUILD_IMAGE)                     \
 	    ./build/build.sh $(ENTRY)
 
 package: # @HELP package binary using gzip or zip
@@ -155,6 +159,7 @@ binary-name:
 
 variables: # @HELP print makefile variables
 variables:
+	echo "VARIABLES:"
 	echo "  OUTPUT            $(OUTPUT)"
 	echo "  OS                $(OS)"
 	echo "  ARCH              $(ARCH)"
@@ -168,19 +173,7 @@ variables:
 	echo "  GOFLAGS           $(GOFLAGS)"
 
 help: # @HELP print this message
-help:
-	echo "VARIABLES:"
-	echo "  OUTPUT            $(OUTPUT)"
-	echo "  OS                $(OS)"
-	echo "  ARCH              $(ARCH)"
-	echo "  VERSION           $(VERSION)"
-	echo "  IMG_VERSION       $(IMG_VERSION)"
-	echo "  REGISTRY          $(REGISTRY)"
-	echo "  IMG_TAGS          $(IMGTAGS)"
-	echo "  BIN_PLATFORMS     $(BIN_PLATFORMS)"
-	echo "  IMG_PLATFORMS     $(IMG_PLATFORMS)"
-	echo "  GOPROXY           $(GOPROXY)"
-	echo "  GOFLAGS           $(GOFLAGS)"
+help: variables
 	echo
 	echo "TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)    \

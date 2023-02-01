@@ -35,8 +35,8 @@ GO_VERSION  := 1.19
 BUILD_IMAGE ?= golang:$(GO_VERSION)-alpine
 
 # If user has not defined target, set some default value, same as host machine.
-OS          := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
-ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+OS          := $(if $(GOOS),$(GOOS),$(if $(shell go env GOOS),$(shell go env GOOS),linux))
+ARCH        := $(if $(GOARCH),$(GOARCH),$(if $(shell go env GOARCH),$(shell go env GOARCH),amd64))
 
 # You can set these variables from env variables
 # Include debug info in binary
