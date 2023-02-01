@@ -17,6 +17,8 @@ limitations under the License.
 package template
 
 import (
+	_ "embed"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -24,26 +26,34 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-//go:generate ../../hack/generate-go-const-from-file.sh yaml/clusterrolebinding.yaml clusterrolebindingTemplate clusterrolebinding
-//go:generate ../../hack/generate-go-const-from-file.sh yaml/cm.yaml cmTemplate cm
-//go:generate ../../hack/generate-go-const-from-file.sh yaml/deployment.yaml deploymentTemplate deployment
-//go:generate ../../hack/generate-go-const-from-file.sh yaml/sa.yaml saTemplate sa
+var (
+	//go:embed yaml/clusterrolebinding.yaml
+	clusterrolebindingTemplate []byte
+	//go:embed yaml/cm.yaml
+	cmTemplate []byte
+	//go:embed yaml/deployment.yaml
+	deploymentTemplate []byte
+	//go:embed yaml/sa.yaml
+	saTemplate []byte
+)
 
-var clusterRoleBinding rbacv1.ClusterRoleBinding
-var configMap corev1.ConfigMap
-var deployment appsv1.Deployment
-var serviceAccount corev1.ServiceAccount
+var (
+	clusterRoleBinding rbacv1.ClusterRoleBinding
+	configMap          corev1.ConfigMap
+	deployment         appsv1.Deployment
+	serviceAccount     corev1.ServiceAccount
+)
 
 //nolint:gochecknoinits
 func init() {
-	utilruntime.Must(yaml.Unmarshal([]byte(clusterrolebindingTemplate), &clusterRoleBinding))
+	utilruntime.Must(yaml.Unmarshal(clusterrolebindingTemplate, &clusterRoleBinding))
 	if len(clusterRoleBinding.Subjects) != 1 {
 		panic("ClusterRoleBinding must have one subject")
 	}
 
-	utilruntime.Must(yaml.Unmarshal([]byte(cmTemplate), &configMap))
+	utilruntime.Must(yaml.Unmarshal(cmTemplate, &configMap))
 
-	utilruntime.Must(yaml.Unmarshal([]byte(deploymentTemplate), &deployment))
+	utilruntime.Must(yaml.Unmarshal(deploymentTemplate, &deployment))
 	if len(deployment.Spec.Template.Spec.Containers) < 1 {
 		panic("Deployment must have at least one container")
 	}
@@ -51,7 +61,7 @@ func init() {
 		panic("Deployment must have one volume")
 	}
 
-	utilruntime.Must(yaml.Unmarshal([]byte(saTemplate), &serviceAccount))
+	utilruntime.Must(yaml.Unmarshal(saTemplate, &serviceAccount))
 }
 
 // GetClusterRoleBinding get cluster role binding
