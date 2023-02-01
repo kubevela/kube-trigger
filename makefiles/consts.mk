@@ -31,11 +31,31 @@ MAKEFLAGS += --always-make
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
+GO_VERSION  := 1.19
+BUILD_IMAGE ?= golang:$(GO_VERSION)-alpine
+
 # If user has not defined target, set some default value, same as host machine.
 OS          := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH        := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+
+# You can set these variables from env variables
+# Include debug info in binary
+DBG_BUILD   ?=
+
+# Use full binary name with os-arch in it
+FULL_NAME   ?=
+
+# Plain old Go env
+GOFLAGS     ?=
+GOPROXY     ?=
+
+# The base image of containers, with a default value
+BASE_IMAGE  ?= gcr.io/distroless/static:nonroot
+
 # Use git tags to set the version string
 VERSION     ?= $(shell git describe --tags --always --dirty)
+
+# Docker image tag, only uses semetic versioning, otherwise latest (e.g. local builds)
 IMG_VERSION ?= $(shell bash -c " \
 if [[ ! $(VERSION) =~ ^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$$ ]]; then \
   echo latest;     \
@@ -47,17 +67,6 @@ BIN_EXTENSION :=
 ifeq ($(OS), windows)
     BIN_EXTENSION := .exe
 endif
-
-# You can set these variables from env variables
-# Include debug info in binary
-DBG_BUILD   ?=
-# Use full binary name with os arch in it
-FULL_NAME   ?=
-# Plain old Go env
-GOFLAGS     ?=
-GOPROXY     ?=
-# The base image of containers, with a default value
-BASE_IMAGE  ?= gcr.io/distroless/static:nonroot
 
 # Registries to push to
 REGISTRY := docker.io/oamdev ghcr.io/kubevela

@@ -57,13 +57,27 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 
 build: # @HELP build binary for current platform
 build: gen-dockerignore
-	ARCH=$(ARCH)                     \
-	    OS=$(OS)                     \
-	    OUTPUT=$(OUTPUT)             \
-	    VERSION=$(VERSION)           \
-	    GOFLAGS=$(GOFLAGS)           \
-	    DBG_BUILD=$(DBG_BUILD)       \
-	    bash build/build.sh $(ENTRY)
+	docker run                               \
+	    -i                                   \
+	    --rm                                 \
+	    -u $$(id -u):$$(id -g)               \
+	    -v $$(pwd):/src                      \
+	    -w /src                              \
+	    -v $$(go env GOCACHE):/gocache       \
+	    -v $$(go env GOMODCACHE):/gomodcache \
+	    --env GOCACHE="/gocache"             \
+	    --env GOMODCACHE="/gomodcache"       \
+	    --env ARCH="$(ARCH)"                 \
+	    --env OS="$(OS)"                     \
+	    --env VERSION="$(VERSION)"           \
+	    --env DBG_BUILD="$(DBG_BUILD)"       \
+	    --env OUTPUT="$(OUTPUT)"             \
+	    --env GOFLAGS="$(GOFLAGS)"           \
+		--env GOPROXY="$(GOPROXY)"           \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
+	    $(BUILD_IMAGE)                       \
+	    ./build/build.sh $(ENTRY)
 
 package: # @HELP package binary using gzip or zip
 package: build
@@ -87,7 +101,7 @@ docker-build-%:
 	    GOOS=$(firstword $(subst _, ,$*))    \
 	    GOARCH=$(lastword $(subst _, ,$*))
 
-BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
+BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed 's/ /,/g')
 
 all-docker-build-push: # @HELP build and push docker images for all platforms
 all-docker-build-push: $(addprefix build-, $(subst /,_, $(IMG_PLATFORMS)))
