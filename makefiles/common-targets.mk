@@ -87,7 +87,7 @@ docker-build-%:
 	    GOOS=$(firstword $(subst _, ,$*))    \
 	    GOARCH=$(lastword $(subst _, ,$*))
 
-BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed -r 's/ /,/g')
+BUILDX_PLATFORMS := $(shell echo "$(IMG_PLATFORMS)" | sed 's/ /,/g')
 
 all-docker-build-push: # @HELP build and push docker images for all platforms
 all-docker-build-push: $(addprefix build-, $(subst /,_, $(IMG_PLATFORMS)))
