@@ -55,7 +55,7 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 # overwrite previous checksums
 	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
-GOCACHE    ?= $(if $(shell go env GOOS),$(shell go env GOOS),$$(pwd)/bin/gocache)
+GOCACHE    ?= $(if $(shell go env GOCACHE),$(shell go env GOCACHE),$$(pwd)/bin/gocache)
 GOMODCACHE ?= $(if $(shell go env GOMODCACHE),$(shell go env GOMODCACHE),$$(pwd)/bin/gomodcache)
 
 build: # @HELP build binary for current platform

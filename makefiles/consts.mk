@@ -68,5 +68,8 @@ ifeq ($(OS), windows)
     BIN_EXTENSION := .exe
 endif
 
+HTTP_PROXY  ?=
+HTTPS_PROXY ?=
+
 # Registries to push to
 REGISTRY := docker.io/oamdev ghcr.io/kubevela
