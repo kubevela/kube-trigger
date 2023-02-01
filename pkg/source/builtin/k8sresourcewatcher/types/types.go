@@ -16,6 +16,74 @@ limitations under the License.
 
 package types
 
-const (
-	TypeName = "k8s-resource-watcher"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/kubevela/pkg/util/slices"
 )
+
+// Config is the config for resource controller
+type Config struct {
+	APIVersion     string            `json:"apiVersion"`
+	Kind           string            `json:"kind"`
+	Namespace      string            `json:"namespace,omitempty"`
+	Events         []EventType       `json:"events,omitempty"`
+	MatchingLabels map[string]string `json:"matchingLabels,omitempty"`
+}
+
+func (c *Config) Key() string {
+	var labels string
+	if len(c.MatchingLabels) > 0 {
+		if b, err := json.Marshal(c.MatchingLabels); err == nil {
+			labels = string(b)
+		}
+	}
+	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels}, "-")
+}
+
+func (c *Config) Merge(new Config) {
+	for _, event := range new.Events {
+		if !slices.Contains(c.Events, event) {
+			c.Events = append(c.Events, event)
+		}
+	}
+	for k, v := range new.MatchingLabels {
+		// no override
+		if _, ok := c.MatchingLabels[k]; !ok {
+			c.MatchingLabels[k] = v
+		}
+	}
+}
+
+type EventType string
+
+const (
+	EventTypeCreate EventType = "create"
+	EventTypeUpdate EventType = "update"
+	EventTypeDelete EventType = "delete"
+)
+
+// Event represent an event got from k8s api server
+type Event struct {
+	Type       EventType
+	Namespace  string
+	Kind       string
+	ApiVersion string
+	Name       string
+	Info       string
+}
+
+// Message returns event message in standard format.
+func (e *Event) Message() (msg string) {
+	return "apiVersion: " + e.ApiVersion + ", kind: " + e.Kind + ", namespace: " + e.Namespace + ", name: " + e.Name + ", info: " + e.Info
+}
+
+// InformerEvent indicate the informerEvent
+type InformerEvent struct {
+	Key          string
+	Type         EventType
+	Namespace    string
+	ResourceType string
+	EventObj     interface{}
+}

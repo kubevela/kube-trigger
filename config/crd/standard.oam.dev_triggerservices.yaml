@@ -42,47 +42,24 @@ spec:
                 items:
                   description: TriggerMeta is the meta data of a trigger.
                   properties:
-                    actions:
-                      items:
-                        description: ActionMeta is what users type in their configurations,
-                          specifying what action they want to use and what properties
-                          they provided.
+                    action:
+                      description: ActionMeta is what users type in their configurations,
+                        specifying what action they want to use and what properties
+                        they provided.
+                      properties:
                         properties:
-                          properties:
-                            description: Properties are user-provided parameters.
-                              You should parse it yourself.
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          raw:
-                            description: Raw is the raw string representation of this
-                              action. Typically, you will not use it. This is for
-                              identifying action instances.
-                            type: string
-                          type:
-                            description: Type is the type (identifier) of this action.
-                            type: string
-                        required:
-                        - type
-                        type: object
-                      type: array
-                    filters:
-                      items:
-                        description: FilterMeta is what users type in their configurations,
-                          specifying what filter they want to use and what properties
-                          they provided.
-                        properties:
-                          properties:
-                            description: Properties are user-provided parameters.
-                              You should parse it yourself.
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                          type:
-                            description: Type is the type (identifier) of this filter.
-                            type: string
-                        required:
-                        - type
-                        type: object
-                      type: array
+                          description: Properties are user-provided parameters. You
+                            should parse it yourself.
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        type:
+                          description: Type is the type (identifier) of this action.
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    filter:
+                      type: string
                     source:
                       description: Source defines the Source of trigger.
                       properties:
@@ -96,8 +73,8 @@ spec:
                       - type
                       type: object
                   required:
-                  - actions
-                  - filters
+                  - action
+                  - filter
                   - source
                   type: object
                 type: array

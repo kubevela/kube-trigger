@@ -20,7 +20,7 @@
 # You need to enable Docker BuildKit for this to work.
 # Also refer to Makefile for how it can be done.
 
-ARG BUILD_IMAGE=golang:1.17
+ARG BUILD_IMAGE=golang:1.19
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
 
 # Force native build platform, and cross-build to target platform later.

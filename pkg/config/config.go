@@ -17,13 +17,11 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
-	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
-	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
+	"github.com/kubevela/kube-trigger/pkg/executor/templates"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 )
 
@@ -35,40 +33,14 @@ type Config struct {
 }
 
 // Validate validates config.
-func (c *Config) Validate(
-	sourceReg *sourceregistry.Registry,
-	filterReg *filterregistry.Registry,
-	actionReg *actionregistry.Registry,
-) error {
+func (c *Config) Validate(ctx context.Context, sourceReg *sourceregistry.Registry) error {
 	// TODO(charlie0129): gather all errors before returning
 	for _, w := range c.Triggers {
-		s, ok := sourceReg.Get(w.Source.Type)
-		if !ok {
+		if _, ok := sourceReg.Get(w.Source.Type); !ok {
 			return fmt.Errorf("no such source found: %s", w.Source.Type)
 		}
-		err := s.Validate(w.Source.Properties)
-		if err != nil {
-			return errors.Wrapf(err, "cannot validate source %s", w.Source.Type)
-		}
-		for _, a := range w.Actions {
-			s, ok := actionReg.GetType(a)
-			if !ok {
-				return fmt.Errorf("no such action found: %s", w.Source.Type)
-			}
-			err := s.Validate(a.Properties)
-			if err != nil {
-				return errors.Wrapf(err, "cannot validate action %s", w.Source.Type)
-			}
-		}
-		for _, f := range w.Filters {
-			s, ok := filterReg.GetType(f)
-			if !ok {
-				return fmt.Errorf("no such filter found: %s", w.Source.Type)
-			}
-			err := s.Validate(f.Properties)
-			if err != nil {
-				return errors.Wrapf(err, "cannot validate filter %s", w.Source.Type)
-			}
+		if _, err := templates.NewLoader("action").LoadTemplate(ctx, w.Action.Type); err != nil {
+			return fmt.Errorf("no such action found: %s", w.Action.Type)
 		}
 	}
 

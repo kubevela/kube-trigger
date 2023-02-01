@@ -19,8 +19,9 @@ package types
 import (
 	"context"
 
-	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 )
 
 // Source is an interface for sources. Anything that implements this interface
@@ -28,9 +29,6 @@ import (
 type Source interface {
 	// New returns a new uninitialized instance.
 	New() Source
-
-	// Validate validates properties.
-	Validate(properties *runtime.RawExtension) error
 
 	// Init initializes this instance using user-provided properties.
 	// Call the EventHandler when an event happened.

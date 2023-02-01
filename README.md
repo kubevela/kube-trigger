@@ -17,7 +17,7 @@ extensions.
 
 ### Sources
 
-A Source is what listens to events (event source). For example, a `k8s-resource-watcher` source can watch Kubernetes
+A Source is what listens to events (event source). For example, a `resource-watcher` source can watch Kubernetes
 resources. Once a Kubernetes resource (e.g. ConfigMap) is changed, it will raise an event that will be passed
 to [Filters](#Filters) for further processing.
 
@@ -40,7 +40,7 @@ updated whenever the ConfigMaps that are referenced by `ref-objects` are updated
 
 To accomplish this, we will:
 
-- use a `k8s-resource-watcher` Source to listen to update events of ConfigMaps
+- use a `resource-watcher` Source to listen to update events of ConfigMaps
 - use a `cue-validator` Filter to only keep the ConfigMaps that we are interested in
 - trigger an `bump-application-revision` Action to update Application.
 
@@ -85,7 +85,7 @@ An example config file looks like this:
 # You can add multiple triggers.
 triggers:
   - source:
-      type: k8s-resource-watcher
+      type: resource-watcher
       properties:
         # We are interested in ConfigMap events.
         apiVersion: "v1"
@@ -94,23 +94,17 @@ triggers:
         # Only watch update event.
         events:
           - update
-    filters:
-      - type: cue-validator
-        # Filter the events above.
-        properties:
-            # Filter by validating the object data using CUE.
-            # For example, we are filtering by ConfigMap names (metadata.name) from above.
-            # Only ConfigMaps with names that satisfy this regexp "this-will-trigger-update-.*" will be kept.
-            template: |
-              metadata: name: =~"this-will-trigger-update-.*"
-    actions:
+    # Filter the events above.
+    filter: |
+      context: data: metadata: name: =~"this-will-trigger-update-.*"
+    action:
       # Bump Application Revision to update Application.
-      - type: bump-application-revision
-        properties:
-          namespace: default
-          # Select Applications to bump using labels.
-          labelSelectors:
-            my-label: my-value
+      type: bump-application-revision
+      properties:
+        namespace: default
+        # Select Applications to bump using labels.
+        matchingLabels:
+          my-label: my-value
 ```
 
 Let's assume your config file is `config.yaml`, to run kube-trigger:
@@ -141,26 +135,21 @@ spec:
     instance: kubetrigger-sample
   triggers:
     - source:
-        type: k8s-resource-watcher
+        type: resource-watcher
         properties:
           apiVersion: "v1"
           kind: ConfigMap
           namespace: default
           events:
             - update
-      filters:
-        - type: cue-validator
-          properties:
-            template: |
-              // Filter by object name.
-              // I used regular expressions here.
-              metadata: name: =~"this-will-trigger-update-.*"
-      actions:
-        - type: bump-application-revision
-          properties:
-            namespace: default
-            labelSelectors:
-              my-label: my-value
+      filter: |
+        context: data: metadata: name: =~"this-will-trigger-update-.*"
+      action:
+        type: bump-application-revision
+        properties:
+          namespace: default
+          matchingLabels:
+            my-label: my-value
 ```
 
 ## Advanced kube-trigger Instance Configuration

@@ -23,12 +23,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	actionregistry "github.com/kubevela/kube-trigger/pkg/action/registry"
 	"github.com/kubevela/kube-trigger/pkg/config"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/executor"
-	filterregistry "github.com/kubevela/kube-trigger/pkg/filter/registry"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
+	"github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/kubevela/kube-trigger/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -110,6 +109,7 @@ func addFlags(f *pflag.FlagSet) {
 }
 
 func runCli(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	var err error
 
 	// Read options from env and cli, and fall back to defaults.
@@ -126,17 +126,15 @@ func runCli(cmd *cobra.Command, args []string) error {
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
 
-	// Create registries for Sources, Filers, and Actions.
+	// Create registries for Sources
 	sourceReg := sourceregistry.NewWithBuiltinSources()
-	filterReg := filterregistry.NewWithBuiltinFilters(opt.RegistrySize)
-	actionReg := actionregistry.NewWithBuiltinActions(opt.RegistrySize)
 
 	// Get our kube-trigger config.
 	conf, err := config.NewFromFileOrDir(opt.Config)
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing config %s", opt.Config)
 	}
-	err = conf.Validate(sourceReg, filterReg, actionReg)
+	err = conf.Validate(ctx, sourceReg)
 	if err != nil {
 		return errors.Wrapf(err, "cannot validate config")
 	}
@@ -153,6 +151,8 @@ func runCli(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	instances := make(map[string]types.Source)
+
 	// Run watchers.
 	for _, w := range conf.Triggers {
 		// Make this Source type exists.
@@ -160,35 +160,29 @@ func runCli(cmd *cobra.Command, args []string) error {
 		if !ok {
 			return fmt.Errorf("source type %s does not exist", w.Source.Type)
 		}
-
-		// New Source instance.
-		ns := s.New()
-
-		c := eventhandler.Config{
-			Filters:        w.Filters,
-			Actions:        w.Actions,
-			FilterRegistry: filterReg,
-			ActionRegistry: actionReg,
-			Executor:       exe,
+		source := s.New()
+		if s, ok := instances[w.Source.Type]; ok {
+			source = s
 		}
+
 		// Create a EventHandler
-		eh := eventhandler.NewFromConfig(c)
+		eh := eventhandler.NewFromConfig(ctx, w.Action, w.Filter, exe)
 
 		// Initialize Source, with user-provided prop and event handler
-		err = ns.Init(w.Source.Properties, eh)
+		err = source.Init(w.Source.Properties, eh)
 		if err != nil {
-			return errors.Wrapf(err, "failed to initialize source %s", ns.Type())
+			return errors.Wrapf(err, "failed to initialize source %s", source.Type())
 		}
 
-		// Time to run this source.
-		go func() {
-			//nolint:govet // this err-shadowing fine
-			err := ns.Run(ctx)
-			if err != nil {
-				logger.Fatalf("source %s failed to run", ns.Type())
-				return
-			}
-		}()
+		instances[w.Source.Type] = source
+	}
+
+	for _, instance := range instances {
+		err := instance.Run(ctx)
+		if err != nil {
+			logger.Fatalf("source %s failed to run", instance.Type())
+			return err
+		}
 	}
 
 	// Let the workers run Actions.

@@ -15,7 +15,7 @@ on:
 
 env:
   GOLANGCI_VERSION: 'v1.47.2'
-  GO_VERSION: '1.17'
+  GO_VERSION: '1.19'
 
 jobs:
   detect-noop:
