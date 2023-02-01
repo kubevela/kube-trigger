@@ -16,52 +16,19 @@
 # otherwise it won't work. A valid Dockerfile will be generated
 # using this template. Refer to Makefile for how it can be done.
 
-# syntax = docker/dockerfile:1.2
-# You need to enable Docker BuildKit for this to work.
-# Also refer to Makefile for how it can be done.
+# Default value is specified in Makefile
+ARG BASE_IMAGE
 
-ARG BUILD_IMAGE=golang:1.19
-ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
+FROM ${BASE_IMAGE}
 
-# Force native build platform, and cross-build to target platform later.
-FROM --platform=${BUILDPLATFORM:-linux/amd64} ${BUILD_IMAGE} as builder
-
-WORKDIR /workspace
-COPY go.mod go.mod
-COPY go.sum go.sum
-
-ARG GOPROXY
-ENV GOPROXY=${GOPROXY}
-RUN --mount=type=cache,target=/root/go/pkg \
-        go mod download
-
-COPY build       build
-COPY hack        hack
-COPY cmd         cmd
-COPY api         api
-COPY controllers controllers
-COPY pkg         pkg
+WORKDIR /
 
 ARG TARGETARCH
 ARG ARCH
 ARG TARGETOS
 ARG OS
 ARG VERSION
-ARG GOFLAGS
-ARG DIRTY_BUILD
-ARG ENTRY
 
-RUN --mount=type=cache,target=/root/.cache/go-build \
-        ARCH=${TARGETARCH:-${ARCH:-amd64}}          \
-        OS=${TARGETOS:-${OS:-linux}}                \
-        OUTPUT=${BIN}                               \
-        VERSION=${VERSION}                          \
-        GOFLAGS=${GOFLAGS}                          \
-        DIRTY_BUILD=${DIRTY_BUILD}                  \
-        /bin/sh build/build.sh                      \
-        ${ENTRY}
+COPY bin/${BIN}-${VERSION}/${BIN}-${VERSION}-${TARGETOS:-${OS:-linux}}-${TARGETARCH:-${ARCH:-amd64}} /${BIN}
 
-FROM ${BASE_IMAGE}
-WORKDIR /
-COPY --from=builder /workspace/${BIN} .
 ENTRYPOINT ["/${BIN}"]

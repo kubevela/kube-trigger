@@ -18,8 +18,8 @@ ifeq ($(DBG_MAKEFILE),1)
     $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
     $(warning ***** $(shell date))
 else
-    # If we're not debugging the Makefile, don't echo recipes.
-    MAKEFLAGS += -s
+    # If we're not debugging the Makefile, don't print directories.
+    MAKEFLAGS += --no-print-directory
 endif
 
 # No, we don't want builtin rules.
@@ -29,6 +29,8 @@ MAKEFLAGS += --always-make
 
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
+
+# ===== Misc Targets ======
 
 generate:
 	./hack/make-kt.sh generate
@@ -55,6 +57,8 @@ checkdiff: generate
 	    false;                                                      \
 	fi
 
+# ===== Specific Targets ======
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 ENVTEST            ?= bin/setup-envtest
@@ -68,3 +72,49 @@ envtest: bin
 test: envtest
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
 	    go test -coverprofile=cover.out ./...
+
+# ===== Common Targets for both kubetrigger and manager ======
+
+BIN = $(wildcard *.mk)
+
+all: # @HELP same as build
+all: $(addprefix mk-all_,$(BIN))
+
+build: # @HELP build binary for current platform
+build: $(addprefix mk-build_,$(BIN))
+
+all-build: # @HELP build binaries for all platforms
+all-build: $(addprefix mk-all-build_,$(BIN))
+
+package: # @HELP build and package binary for current platform
+package: $(addprefix mk-package_,$(BIN))
+
+all-package: # @HELP build and package binaries for all platforms with checksum
+all-package: $(addprefix mk-all-package_,$(BIN))
+
+all-docker-build-push: # @HELP build and push docker images for all platforms to all registries
+all-docker-build-push: $(addprefix mk-all-docker-build-push_,$(BIN))
+
+docker-build: # @HELP build docker image for current platform
+docker-build: $(addprefix mk-docker-build_,$(BIN))
+
+docker-push: # @HELP push alredy built images to all registries
+docker-push: $(addprefix mk-docker-push_,$(BIN))
+
+version: # @HELP output the version string
+version: $(addprefix mk-version_,$(BIN))
+
+imageversion: # @HELP output the docker image version
+imageversion: $(addprefix mk-imageversion_,$(BIN))
+
+binary-name: # @HELP output current artifact binary name
+binary-name: $(addprefix mk-binary-name_,$(BIN))
+
+variables: # @HELP print makefile variables
+variables: $(addprefix mk-variables_,$(BIN))
+
+help: # @HELP print this message
+help: $(addprefix mk-help_,$(BIN))
+
+mk-%:
+	$(MAKE) -f $(lastword $(subst _, ,$*)) $(firstword $(subst _, ,$*))

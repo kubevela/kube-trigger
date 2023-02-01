@@ -48,10 +48,16 @@ ifeq ($(OS), windows)
     BIN_EXTENSION := .exe
 endif
 
-DIRTY_BUILD ?=
+# You can set these variables from env variables
+# Include debug info in binary
+DBG_BUILD   ?=
+# Use full binary name with os arch in it
 FULL_NAME   ?=
+# Plain old Go env
 GOFLAGS     ?=
 GOPROXY     ?=
+# The base image of containers, with a default value
+BASE_IMAGE  ?= gcr.io/distroless/static:nonroot
 
-# Registry to push to
+# Registries to push to
 REGISTRY := docker.io/oamdev ghcr.io/kubevela

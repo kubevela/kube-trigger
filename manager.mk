@@ -15,7 +15,7 @@
 include makefiles/consts.mk
 
 # CLI entry file
-ENTRY        := cmd/manager/main.go
+ENTRY         := cmd/manager/main.go
 
 # Binary targets that we support.
 # When doing all-build, these targets will be built.
@@ -63,7 +63,7 @@ bin:
 CONTROLLER_GEN ?= bin/controller-gen
 
 # Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.9.0
+CONTROLLER_TOOLS_VERSION ?= v0.11.2
 
 controller-gen: bin
 	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)

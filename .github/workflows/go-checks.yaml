@@ -14,7 +14,7 @@ on:
   workflow_dispatch: { }
 
 env:
-  GOLANGCI_VERSION: 'v1.47.2'
+  GOLANGCI_VERSION: 'v1.49.0'
 
 jobs:
   detect-noop:

@@ -43,34 +43,39 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
+# Set docker image version tag to current git tag, only if it fits semetic versioning.
 if echo "${VERSION}" | grep -Eq '^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$'; then
   IMAGE_VERSION="${VERSION}"
 else
   IMAGE_VERSION="latest"
 fi
 
-# Replace oamdev/kube-trigger:latest tag with an actual version.
+# Replace oamdev/kube-trigger:latest tag with current version,
+# which will be embedded in the binary.
 sed -i -e "s/:latest/:${IMAGE_VERSION}/g" controllers/template/yaml/deployment.yaml
+
+cleanup() {
+  # Revert changes to oamdev/kube-trigger tag after building.
+  sed -i -e "s/:${IMAGE_VERSION}/:latest/g" controllers/template/yaml/deployment.yaml
+}
+
+trap cleanup EXIT
 
 echo "# Generating code..."
 go generate ./...
-
-# Revert changes after code generation.
-sed -i -e "s/:${IMAGE_VERSION}/:latest/g" controllers/template/yaml/deployment.yaml
 
 printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
   "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
 
 LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-}"
 
-if [ -z "${DIRTY_BUILD:-}" ]; then
-  # If user don't want dirty build, remove all unnecessary info from binary.
+if [ -z "${DBG_BUILD:-}" ]; then
+  # If user don't want debug build, 
+  # remove all unnecessary info from binary and invalidate build cache.
   LDFLAGS_EXTRA="${LDFLAGS_EXTRA:-} -s -w"
-  # No cache.
-  export GOFLAGS="${GOFLAGS:-} -a "
-  echo "# Clean building..."
+  echo "# Building for release..."
 else
-  echo "# Dirty building..."
+  echo "# Building for debug..."
 fi
 
 # Set some version info.
