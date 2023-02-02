@@ -1,6 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  labels:
-    control-plane: kube-trigger-manager
-  name: kube-trigger-system
+  name: vela-system

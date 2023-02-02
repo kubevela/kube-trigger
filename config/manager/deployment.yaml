@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-trigger-manager
-  namespace: kube-trigger-system
+  namespace: vela-system
   labels:
     control-plane: kube-trigger-manager
 spec:
@@ -26,8 +26,6 @@ spec:
             - /manager
           args:
             - --leader-elect
-            - --create-default-instance
-            - --service-use-default-instance
           image: oamdev/kube-trigger-manager:latest
           name: manager
           securityContext:

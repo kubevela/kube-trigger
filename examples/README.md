@@ -37,26 +37,13 @@ Standalone:
 
 ```shell
 # Download kube-trigger binaries from releases first
-./kube-trigger --config sampleconf.yaml
+./kube-trigger --config sampleconf-bump-app.yaml
 ```
 
 In-Cluster:
 
 ```shell
-# Install CRDs: TriggerInstance and TriggerService
-# - *TriggerInstance* is what creates a kube-trigger instance (similar to running 
-#   `./kube-trigger` in-cluster but no config is provided). 
-# - *TriggerService* is used to provide one or more configs (same as the
-#   config file you use when running as standalone) to a *TriggerInstance*.
-kubectl apply -f config/crd
-# Create namespace
-kubectl apply -f config/manager/ns.yaml
-# Run controllers
-kubectl apply -f config/manager
-# Create a KubeTrigger instance
-kubectl apply -f config/samples/standard_v1alpha1_triggerinstance.yaml
-# Add config to the KubeTrigger instance by creating a TriggerService
-kubectl apply -f config/samples/standard_v1alpha1_triggerservice.yaml
+kubectl apply -f config/
 ```
 
 3. **Watch ApplicationRevision changes** so that you can see what it does.
@@ -73,8 +60,6 @@ kubectl edit cm this-will-trigger-update-1
 
 Immediately, you should see the two new ApplicationRevision created. Specifically, Applications all have updated with
 annotation: `app.oam.dev/publishVersion: '2/3/4...'`
-
-Please read `sampleconf.cue/yaml` for more details.
 
 ## Delete resources
 

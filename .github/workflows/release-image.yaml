@@ -82,7 +82,7 @@ jobs:
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: Show Make Variables
-        run: ./make-mgr variables
+        run: ./hack/make-mgr.sh variables
 
       - name: Build and Push Images
-        run: ./make-mgr all-docker-build-push
+        run: ./hack/make-mgr.sh all-docker-build-push

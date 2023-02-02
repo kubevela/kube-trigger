@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
@@ -133,42 +132,34 @@ func Setup(ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
 	return c
 }
 
-func newResourceController(
-	client kubernetes.Interface,
-	informer cache.SharedIndexInformer,
-	resourceType string,
-) *Controller {
+func newResourceController(client kubernetes.Interface, informer cache.SharedIndexInformer, kind string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent types.InformerEvent
 	var err error
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			newEvent.Key, err = cache.MetaNamespaceKeyFunc(obj)
 			newEvent.Type = types.EventTypeCreate
-			newEvent.ResourceType = resourceType
 			newEvent.EventObj = obj
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received add event: %v %s", resourceType, newEvent.Key)
+			meta := utils.GetObjectMetaData(obj)
+			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
-			newEvent.Key, err = cache.MetaNamespaceKeyFunc(old)
 			newEvent.Type = types.EventTypeUpdate
-			newEvent.ResourceType = resourceType
 			newEvent.EventObj = new
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received update event: %v %s", resourceType, newEvent.Key)
+			meta := utils.GetObjectMetaData(new)
+			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			newEvent.Key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			newEvent.Type = types.EventTypeDelete
-			newEvent.ResourceType = resourceType
 			newEvent.EventObj = obj
-			newEvent.Namespace = utils.GetObjectMetaData(obj).GetNamespace()
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received delete event: %v %s", resourceType, newEvent.Key)
+			meta := utils.GetObjectMetaData(obj)
+			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -226,16 +217,17 @@ func (c *Controller) processNextItem() bool {
 	}
 	defer c.queue.Done(newEvent)
 
+	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
 	err := c.processItem(newEvent.(types.InformerEvent))
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(newEvent)
 	} else if c.queue.NumRequeues(newEvent) < maxRetries {
-		c.logger.Errorf("error processing %s (will retry): %v", newEvent.(types.InformerEvent).Key, err)
+		c.logger.Errorf("error processing %s/%s (will retry): %v", meta.GetName(), meta.GetNamespace(), err)
 		c.queue.AddRateLimited(newEvent)
 	} else {
 		// err != nil and too many retries
-		c.logger.Errorf("error processing %s (giving up): %v", newEvent.(types.InformerEvent).Key, err)
+		c.logger.Errorf("error processing %s/%s (giving up): %v", meta.GetName(), meta.GetNamespace(), err)
 		c.queue.Forget(newEvent)
 		utilruntime.HandleError(err)
 	}
@@ -244,21 +236,10 @@ func (c *Controller) processNextItem() bool {
 }
 
 func (c *Controller) processItem(newEvent types.InformerEvent) error {
-	// Fetching (create,update,delete) event Obj of k8s
-	c.logger.Debugf("Fetching obj  (%+v) with newEvent key=%s and eventType=%s from event", newEvent.EventObj, newEvent.Key, newEvent.Type)
-
 	// Get object's metadata
 	objectMeta := utils.GetObjectMetaData(newEvent.EventObj)
-
-	// Hold status type for default critical alerts
-	var status string
-
-	// namespace retrieved from event key in case namespace value is empty
-	if newEvent.Namespace == "" && strings.Contains(newEvent.Key, "/") {
-		substring := strings.Split(newEvent.Key, "/")
-		newEvent.Namespace = substring[0]
-		newEvent.Key = substring[1]
-	}
+	// Fetching (create,update,delete) event Obj of k8s
+	c.logger.Debugf("Fetching obj (%+v) with newEvent(%s/%s) and eventType=%s from event", newEvent.EventObj, objectMeta.GetName(), objectMeta.GetNamespace(), newEvent.Type)
 
 	if len(c.listenEvents) > 0 && !c.listenEvents[newEvent.Type] {
 		c.logger.Debugf("object filtered out because of not specified event type: %s", newEvent.Type)
@@ -271,63 +252,19 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 		// Compare CreationTimestamp and serverStartTime and alert only on latest events
 		// Could be Replaced by using Delta or DeltaFIFO
 		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
-			switch newEvent.ResourceType {
-			case "NodeNotReady":
-				status = "Danger"
-			case "NodeReady":
-				status = "Normal"
-			case "NodeRebooted":
-				status = "Danger"
-			case "Backoff":
-				status = "Danger"
-			default:
-				status = "Normal"
-			}
-			kbEvent := types.Event{
-				Type:      newEvent.Type,
-				Name:      objectMeta.GetName(),
-				Namespace: newEvent.Namespace,
-				Kind:      newEvent.ResourceType,
-				Info:      status,
-			}
-			c.logger.Debugf("add create event: %s", kbEvent.Message())
-			c.callEventHandler(objectMeta, kbEvent)
+			c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
+			c.callEventHandler(objectMeta, newEvent.Event)
 			return nil
 		}
-	case types.EventTypeUpdate:
-		switch newEvent.ResourceType {
-		case "Backoff":
-			status = "Danger"
-		default:
-			status = "Warning"
-		}
-		kbEvent := types.Event{
-			Type:      newEvent.Type,
-			Name:      newEvent.Key,
-			Namespace: newEvent.Namespace,
-			Kind:      newEvent.ResourceType,
-			Info:      status,
-		}
-		c.logger.Debugf("add update event: %s", kbEvent.Message())
-		c.callEventHandler(objectMeta, kbEvent)
-		return nil
-	case types.EventTypeDelete:
-		kbEvent := types.Event{
-			Type:      newEvent.Type,
-			Name:      newEvent.Key,
-			Namespace: newEvent.Namespace,
-			Kind:      newEvent.ResourceType,
-			Info:      "Deleted",
-		}
-		c.logger.Debugf("add delete event: %s", kbEvent.Message())
-		c.callEventHandler(objectMeta, kbEvent)
-		return nil
+	default:
+		c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
+		c.callEventHandler(objectMeta, newEvent.Event)
 	}
 	return nil
 }
 
 func (c *Controller) callEventHandler(obj metav1.Object, e types.Event) {
-	c.logger.Infof("event \"%s\" happened, calling event handlers", e.Message())
+	c.logger.Infof("%s event %s/%s happened, calling event handlers", e.Type, obj.GetName(), obj.GetNamespace())
 	for _, fn := range c.eventHandlers {
 		err := fn(c.controllerType, e, obj)
 		if err != nil {

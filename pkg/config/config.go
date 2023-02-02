@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/pkg/executor/templates"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
+	"github.com/kubevela/kube-trigger/pkg/templates"
 )
 
 // Config is what actually stores configs in memory.
@@ -34,6 +34,9 @@ type Config struct {
 
 // Validate validates config.
 func (c *Config) Validate(ctx context.Context, sourceReg *sourceregistry.Registry) error {
+	if len(c.Triggers) == 0 {
+		return fmt.Errorf("no triggers found")
+	}
 	// TODO(charlie0129): gather all errors before returning
 	for _, w := range c.Triggers {
 		if _, ok := sourceReg.Get(w.Source.Type); !ok {

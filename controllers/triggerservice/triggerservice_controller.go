@@ -20,22 +20,27 @@ import (
 	"context"
 	"fmt"
 
+	"cuelang.org/go/cue"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
+	"github.com/kubevela/pkg/util/slices"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/config"
-	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
+	"github.com/kubevela/kube-trigger/controllers/utils"
+	"github.com/kubevela/kube-trigger/pkg/templates"
+	"github.com/kubevela/pkg/cue/cuex"
 )
 
 // Reconciler reconciles a TriggerService object.
@@ -46,8 +51,12 @@ type Reconciler struct {
 }
 
 var (
-	logger                  = logrus.WithField("controller", "trigger-service")
-	triggerServiceFinalizer = "trigger.oam.dev/trigger-service-finalizer"
+	logger = logrus.WithField("controller", "trigger-service")
+)
+
+const (
+	triggerNameLabel        string = "trigger.oam.dev/name"
+	triggerServiceFinalizer string = "trigger.oam.dev/trigger-service-finalizer"
 )
 
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggerconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -77,108 +86,144 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	ti := &standardv1alpha1.TriggerInstance{}
-	if ts.Spec.InstanceRef != "" {
-		if err := r.Get(ctx, types.NamespacedName{
-			Name:      ts.Spec.InstanceRef,
-			Namespace: ts.Namespace,
-		}, ti); err != nil {
-			logger.Error(err, "failed to get TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
-			return ctrl.Result{}, err
-		}
-	} else {
-		// use TriggerInstance with the same name as the TriggerService, if not exists, create one
-		if err := r.Get(ctx, req.NamespacedName, ti); err != nil {
-			if apierrors.IsNotFound(err) {
-				ti = &standardv1alpha1.TriggerInstance{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      req.Name,
-						Namespace: req.Namespace,
-					},
-				}
-				if err := r.Create(ctx, ti); err != nil {
-					logger.Error(err, "failed to create TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
-					return ctrl.Result{}, err
-				}
-			} else {
-				logger.Error(err, "failed to get TriggerInstance", "name", ts.Spec.InstanceRef, "namespace", req.Namespace)
-				return ctrl.Result{}, err
-			}
-		}
+	if err := r.handleTriggerConfig(ctx, ts); err != nil {
+		logger.Error(err, "failed to handle trigger config")
+		return ctrl.Result{}, err
 	}
 
-	err := r.handleTriggerConfig(ctx, ts, ti)
-	if err != nil {
+	deploymentList := &appsv1.DeploymentList{}
+	if err := r.List(ctx, deploymentList, client.MatchingLabels(map[string]string{
+		triggerNameLabel: ts.Name,
+	})); err != nil {
 		return ctrl.Result{}, err
+	}
+	// if no worker deployment exists, create a new one to run trigger
+	if len(deploymentList.Items) == 0 {
+		if err := r.createWorker(ctx, ts); err != nil {
+			logger.Error(err, "failed to create worker deployment for trigger")
+			return ctrl.Result{}, err
+		}
+		logger.Info("successfully create worker deployment for trigger")
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) handleTriggerConfig(ctx context.Context, ts *standardv1alpha1.TriggerService, ti *standardv1alpha1.TriggerInstance) error {
+func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
+	templateName := "default"
+	opts := make([]cuex.CompileOption, 0)
+	opts = append(opts, cuex.WithExtraData("triggerService", map[string]string{
+		"name":      ts.Name,
+		"namespace": ts.Namespace,
+	}))
+	if ts.Spec.Worker != nil {
+		if ts.Spec.Worker.Template != "" {
+			templateName = ts.Spec.Worker.Template
+		}
+		if ts.Spec.Worker.Properties != nil {
+			opts = append(opts, cuex.WithExtraData("parameter", ts.Spec.Worker.Properties))
+		}
+	}
+	template, err := templates.NewLoader("worker").LoadTemplate(ctx, templateName)
+	if err != nil {
+		return err
+	}
+	v, err := cuex.DefaultCompiler.Get().CompileStringWithOptions(ctx, template, opts...)
+	if err != nil {
+		return err
+	}
+	if err := r.createRoles(ctx, ts, v); err != nil {
+		return err
+	}
+	data, err := v.LookupPath(cue.ParsePath("deployment")).MarshalJSON()
+	if err != nil {
+		return err
+	}
+	deploy := &appsv1.Deployment{}
+	if err := json.Unmarshal(data, deploy); err != nil {
+		return err
+	}
+	utils.SetOwnerReference(deploy, ts)
+	return r.Create(ctx, deploy)
+}
+
+func (r *Reconciler) createRoles(ctx context.Context, ts *standardv1alpha1.TriggerService, v cue.Value) error {
+	saName, err := v.LookupPath(cue.ParsePath("parameter.serviceAccount")).String()
+	if err != nil {
+		return err
+	}
+	sa := &corev1.ServiceAccount{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: saName}, sa); err != nil {
+		if apierrors.IsNotFound(err) {
+			sa = &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: ts.Namespace,
+				},
+			}
+			utils.SetOwnerReference(sa, ts)
+			if err := r.Create(ctx, sa); err != nil {
+				return err
+			}
+		}
+	} else {
+		return err
+	}
+	role := &rbacv1.ClusterRoleBinding{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: "kube-trigger"}, role); err != nil {
+		return err
+	}
+	subject := rbacv1.Subject{
+		Kind:      "ServiceAccount",
+		Name:      saName,
+		Namespace: ts.Namespace,
+	}
+	if !slices.Contains(role.Subjects, subject) {
+		role.Subjects = append(role.Subjects, subject)
+		return r.Update(ctx, role)
+	}
+	return nil
+}
+
+func (r *Reconciler) handleTriggerConfig(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
 	// Add TriggerService into ConfigMap
 	jsonByte, err := json.Marshal(ts.Spec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal TriggerService %s: %w", ts.Name, err)
 	}
+	key := fmt.Sprintf("%s.json", ts.Name)
 	// Find TriggerInstance ConfigMap
-	cm := &v1.ConfigMap{}
-	if err := r.Get(ctx, types.NamespacedName{Namespace: ti.Namespace, Name: ti.Name}, cm); err != nil {
+	cm := &corev1.ConfigMap{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: ts.Name}, cm); err != nil {
 		if apierrors.IsNotFound(err) {
-			cm = &v1.ConfigMap{
+			cm = &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ti.Name,
-					Namespace: ti.Namespace,
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         ti.APIVersion,
-							Kind:               ti.Kind,
-							Name:               ti.Name,
-							UID:                ti.UID,
-							BlockOwnerDeletion: pointer.BoolPtr(true),
-						},
-					},
+					Name:      ts.Name,
+					Namespace: ts.Namespace,
 				},
 				Data: map[string]string{
-					ts.Name: string(jsonByte),
+					key: string(jsonByte),
 				},
 			}
-			if err := r.Create(ctx, cm); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("failed to get TriggerInstance ConfigMap: %w", err)
+			utils.SetOwnerReference(cm, ts)
+			return r.Create(ctx, cm)
 		}
+		return fmt.Errorf("failed to get TriggerService ConfigMap: %w", err)
 	}
-	if meta.FinalizerExists(ts, triggerServiceFinalizer) {
-		delete(cm.Data, ts.Name)
-		if err := r.Update(ctx, cm); err != nil {
-			return err
-		}
-		logger.Infof("delete config entry %s from cm %s", ts.Name, ti.Name)
-		meta.RemoveFinalizer(ts, triggerServiceFinalizer)
-		return r.Update(ctx, ts)
-	}
-	if data, ok := cm.Data[ts.Name]; ok {
-		if data == string(jsonByte) {
-			return nil
-		}
-		logger.Warnf("key %s already exists in cm %s, will be overwritten", ts.Name, ti.Name)
-	}
-	cm.Data[ts.Name] = string(jsonByte)
-	logger.Infof("add config entry %s from cm %s", ts.Name, ti.Name)
+	cm.Data[key] = string(jsonByte)
+	logger.Infof("add config entry %s from cm %s", ts.Name, ts.Name)
 	if err := r.Update(ctx, cm); err != nil {
 		return err
 	}
-	return r.restartPod(ctx, ti)
+	return r.restartPod(ctx, ts)
 }
 
-func (r *Reconciler) restartPod(ctx context.Context, ti *standardv1alpha1.TriggerInstance) error {
+func (r *Reconciler) restartPod(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
 	var err error
 
-	pods := v1.PodList{}
-	err = r.List(ctx, &pods, client.InNamespace(ti.Namespace), client.MatchingLabels{
-		triggerinstance.NameLabel: ti.Name,
+	pods := corev1.PodList{}
+	err = r.List(ctx, &pods, client.InNamespace(ts.Namespace), client.MatchingLabels{
+		triggerNameLabel: ts.Name,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to list pods")
