@@ -37,16 +37,16 @@ jobs:
             ${{ runner.os }}-gobuildcontainer-
 
       - name: Show Make Variables
-        run: ./hack/make-kt.sh variables
+        run: make variables-trigger
 
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(./hack/make-kt.sh version)
+          VERSION=$(make version-trigger)
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binaries for All Platforms
-        run: ./hack/make-kt.sh all-build
+        run: make all-build-trigger
 
       - name: Attach Binaries to Release
         uses: softprops/action-gh-release@v1

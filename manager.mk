@@ -32,11 +32,11 @@ include makefiles/common.mk
 
 manifests: # @HELP Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
 manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=kube-trigger-manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd output:rbac:dir=config/manager
+	$(CONTROLLER_GEN) rbac:roleName=kube-trigger-manager-role crd webhook paths="{./api/...,./cmd/...,./controllers/...,./pkg/...}" output:crd:artifacts:config=config/crd output:rbac:dir=config/manager
 
 generate: # @HELP Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate/boilerplate.go.txt" paths="{./api/...,./cmd/...,./controllers/...,./pkg/...}"
 	go generate ./...
 
 install: # @HELP Install CRDs into the K8s cluster specified in ~/.kube/config

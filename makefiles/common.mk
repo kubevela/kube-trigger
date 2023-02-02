@@ -55,29 +55,32 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 # overwrite previous checksums
 	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
+# Build cache of the build container
+BUILDCACHE ?= $$(pwd)/bin/buildcache
+
 build: # @HELP build binary for current platform
 build: gen-dockerignore
-	mkdir -p bin "$(GOCACHE)" "$(GOMODCACHE)"
-	docker run                             \
-	    -i                                 \
-	    --rm                               \
-	    -u $$(id -u):$$(id -g)             \
-	    -v $$(pwd):/src                    \
-	    -w /src                            \
-	    -v $(GOCACHE):/gocache             \
-	    -v $(GOMODCACHE):/gomodcache       \
-	    --env GOCACHE="/gocache"           \
-	    --env GOMODCACHE="/gomodcache"     \
-	    --env ARCH="$(ARCH)"               \
-	    --env OS="$(OS)"                   \
-	    --env VERSION="$(VERSION)"         \
-	    --env DBG_BUILD="$(DBG_BUILD)"     \
-	    --env OUTPUT="$(OUTPUT)"           \
-	    --env GOFLAGS="$(GOFLAGS)"         \
-	    --env GOPROXY="$(GOPROXY)"         \
-	    --env HTTP_PROXY="$(HTTP_PROXY)"   \
-	    --env HTTPS_PROXY="$(HTTPS_PROXY)" \
-	    $(BUILD_IMAGE)                     \
+	mkdir -p bin "$(BUILDCACHE)/gocache" "$(BUILDCACHE)/gomodcache"
+	docker run                                  \
+	    -i                                      \
+	    --rm                                    \
+	    -u $$(id -u):$$(id -g)                  \
+	    -v $$(pwd):/src                         \
+	    -w /src                                 \
+	    -v $(BUILDCACHE)/gocache:/gocache       \
+	    -v $(BUILDCACHE)/gomodcache:/gomodcache \
+	    --env GOCACHE="/gocache"                \
+	    --env GOMODCACHE="/gomodcache"          \
+	    --env ARCH="$(ARCH)"                    \
+	    --env OS="$(OS)"                        \
+	    --env VERSION="$(VERSION)"              \
+	    --env DBG_BUILD="$(DBG_BUILD)"          \
+	    --env OUTPUT="$(OUTPUT)"                \
+	    --env GOFLAGS="$(GOFLAGS)"              \
+	    --env GOPROXY="$(GOPROXY)"              \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"        \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"      \
+	    $(BUILD_IMAGE)                          \
 	    ./build/build.sh $(ENTRY)
 
 package: # @HELP package binary using gzip or zip

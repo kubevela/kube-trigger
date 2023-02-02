@@ -72,4 +72,4 @@ jobs:
             ${{ runner.os }}-gobuildcontainer-
 
       - name: Test Docker Build
-        run: ./hack/make-kt.sh docker-build
+        run: make docker-build-trigger
