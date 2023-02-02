@@ -26,6 +26,16 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      - name: Setup Go Caches
+        uses: actions/cache@v3
+        with:
+          path: |
+            bin/gomodcache
+            bin/gocache
+          key: ${{ runner.os }}-gobuildcontainer-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-gobuildcontainer-
+
       - name: Show Make Variables
         run: ./hack/make-kt.sh variables
 
