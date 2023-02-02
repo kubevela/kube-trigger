@@ -18,7 +18,7 @@ ifeq ($(DBG_MAKEFILE),1)
     $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
     $(warning ***** $(shell date))
 else
-    # If we're not debugging the Makefile, don't print directories and recipies.
+    # If we're not debugging the Makefile, don't print directories or recipies.
     MAKEFLAGS += -s --no-print-directory
 endif
 
@@ -30,6 +30,7 @@ MAKEFLAGS += --always-make
 # Use bash explicitly
 SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset
 
+# All subprojects, e.g. trigger and manager
 BIN = $(patsubst %.mk,%,$(wildcard *.mk))
 
 # ===== Misc Targets ======
@@ -74,6 +75,9 @@ test: envtest
 	    go test -coverprofile=cover.out ./...
 
 # ===== Common Targets for both kubetrigger and manager ======
+
+# Run `make TARGET' to run TARGET for both kubetrigger and manager
+# Run `make TARGET-SUBPROJ' to run TARGET for SUBPROJ
 
 all: # @HELP same as build
 all: $(addprefix mk-all_,$(BIN))

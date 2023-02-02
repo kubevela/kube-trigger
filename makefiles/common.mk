@@ -56,11 +56,11 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
 
 # Build cache of the build container
-BUILDCACHE ?= $$(pwd)/bin/buildcache
+BUILDCACHE ?= $$(pwd)/bin
 
 build: # @HELP build binary for current platform
 build: gen-dockerignore
-	mkdir -p bin "$(BUILDCACHE)/gocache" "$(BUILDCACHE)/gomodcache"
+	mkdir -p bin "$(BUILDCACHE)/gocache" "$(BUILDCACHE)/gomodcache" && \
 	docker run                                  \
 	    -i                                      \
 	    --rm                                    \
