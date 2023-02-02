@@ -49,6 +49,9 @@ FULL_NAME   ?=
 # Plain old Go env
 GOFLAGS     ?=
 GOPROXY     ?=
+# Build cache of the build container
+GOCACHE     ?= $$(pwd)/bin/gocache
+GOMODCACHE  ?= $$(pwd)/bin/gomodcache
 
 # The base image of containers, with a default value
 BASE_IMAGE  ?= gcr.io/distroless/static:nonroot

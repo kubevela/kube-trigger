@@ -16,8 +16,8 @@
 # otherwise it won't work. A valid Dockerfile will be generated
 # using this template. Refer to Makefile for how it can be done.
 
-# Default value is specified in Makefile
-ARG BASE_IMAGE
+# Default value is specified and will be overridden by the one in Makefile
+ARG BASE_IMAGE=gcr.io/distroless/static:nonroot
 
 FROM ${BASE_IMAGE}
 
