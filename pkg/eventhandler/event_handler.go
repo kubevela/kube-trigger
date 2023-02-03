@@ -19,6 +19,7 @@ package eventhandler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -64,8 +65,9 @@ func NewFromConfig(ctx context.Context, actionMeta v1alpha1.ActionMeta, filterMe
 		// TODO: use handler to handle
 		// Apply filters
 		context := map[string]interface{}{
-			"event": event,
-			"data":  data,
+			"event":     event,
+			"data":      data,
+			"timestamp": time.Now().Format(time.RFC3339),
 		}
 		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
 		if err != nil {

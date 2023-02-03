@@ -23,21 +23,21 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-// SetOwnerReference set owner reference for trigger instance.
-func SetOwnerReference(obj metav1.Object, kt *standardv1alpha1.TriggerInstance) {
+// SetOwnerReference set owner reference for trigger service.
+func SetOwnerReference(obj metav1.Object, ts *standardv1alpha1.TriggerService) {
 	obj.SetOwnerReferences([]metav1.OwnerReference{{
 		APIVersion:         standardv1alpha1.GroupVersion.String(),
-		Kind:               standardv1alpha1.TriggerInstanceKind,
-		Name:               kt.Name,
-		UID:                kt.GetUID(),
+		Kind:               standardv1alpha1.TriggerServiceKind,
+		Name:               ts.Name,
+		UID:                ts.GetUID(),
 		BlockOwnerDeletion: pointer.BoolPtr(true),
 	}})
 }
 
 // GetNamespacedName get namespaced name from resource.
-func GetNamespacedName(kt metav1.Object) types.NamespacedName {
+func GetNamespacedName(obj metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: kt.GetNamespace(),
-		Name:      kt.GetName(),
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
 	}
 }

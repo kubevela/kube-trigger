@@ -20,21 +20,17 @@ import (
 	"flag"
 	"os"
 
-	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/controllers/config"
-	"github.com/kubevela/kube-trigger/controllers/triggerinstance"
-	"github.com/kubevela/kube-trigger/controllers/triggerservice"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme" //nolint
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//+kubebuilder:scaffold:imports
+
+	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/controllers/config"
+	"github.com/kubevela/kube-trigger/controllers/triggerservice"
 )
 
 var (
@@ -96,15 +92,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&triggerinstance.Reconciler{
-		Client:       mgr.GetClient(),
-		StatusWriter: mgr.GetClient().Status(),
-		Scheme:       mgr.GetScheme(),
-		Config:       controllerConfig,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "TriggerInstance")
-		os.Exit(1)
-	}
 	if err = (&triggerservice.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

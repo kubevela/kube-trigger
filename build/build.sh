@@ -49,15 +49,6 @@ else
   IMAGE_VERSION="latest"
 fi
 
-# Replace oamdev/kube-trigger:latest tag with an actual version.
-sed -i -e "s/:latest/:${IMAGE_VERSION}/g" controllers/template/yaml/deployment.yaml
-
-echo "# Generating code..."
-go generate ./...
-
-# Revert changes after code generation.
-sed -i -e "s/:${IMAGE_VERSION}/:latest/g" controllers/template/yaml/deployment.yaml
-
 printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
   "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
 

@@ -10,7 +10,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kube-trigger-manager
-    namespace: kube-trigger-system
+    namespace: vela-system
 
 ---
 
@@ -18,7 +18,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kube-trigger-manager
-  namespace: kube-trigger-system
+  namespace: vela-system
 
 ---
 
@@ -28,7 +28,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: leader-election-role
-  namespace: kube-trigger-system
+  namespace: vela-system
 rules:
   - apiGroups:
       - ""
@@ -68,7 +68,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: leader-election-rolebinding
-  namespace: kube-trigger-system
+  namespace: vela-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -76,5 +76,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kube-trigger-manager
-    namespace: kube-trigger-system
+    namespace: vela-system
 

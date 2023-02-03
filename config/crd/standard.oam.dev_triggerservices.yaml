@@ -35,8 +35,6 @@ spec:
           spec:
             description: TriggerServiceSpec defines the desired state of TriggerService.
             properties:
-              instanceRef:
-                type: string
               triggers:
                 description: Config for kube-trigger
                 items:
@@ -78,6 +76,15 @@ spec:
                   - source
                   type: object
                 type: array
+              worker:
+                description: Worker defines the config of the worker
+                properties:
+                  properties:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  template:
+                    type: string
+                type: object
             required:
             - triggers
             type: object
