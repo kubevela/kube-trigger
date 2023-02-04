@@ -45,3 +45,10 @@ metadata:
   namespace: default
 spec:
   components: [ ]
+
+---
+apiVersion: standard.oam.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: this-will-trigger-update-1
+  namespace: default

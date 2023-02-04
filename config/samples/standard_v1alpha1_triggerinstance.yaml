@@ -1,8 +1,0 @@
-apiVersion: standard.oam.dev/v1alpha1
-kind: TriggerInstance
-metadata:
-  name: kubetrigger-sample
-  namespace: default
-  labels:
-    instance: kubetrigger-sample
-spec:

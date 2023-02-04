@@ -1,0 +1,15 @@
+  triggers:
+    - source:
+        type: resource-watcher
+        properties:
+          # We are interested in ConfigMap events.
+          apiVersion: "v1"
+          kind: ConfigMap
+          namespace: default
+          # Only watch update event.
+          events:
+            - update
+      filter: |
+        context: data: metadata: name: =~"this-will-trigger-update-.*"
+      action:
+        type: record-event

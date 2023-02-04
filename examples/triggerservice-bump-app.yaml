@@ -4,10 +4,6 @@ metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
-  # If you ignore selectors, you can use the default TriggerInstance,
-  # given the related options are enabled using manager args.
-  selector:
-    instance: kubetrigger-sample
   # A trigger is a group of Source, Filters, and Actions.
   # You can add multiple triggers.
   triggers:

@@ -8,6 +8,7 @@ run:
   skip-dirs:
     - "hack"
     - "e2e"
+    - "bin"
 
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"

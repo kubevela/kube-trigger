@@ -49,7 +49,7 @@ svgformat:
 clean:
 	rm -rf bin
 
-reviewable: generate checklicense lint svgformat
+reviewable: generate checklicense lint
 
 checkdiff: generate
 	git --no-pager diff

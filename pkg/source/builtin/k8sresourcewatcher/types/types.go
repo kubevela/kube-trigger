@@ -66,24 +66,11 @@ const (
 
 // Event represent an event got from k8s api server
 type Event struct {
-	Type       EventType
-	Namespace  string
-	Kind       string
-	ApiVersion string
-	Name       string
-	Info       string
-}
-
-// Message returns event message in standard format.
-func (e *Event) Message() (msg string) {
-	return "apiVersion: " + e.ApiVersion + ", kind: " + e.Kind + ", namespace: " + e.Namespace + ", name: " + e.Name + ", info: " + e.Info
+	Type EventType `json:"type"`
 }
 
 // InformerEvent indicate the informerEvent
 type InformerEvent struct {
-	Key          string
-	Type         EventType
-	Namespace    string
-	ResourceType string
-	EventObj     interface{}
+	Event
+	EventObj interface{}
 }

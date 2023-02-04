@@ -28,7 +28,7 @@ import (
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/executor"
-	"github.com/kubevela/kube-trigger/pkg/executor/templates"
+	"github.com/kubevela/kube-trigger/pkg/templates"
 )
 
 // Job is the type of executor job.
@@ -55,9 +55,12 @@ func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, er
 	if err != nil {
 		return nil, err
 	}
-	propByte, err := meta.Properties.MarshalJSON()
-	if err != nil {
-		return nil, err
+	propByte := []byte("{}")
+	if meta.Properties != nil {
+		propByte, err = meta.Properties.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
 	}
 	id, err := computeHash(meta)
 	if err != nil {

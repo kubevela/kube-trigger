@@ -149,7 +149,8 @@ skipped_dirs = [
     '.git',
     "pkg/util/workqueue",
     "docs",
-    "build"
+    "build",
+    "bin"
 ]
 
 # list all the files contain 'DO NOT EDIT', but are not generated

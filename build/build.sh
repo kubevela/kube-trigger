@@ -37,24 +37,6 @@ if [ -z "${OUTPUT:-}" ]; then
   exit 1
 fi
 
-# Set docker image version tag to current git tag, only if it fits semetic versioning.
-if echo "${VERSION}" | grep -Eq '^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}(-(alpha|beta)\.[0-9]{1,2})?$'; then
-  IMAGE_VERSION="${VERSION}"
-else
-  IMAGE_VERSION="latest"
-fi
-
-# Replace oamdev/kube-trigger:latest tag with current version,
-# which will be embedded in the binary.
-sed -i -e "s/:latest/:${IMAGE_VERSION}/g" controllers/template/yaml/deployment.yaml
-
-cleanup() {
-  # Revert changes to oamdev/kube-trigger tag after building.
-  sed -i -e "s/:${IMAGE_VERSION}/:latest/g" controllers/template/yaml/deployment.yaml
-}
-
-trap cleanup EXIT
-
 export CGO_ENABLED=0
 export GOARCH="${ARCH}"
 export GOOS="${OS}"
@@ -63,9 +45,6 @@ export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
 printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
   "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
-
-echo "# Generating code..."
-go generate ./...
 
 if [ -z "${DBG_BUILD:-}" ]; then
   # release build

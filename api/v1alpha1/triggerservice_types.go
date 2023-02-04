@@ -23,7 +23,7 @@ import (
 
 // TriggerServiceSpec defines the desired state of TriggerService.
 type TriggerServiceSpec struct {
-	InstanceRef string `json:"instanceRef,omitempty"`
+	Worker *Worker `json:"worker,omitempty"`
 	// Config for kube-trigger
 	Triggers []TriggerMeta `json:"triggers"`
 }
@@ -73,6 +73,13 @@ type Source struct {
 	Type string `json:"type"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Properties *runtime.RawExtension `json:"properties"`
+}
+
+// Worker defines the config of the worker
+type Worker struct {
+	Template string `json:"template,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Properties *runtime.RawExtension `json:"properties,omitempty"`
 }
 
 const (
