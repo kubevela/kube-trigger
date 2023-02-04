@@ -81,4 +81,4 @@ fi
 
 echo "# Running golangci-lint v${CURRENT_GOLANGCI_VERSION}..."
 
-${GOLANGCI} run ./api/... ./cmd/... ./controllers/... ./pkg/...
+${GOLANGCI} run "$@"

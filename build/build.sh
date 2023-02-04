@@ -43,17 +43,19 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
-printf "# target: %s/%s\tversion: %s\toutput: %s\n" \
-  "${OS}" "${ARCH}" "${VERSION}" "${OUTPUT}"
+printf "# BINARY output: %s\ttarget: %s/%s\tversion: %s\n" \
+  "${OUTPUT}" "${OS}" "${ARCH}" "${VERSION}"
 
-if [ -z "${DBG_BUILD:-}" ]; then
+printf "# BINARY building for "
+
+if [ -z "${DEBUG:-}" ]; then
   # release build
   # trim paths, disable symbols and DWARF.
   goasmflags="all=-trimpath=$(pwd)"
   gogcflags="all=-trimpath=$(pwd)"
   goldflags="-s -w"
 
-  echo "# Building for release..."
+  printf "release...\n"
 else
   # debug build
   # disable optimizations and inlining
@@ -61,7 +63,7 @@ else
   goasmflags=""
   goldflags=""
 
-  echo "# Building for debug..."
+  printf "debug...\n"
 fi
 
 # Set some version info.

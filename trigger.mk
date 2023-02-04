@@ -12,24 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include makefiles/consts.mk
-
-# CLI entry file
-ENTRY         := cmd/kubetrigger/main.go
-
-# Binary targets that we support.
-# When doing all-build, these targets will be built.
-BIN_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
-IMG_PLATFORMS := linux/amd64 linux/arm64
-
-# Binary basename, without extension
-BIN           := kube-trigger
-
-# Docker image tag
-IMGTAGS  ?= $(addsuffix /$(BIN):$(IMG_VERSION),$(REGISTRY))
-
+# Setup make
 include makefiles/common.mk
 
+# Settings for this subproject
+# Entry file, containing func main
+ENTRY           := cmd/kubetrigger/main.go
+# All supported platforms for binary distribution
+BIN_PLATFORMS   := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+# All supported platforms for container image distribution
+IMAGE_PLATFORMS := linux/amd64 linux/arm64
+# Binary basename (.exe will be automatically added when building for Windows)
+BIN             := kube-trigger
+# Container image name, without repo or tags
+IMAGE_NAME      := $(BIN)
+# Container image repositories to push to (supports multiple repos)
+IMAGE_REPOS     := docker.io/oamdev ghcr.io/kubevela
+
+# Setup make variables
+include makefiles/consts.mk
+
+# Specific targets to this subproject
 generate: # @HELP run go generate
 generate:
 	go generate ./...
+
+# Setup common targets
+include makefiles/targets.mk
