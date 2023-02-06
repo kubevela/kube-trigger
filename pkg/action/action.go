@@ -18,10 +18,7 @@ package action
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/kubevela/pkg/cue/cuex"
 	"github.com/mitchellh/hashstructure/v2"
@@ -35,8 +32,8 @@ import (
 type Job struct {
 	sourceType string
 	id         string
-	context    string
-	properties string
+	context    any
+	properties any
 	template   string
 }
 
@@ -51,17 +48,6 @@ func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, er
 	if err != nil {
 		return nil, err
 	}
-	contextByte, err := json.Marshal(contextData)
-	if err != nil {
-		return nil, err
-	}
-	propByte := []byte("{}")
-	if meta.Properties != nil {
-		propByte, err = meta.Properties.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-	}
 	id, err := computeHash(meta)
 	if err != nil {
 		return nil, err
@@ -70,8 +56,8 @@ func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, er
 		id:         id,
 		template:   template,
 		sourceType: meta.Type,
-		context:    fmt.Sprintf("context: %s", string(contextByte)),
-		properties: fmt.Sprintf("parameter: %s", string(propByte)),
+		context:    contextData,
+		properties: meta.Properties,
 	}
 
 	return &ret, nil
@@ -99,8 +85,7 @@ func (j *Job) ID() string {
 
 // Run execute action
 func (j *Job) Run(ctx context.Context) error {
-	str := strings.Join([]string{j.template, j.properties, j.context}, "\n")
-	v, err := cuex.CompileString(ctx, str)
+	v, err := cuex.CompileStringWithOptions(ctx, j.template, cuex.WithExtraData("parameter", j.properties), cuex.WithExtraData("context", j.context))
 	if err != nil {
 		return err
 	}
