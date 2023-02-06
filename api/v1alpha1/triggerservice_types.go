@@ -52,8 +52,9 @@ type TriggerServiceList struct {
 
 // TriggerMeta is the meta data of a trigger.
 type TriggerMeta struct {
-	Source Source     `json:"source"`
-	Filter string     `json:"filter"`
+	Source Source `json:"source"`
+	// +optional
+	Filter string     `json:"filter,omitempty"`
 	Action ActionMeta `json:"action"`
 }
 
