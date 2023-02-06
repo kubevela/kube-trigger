@@ -28,8 +28,8 @@ fi
 
 function print_download_help() {
   echo "You can install golangci-lint v${GOLANGCI_VERSION} by running:" 1>&2
-  echo "  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_VERSION}" 1>&2
-  echo "It will be installed in ./bin/golangci-lint so that it won't interfere with other versions (if any)." 1>&2
+  echo "  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(pwd)/bin v${GOLANGCI_VERSION}" 1>&2
+  echo "By default, it will be installed in ./bin/golangci-lint so that it won't interfere with other versions (if any)." 1>&2
 }
 
 if ! ${GOLANGCI} version >/dev/null 2>&1; then
@@ -74,6 +74,11 @@ if ! greaterver "${CURRENT_GOLANGCI_VERSION}" "${GOLANGCI_VERSION}"; then
   exit 1
 fi
 
+if [ "${CURRENT_GOLANGCI_VERSION}" != "${GOLANGCI_VERSION}" ]; then
+  echo "Warning: you have golangci-lint v${CURRENT_GOLANGCI_VERSION}, but we want v${GOLANGCI_VERSION}" 1>&2
+  print_download_help
+fi
+
 echo "# Running golangci-lint v${CURRENT_GOLANGCI_VERSION}..."
 
-${GOLANGCI} run ./...
+${GOLANGCI} run "$@"

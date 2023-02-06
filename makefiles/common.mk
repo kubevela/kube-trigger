@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright 2022 The KubeVela Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
-set -o nounset
-set -o pipefail
+# Set this to 1 to enable debugging output.
+DBG_MAKEFILE ?=
+ifeq ($(DBG_MAKEFILE),1)
+    $(warning ***** starting Makefile for goal(s) "$(MAKECMDGOALS)")
+    $(warning ***** $(shell date))
+else
+    # If we're not debugging the Makefile, don't echo recipes.
+    MAKEFLAGS += -s
+endif
 
-make -f manager.mk "$@"
+# No, we don't want builtin rules.
+MAKEFLAGS += --no-builtin-rules
+# Get some warnings about undefined variables
+MAKEFLAGS += --warn-undefined-variables
+# Get rid of .PHONY everywhere.
+MAKEFLAGS += --always-make
+
+# Use bash explicitly
+SHELL := /usr/bin/env bash -o errexit -o pipefail -o nounset

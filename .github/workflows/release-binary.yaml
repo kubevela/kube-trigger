@@ -24,28 +24,29 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
 
       - name: Setup Go Caches
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+            bin/gomodcache
+            bin/gocache
+          key: ${{ runner.os }}-gobuildcontainer-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-golang-
+            ${{ runner.os }}-gobuildcontainer-
 
       - name: Show Make Variables
-        run: ./hack/make-kt.sh variables
+        run: make trigger-variables
 
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(./hack/make-kt.sh version)
+          VERSION=$(make trigger-version)
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binaries for All Platforms
-        run: ./hack/make-kt.sh all-build
+        run: make trigger-all-build
 
       - name: Attach Binaries to Release
         uses: softprops/action-gh-release@v1

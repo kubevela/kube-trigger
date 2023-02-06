@@ -12,31 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Setup make
+include makefiles/common.mk
+
+# Settings for this subproject
+# Entry file, containing func main
+ENTRY           := cmd/manager/main.go
+# All supported platforms for binary distribution
+BIN_PLATFORMS   := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+# All supported platforms for container image distribution
+IMAGE_PLATFORMS := linux/amd64 linux/arm64
+# Binary basename (.exe will be automatically added when building for Windows)
+BIN             := manager
+# Container image name, without repo or tags
+IMAGE_NAME      := kube-trigger-$(BIN)
+# Container image repositories to push to (supports multiple repos)
+IMAGE_REPOS     := docker.io/oamdev ghcr.io/kubevela
+
+# Setup make variables
 include makefiles/consts.mk
 
-# CLI entry file
-ENTRY        := cmd/manager/main.go
-
-# Binary targets that we support.
-# When doing all-build, these targets will be built.
-BIN_PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
-IMG_PLATFORMS := linux/amd64 linux/arm64
-
-# Binary basename, without extension
-BIN           := manager
-
-# Docker image tag
-IMGTAGS  ?= $(addsuffix /kube-trigger-$(BIN):$(IMG_VERSION),$(REGISTRY))
-
-include makefiles/common-targets.mk
-
+# Specific targets to this subproject
 manifests: # @HELP Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
 manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=kube-trigger-manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd output:rbac:dir=config/manager
+	$(CONTROLLER_GEN) rbac:roleName=kube-trigger-manager-role crd webhook paths="{./api/...,./cmd/...,./controllers/...,./pkg/...}" output:crd:artifacts:config=config/crd output:rbac:dir=config/manager
 
 generate: # @HELP Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate/boilerplate.go.txt" paths="{./api/...,./cmd/...,./controllers/...,./pkg/...}"
 	go generate ./...
 
 install: # @HELP Install CRDs into the K8s cluster specified in ~/.kube/config
@@ -63,7 +66,10 @@ bin:
 CONTROLLER_GEN ?= bin/controller-gen
 
 # Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.9.0
+CONTROLLER_TOOLS_VERSION ?= v0.11.2
 
 controller-gen: bin
 	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+# Setup common targets
+include makefiles/targets.mk

@@ -39,13 +39,16 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     runs-on: ubuntu-latest
     strategy:
+      # Makefile can also do this. We are just utilizing
+      # multiple GitHub Action runners in parallel
+      # to make builds faster.
       matrix:
         platform:
           - linux-amd64
           - darwin-amd64
           - darwin-arm64
         binary:
-          - kube-trigger
+          - trigger
           - manager
     steps:
       - name: Checkout Code
@@ -55,36 +58,38 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
 
       - name: Setup Go Caches
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+            bin/gomodcache
+            bin/gocache
+          key: ${{ runner.os }}-gobuildcontainer-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-golang-
+            ${{ runner.os }}-gobuildcontainer-
 
       - name: Run Go Generate
         run: make generate
 
       - name: Show Make Variables
-        run: ./hack/make-kt.sh variables
+        run: make ${{ matrix.binary }}-variables
 
       - name: Get Version
         id: get_version
         run: |
-          VERSION=$(./hack/make-kt.sh version)
+          VERSION=$(make ${{ matrix.binary }}-version)
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binary
         env:
-          DIRTY_BUILD: true
+          DEBUG: true
         run: |
           PLATFORM=${{ matrix.platform }}
           BINARY=${{ matrix.binary }}
-          make -f ${BINARY/-/}.mk build-${PLATFORM/-/_}
+          # Build for a specific platform
+          make ${BINARY}-build-${PLATFORM/-/_}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
