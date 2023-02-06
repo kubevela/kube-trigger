@@ -111,24 +111,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
 	templateName := "default"
-	opts := make([]cuex.CompileOption, 0)
-	opts = append(opts, cuex.WithExtraData("triggerService", map[string]string{
-		"name":      ts.Name,
-		"namespace": ts.Namespace,
-	}))
 	if ts.Spec.Worker != nil {
 		if ts.Spec.Worker.Template != "" {
 			templateName = ts.Spec.Worker.Template
-		}
-		if ts.Spec.Worker.Properties != nil {
-			opts = append(opts, cuex.WithExtraData("parameter", ts.Spec.Worker.Properties))
 		}
 	}
 	template, err := templates.NewLoader("worker").LoadTemplate(ctx, templateName)
 	if err != nil {
 		return err
 	}
-	v, err := cuex.DefaultCompiler.Get().CompileStringWithOptions(ctx, template, opts...)
+	v, err := cuex.CompileStringWithOptions(ctx, template, cuex.WithExtraData("triggerService", map[string]string{
+		"name":      ts.Name,
+		"namespace": ts.Namespace,
+	}), cuex.WithExtraData("parameter", ts.Spec.Worker.Properties))
 	if err != nil {
 		return err
 	}

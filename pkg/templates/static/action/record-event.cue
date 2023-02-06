@@ -7,7 +7,12 @@ meta: {
 	apiVersion: "standard.oam.dev/v1alpha1"
 	kind:       "EventListener"
 	metadata: {
-		name:      context.data.metadata.name
+		if parameter.name != _|_ {
+			name: context.data.metadata.labels[parameter.name.fromLabel]
+		}
+		if parameter.name == _|_ {
+			name: context.data.metadata.name
+		}
 		namespace: context.data.metadata.namespace
 	}
 }
@@ -50,5 +55,11 @@ if len(events) > 10 {
 				events: filter
 			}
 		}
+	}
+}
+
+parameter: {
+	name?: {
+		fromLabel: string
 	}
 }

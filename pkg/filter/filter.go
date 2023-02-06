@@ -18,7 +18,6 @@ package filter
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"cuelang.org/go/cue"
@@ -27,12 +26,7 @@ import (
 
 // ApplyFilter applies the given filter to an object.
 func ApplyFilter(ctx context.Context, contextData map[string]interface{}, filter string) (bool, error) {
-	contextByte, err := json.Marshal(contextData)
-	if err != nil {
-		return false, err
-	}
-	contextTemplate := fmt.Sprintf("context: %s", string(contextByte))
-	filterVal, err := cuex.CompileString(ctx, fmt.Sprintf("filter: {\n%s\n%s\n}", filter, contextTemplate))
+	filterVal, err := cuex.CompileStringWithOptions(ctx, fmt.Sprintf("filter: %s", filter), cuex.WithExtraData("context", contextData))
 	if err != nil {
 		return false, err
 	}
