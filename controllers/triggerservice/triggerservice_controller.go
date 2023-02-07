@@ -168,7 +168,7 @@ func (r *Reconciler) createRoles(ctx context.Context, ts *standardv1alpha1.Trigg
 		return err
 	}
 	role := &rbacv1.ClusterRoleBinding{}
-	if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: "kube-trigger"}, role); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: "", Name: "kube-trigger"}, role); err != nil {
 		return err
 	}
 	subject := rbacv1.Subject{

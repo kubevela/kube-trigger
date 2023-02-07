@@ -30,6 +30,7 @@ type Config struct {
 	Namespace      string            `json:"namespace,omitempty"`
 	Events         []EventType       `json:"events,omitempty"`
 	MatchingLabels map[string]string `json:"matchingLabels,omitempty"`
+	Clusters       []string          `json:"clusters,omitempty"`
 }
 
 func (c *Config) Key() string {
