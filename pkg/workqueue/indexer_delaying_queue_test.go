@@ -2,14 +2,15 @@ package workqueue
 
 import (
 	"fmt"
-	"gitlab.alibaba-inc.com/sae/sae-kube-exporter/pkg/cache"
-	corev1 "k8s.io/api/core/v1"
 	"testing"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 )
 
 func TestIndexerDelayingQueue_Version(t *testing.T) {
-	q := NewIndexerDelayingQueue("test", cache.MetaNamespaceKeyFunc)
+	q := NewIndexerDelayingQueue("test", metaNamespaceKeyFunc)
 
 	var p1 = &podWrap{&corev1.Pod{}}
 	p1.Name = "ss"
@@ -43,7 +44,7 @@ func TestIndexerDelayingQueue_Version(t *testing.T) {
 }
 
 func TestIndexerDelayingQueue_Parallel(t *testing.T) {
-	q := NewIndexerDelayingQueue("test", cache.MetaNamespaceKeyFunc)
+	q := NewIndexerDelayingQueue("test", metaNamespaceKeyFunc)
 
 	var p1 = &podWrap{&corev1.Pod{}}
 	p1.Name = "ss"
@@ -182,4 +183,15 @@ func TestIndexerQueueLen(t *testing.T) {
 	if q.Len() != 0 {
 		t.Errorf("q.Len() should be 0, but: %d", q.Len())
 	}
+}
+
+func metaNamespaceKeyFunc(obj interface{}) (string, error) {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return "", fmt.Errorf("object has no meta: %v", err)
+	}
+	if len(meta.GetNamespace()) > 0 {
+		return meta.GetNamespace() + "/" + meta.GetName(), nil
+	}
+	return meta.GetName(), nil
 }

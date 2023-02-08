@@ -35,12 +35,12 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
+	"github.com/kubevela/kube-trigger/pkg/workqueue"
 )
 
 const maxRetries = 5
