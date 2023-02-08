@@ -34,9 +34,9 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
@@ -67,9 +67,7 @@ func init() {
 }
 
 // Setup prepares controllers
-func Setup(ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
-	conf := ctrl.GetConfigOrDie()
-	ctx := context.Background()
+func Setup(ctx context.Context, conf *rest.Config, ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
 	mapper, err := apiutil.NewDiscoveryRESTMapper(conf)
 	if err != nil {
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
@@ -88,7 +86,7 @@ func Setup(ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
 	if err != nil {
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
 	}
-	dynamicClient, err := dynamic.NewForConfig(ctrl.GetConfigOrDie())
+	dynamicClient, err := dynamic.NewForConfig(conf)
 	if err != nil {
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
 	}

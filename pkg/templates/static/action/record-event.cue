@@ -3,6 +3,15 @@ import (
 	"strconv"
 )
 
+ns: kube.#List & {
+	$params: {
+		resource: {
+			apiVersion: "v1"
+			kind:       "Namespace"
+		}
+	}
+}
+
 meta: {
 	apiVersion: "standard.oam.dev/v1alpha1"
 	kind:       "EventListener"
