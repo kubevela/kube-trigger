@@ -12,25 +12,112 @@ kube-trigger is a tool that combines event listeners and action triggers.
 
 Although there is `kube` in the name, it is actually not limited to Kubernetes and can do much more than that. It has an
 extensible architecture that can extend its capabilities fairly easily. We have docs (not yet) on how to
-extend [Sources](#Sources), [Filters](#Filters), and [Actions](#Actions). All users are welcomed to contribute their own
+extend [Source](#Source), [Filter](#Filter), and [Action](#Action). All users are welcomed to contribute their own
 extensions.
 
-### Sources
+### Source
 
 A Source is what listens to events (event source). For example, a `resource-watcher` source can watch Kubernetes
-resources. Once a Kubernetes resource (e.g. ConfigMap) is changed, it will raise an event that will be passed
-to [Filters](#Filters) for further processing.
+resources from multi-clusters. Once a Kubernetes resource (e.g. Deployment) is changed, it will raise an event that will be passed
+to [Filter](#Filter) for further processing.
+
+```yaml
+source:
+  type: resource-watcher
+  properties:
+    apiVersion: apps/v1
+    kind: Deployment
+    events:
+      - update
+```
 
 ### Filters
 
-A Filter will filter the events that are raised by [Sources](#Sources), i.e, drop events that do not satisfy a certain
-criteria. For example, users can use a `cue-validator` Filter to filter out events by Kubernetes resource names. All the
-events that passed the Filters will then trigger an [Action](#Actions).
+A Filter will filter the events that are raised by [Source](#Source), i.e, drop events that do not satisfy a certain
+criteria. For example, users can check the status of the Deployment to decide whether to filter out events. All the
+events that passed the Filter will then trigger an [Action](#Action).
+
+```yaml
+filter: context.data.status.readyReplicas == context.data.status.replicas
+```
 
 ### Actions
 
 An Action is a job that does what the user specified when an event happens. For example, the user can send
 notifications, log events, execute a command, or patch some Kubernetes objects when an event happens.
+
+For example, you can use the built-in action `patch-resource` to patch resources in Kubernetes like:
+
+```yaml
+action:
+  type: patch-resource
+  properties:
+    resource:
+      apiVersion: v1
+      kind: ConfigMap
+      name: my-cm
+      namespace: default
+    patch:
+      type: merge
+      data:
+        data: 
+          foo: bar
+```
+
+The underlying mechanism of action is using [CUE](https://github.com/cue-lang/cue) to render the template and execute it with your parameters. For example, the above action can be written in CUE as:
+
+```cue
+import (
+	"vela/kube"
+)
+
+patchObject: kube.#Patch & {
+	$params: {
+		resource: {
+			apiVersion: parameter.resource.apiVersion
+			kind:       parameter.resource.kind
+			metadata: {
+				name:      parameter.resource.name
+				namespace: parameter.resource.namespace
+			}
+		}
+		patch: parameter.patch
+	}
+}
+
+// users' parameters to be passed to the action
+parameter: {
+	// +usage=The resource to patch
+	resource: {
+		// +usage=The api version of the resource
+		apiVersion: string
+		// +usage=The kind of the resource
+		kind: string
+		// +usage=The metadata of the resource
+		metadata: {
+			// +usage=The name of the resource
+			name: string
+			// +usage=The namespace of the resource
+			namespace: *"default" | string
+		}
+	}
+	// +usage=The patch to be applied to the resource with kubernetes patch
+	patch: *{
+		// +usage=The type of patch being provided
+		type: "merge"
+		data: {...}
+	} | {
+		// +usage=The type of patch being provided
+		type: "json"
+		data: [{...}]
+	} | {
+		// +usage=The type of patch being provided
+		type: "strategic"
+		data: {...}
+	}
+}
+
+```
 
 ## Quick Start
 
@@ -41,33 +128,61 @@ updated whenever the ConfigMaps that are referenced by `ref-objects` are updated
 To accomplish this, we will:
 
 - use a `resource-watcher` Source to listen to update events of ConfigMaps
-- use a `cue-validator` Filter to only keep the ConfigMaps that we are interested in
+- filter the events to only keep the ConfigMaps that we are interested in
 - trigger an `bump-application-revision` Action to update Application.
 
-See [examples](https://github.com/kubevela/kube-trigger/tree/main/examples) directory for instructions.
+And the trigger config file will look like:
 
-## Configuration File
+```yaml
+triggers:
+  - source:
+      type: resource-watcher
+      properties:
+        # We are interested in ConfigMap events.
+        apiVersion: "v1"
+        kind: ConfigMap
+        namespace: default
+        # Only watch update event.
+        events:
+          - update
+    filter: |
+      context: data: metadata: name: =~"this-will-trigger-update-.*"
+    action:
+      # Bump Application Revision to update Application.
+      type: bump-application-revision
+      properties:
+        namespace: default
+        # Select Applications to bump using labels.
+        matchingLabels:
+          my-label: my-value
+```
 
-A config file instructs kube-trigger to use what [Sources](#Sources), [Filters](#Filters), and [Actions](#Actions), and
+See [examples](https://github.com/kubevela/kube-trigger/tree/main/examples) directory for more instructions.
+
+## Usage
+
+You can run kube-trigger in two modes: standalone and in-cluster.
+
+### Configuration File
+
+A config file instructs kube-trigger to use what [Source](#Source), [Filter](#Filter), and [Action](#Action), and
 how they are configured.
 
 No matter you are running kube-trigger as standalone or in-cluster, the config format is similar, so it is beneficial to
 know the format first. We will use yaml format as an example (json and cue are also supported).
 
 ```yaml
-# A trigger is a group of Source, Filters, and Actions.
+# A trigger is a group of Source, Filter, and Action.
 # You can add multiple triggers.
 triggers:
   - source:
       type: <your-source-type>
       properties: ...
       # ... properties
-    filters:
-      - type: <your-filter-type>
-        properties: ...
-    actions:
-      - type: <your-action-type>
-        properties: ...
+    filter: <your-filter>
+    action:
+      type: <your-action-type>
+      properties: ...
 ```
 
 ### Standalone
@@ -114,14 +229,7 @@ Let's assume your config file is `config.yaml`, to run kube-trigger:
 
 ### In-Cluster
 
-We have two CRDs: *TriggerInstance* and *TriggerService*.
-
-- *TriggerInstance* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config is
-  provided). Advanced kube-trigger Instance Configuration (next section) can be provided in it.
-- *TriggerService* is used to provide one or more configs (same as the config file you use when running as
-  standalone) to a *TriggerInstance*.
-
-So we know *TriggerService* is what actually provides a config, this is what we will be discussing.
+We have one CRD called *TriggerService*. *TriggerInstance* is what creates a kube-trigger instance (similar to running `./kube-trigger` in-cluster but no config with config specified in its spec.
 
 ```yaml
 # You can find this file in config/samples/standard_v1alpha1_triggerservice.yaml
@@ -152,9 +260,9 @@ spec:
             my-label: my-value
 ```
 
-## Advanced kube-trigger Instance Configuration
+## Advanced kube-trigger Configuration
 
-In addition to config files, you can also do advanced configurations. Advanced kube-trigger Instance Configurations are
+In addition to config files, you can also do advanced configurations. Advanced kube-trigger Configurations are
 internal configurations to fine-tune your kube-trigger instance. In
 most cases, you probably don't need to fiddle with these settings.
 
