@@ -5,8 +5,8 @@ import (
 patchObject: kube.#Patch & {
 	$params: {
 		resource: {
-			apiVersion: "core.oam.dev/v1beta1"
-			kind:       "Application"
+			apiVersion: parameter.resource.apiVersion
+			kind:       parameter.resource.kind
 			metadata: {
 				name:      parameter.resource.name
 				namespace: parameter.resource.namespace
