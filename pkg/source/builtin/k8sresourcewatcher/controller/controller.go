@@ -23,6 +23,7 @@ import (
 
 	"github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,12 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
@@ -51,10 +49,9 @@ var serverStartTime time.Time
 
 // Controller object
 type Controller struct {
-	logger    *logrus.Entry
-	clientset kubernetes.Interface
-	queue     workqueue.RateLimitingInterface
-	informer  cache.SharedIndexInformer
+	logger   *logrus.Entry
+	queue    workqueue.RateLimitingInterface
+	informer cache.SharedIndexInformer
 
 	eventHandlers  []eventhandler.EventHandler
 	sourceConf     types.Config
@@ -67,15 +64,8 @@ func init() {
 }
 
 // Setup prepares controllers
-func Setup(ctx context.Context, conf *rest.Config, ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
-	mapper, err := apiutil.NewDiscoveryRESTMapper(conf)
-	if err != nil {
-		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
-	}
-	kubeClient, err := kubernetes.NewForConfig(conf)
-	if err != nil {
-		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatalf("Can not create kubernetes client: %v", err)
-	}
+func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
+	logger := logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
 	gv, err := schema.ParseGroupVersion(ctrlConf.APIVersion)
 	if err != nil {
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
@@ -86,23 +76,20 @@ func Setup(ctx context.Context, conf *rest.Config, ctrlConf types.Config, eh []e
 	if err != nil {
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
 	}
-	dynamicClient, err := dynamic.NewForConfig(conf)
-	if err != nil {
-		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
-	}
+
 	informer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
 				}
-				return dynamicClient.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).List(ctx, options)
+				return cli.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
 				}
-				return dynamicClient.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).Watch(ctx, options)
+				return cli.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).Watch(ctx, options)
 			},
 		},
 		&unstructured.Unstructured{},
@@ -110,11 +97,7 @@ func Setup(ctx context.Context, conf *rest.Config, ctrlConf types.Config, eh []e
 		cache.Indexers{},
 	)
 
-	c := newResourceController(
-		kubeClient,
-		informer,
-		ctrlConf.Kind,
-	)
+	c := newResourceController(logger, informer, ctrlConf.Kind)
 	// precheck ->
 	c.sourceConf = ctrlConf
 	c.eventHandlers = eh
@@ -130,7 +113,7 @@ func Setup(ctx context.Context, conf *rest.Config, ctrlConf types.Config, eh []e
 	return c
 }
 
-func newResourceController(client kubernetes.Interface, informer cache.SharedIndexInformer, kind string) *Controller {
+func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent types.InformerEvent
 	var err error
@@ -139,7 +122,7 @@ func newResourceController(client kubernetes.Interface, informer cache.SharedInd
 			newEvent.Type = types.EventTypeCreate
 			newEvent.EventObj = obj
 			meta := utils.GetObjectMetaData(obj)
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
+			logger.Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -148,7 +131,7 @@ func newResourceController(client kubernetes.Interface, informer cache.SharedInd
 			newEvent.Type = types.EventTypeUpdate
 			newEvent.EventObj = new
 			meta := utils.GetObjectMetaData(new)
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
+			logger.Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -157,7 +140,7 @@ func newResourceController(client kubernetes.Interface, informer cache.SharedInd
 			newEvent.Type = types.EventTypeDelete
 			newEvent.EventObj = obj
 			meta := utils.GetObjectMetaData(obj)
-			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
+			logger.Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -165,10 +148,9 @@ func newResourceController(client kubernetes.Interface, informer cache.SharedInd
 	})
 
 	return &Controller{
-		logger:    logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher),
-		clientset: client,
-		informer:  informer,
-		queue:     queue,
+		logger:   logger,
+		informer: informer,
+		queue:    queue,
 	}
 }
 

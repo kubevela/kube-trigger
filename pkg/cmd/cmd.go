@@ -26,6 +26,7 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/config"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/executor"
+	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 	"github.com/kubevela/kube-trigger/pkg/source/types"
 	"github.com/kubevela/kube-trigger/pkg/version"
@@ -64,7 +65,10 @@ For example, $LOG_LEVEL can be used in place of --log-level
 Options have a priority like this: cli-flags > env > default-values`
 )
 
-var logger = logrus.WithField("kubetrigger", "main")
+var (
+	logger = logrus.WithField("kubetrigger", "main")
+	opt    = newOption()
+)
 
 // NewCommand news a command
 func NewCommand() *cobra.Command {
@@ -77,8 +81,11 @@ func NewCommand() *cobra.Command {
 			return nil
 		},
 	}
-	addFlags(c.Flags())
 	c.AddCommand(newVersionCommand())
+	addFlags(opt, c.Flags())
+	if err := opt.validate(); err != nil {
+		panic(err)
+	}
 	return c
 }
 
@@ -95,32 +102,21 @@ func newVersionCommand() *cobra.Command {
 }
 
 //nolint:lll
-func addFlags(f *pflag.FlagSet) {
-	f.StringP(FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files inside that directory will be combined together. Supported file formats are: json, yaml, and cue.")
-	f.String(FlagLogLevel, defaultLogLevel, "Log level")
-	f.Int(FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
-	f.Int(FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
-	f.Int(FlagPerWorkerQPS, defaultPerWorkerQPS, "Long-term QPS limiting per worker, this is shared between all watchers")
-	f.Int(FlagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
-	f.Int(FlagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
-	f.Int(FlagTimeout, defaultTimeout, "Timeout for running each action")
-	f.Int(FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
+func addFlags(opt *option, f *pflag.FlagSet) {
+	f.StringVarP(&opt.Config, FlagConfig, FlagConfigShort, defaultConfig, "Path to config file or directory. If a directory is provided, all files inside that directory will be combined together. Supported file formats are: json, yaml, and cue.")
+	f.StringVar(&opt.LogLevel, FlagLogLevel, defaultLogLevel, "Log level")
+	f.IntVar(&opt.QueueSize, FlagQueueSize, defaultQueueSize, "Queue size for running actions, this is shared between all watchers")
+	f.IntVar(&opt.Workers, FlagWorkers, defaultWorkers, "Number of workers for running actions, this is shared between all watchers")
+	f.IntVar(&opt.PerWorkerQPS, FlagPerWorkerQPS, defaultPerWorkerQPS, "Long-term QPS limiting per worker, this is shared between all watchers")
+	f.IntVar(&opt.MaxRetry, FlagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
+	f.IntVar(&opt.RetryDelay, FlagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
+	f.IntVar(&opt.Timeout, FlagTimeout, defaultTimeout, "Timeout for running each action")
+	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
+	f.StringVar(&k8sresourcewatcher.MultiClusterConfigType, "multi-cluster-config-type", k8sresourcewatcher.TypeClusterGateway, "Multi-cluster config type, supported types: cluster-gateway, cluster-gateway-kubeconfig")
 }
 
 func runCli(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	var err error
-
-	// Read options from env and cli, and fall back to defaults.
-	opt, err := newOption().
-		withDefaults().
-		withEnvVariables().
-		withCliFlags(cmd.Flags()).
-		validate()
-	if err != nil {
-		return errors.Wrap(err, "error when paring flags")
-	}
-
 	// Set log level. No need to check error, we validated it previously.
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
@@ -179,7 +175,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	for _, instance := range instances {
 		err := instance.Run(ctx)
 		if err != nil {
-			logger.Fatalf("source %s failed to run", instance.Type())
+			logger.Fatalf("source %s failed to run: %v", instance.Type(), err)
 			return err
 		}
 	}

@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/controllers/config"
 	"github.com/kubevela/kube-trigger/controllers/triggerservice"
 )
 
@@ -51,7 +50,6 @@ func main() {
 		metricsAddr          string
 		enableLeaderElection bool
 		probeAddr            string
-		controllerConfig     config.Config
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -95,7 +93,6 @@ func main() {
 	if err = (&triggerservice.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		Config: controllerConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerService")
 		os.Exit(1)
