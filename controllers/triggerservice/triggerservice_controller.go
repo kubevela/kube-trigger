@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
-	"github.com/kubevela/kube-trigger/controllers/config"
 	"github.com/kubevela/kube-trigger/controllers/utils"
 	"github.com/kubevela/kube-trigger/pkg/templates"
 	"github.com/kubevela/pkg/cue/cuex"
@@ -47,7 +46,6 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Config config.Config
 }
 
 var (

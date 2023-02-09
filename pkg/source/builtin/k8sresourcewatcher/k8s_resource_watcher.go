@@ -19,26 +19,44 @@ package k8sresourcewatcher
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
+	"github.com/kubevela/pkg/multicluster"
+	"github.com/kubevela/pkg/util/singleton"
+)
+
+func init() {
+	cfg := singleton.KubeConfig.Get()
+	cfg.Wrap(multicluster.NewTransportWrapper())
+	singleton.KubeConfig.Set(cfg)
+	singleton.ReloadClients()
+}
+
+var (
+	MultiClusterConfigType string
 )
 
 const (
+	TypeClusterGateway       string = "cluster-gateway"
+	TypeClusterGatewaySecret string = "cluster-gateway-secret"
+
 	clusterLabel    string = "cluster.core.oam.dev/cluster-credential-type"
 	defaultCluster  string = "local"
 	clusterCertKey  string = "tls.key"
@@ -102,59 +120,96 @@ func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhand
 }
 
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {
+	clusterGetter, err := NewMultiClustersGetter(MultiClusterConfigType)
+	if err != nil {
+		return err
+	}
 	for k, config := range w.configs {
-		configs, err := getConfigFromSecret(ctx, config.Clusters)
-		if err != nil {
-			return err
+		if len(config.Clusters) == 0 {
+			config.Clusters = []string{defaultCluster}
 		}
-		for _, kubeConfig := range configs {
-			go func(kube *rest.Config, c *types.Config, handlers []eventhandler.EventHandler) {
-				resourceController := controller.Setup(ctx, kube, *c, handlers)
-				resourceController.Run(ctx.Done())
-			}(kubeConfig, config, w.eventHandlers[k])
+		for _, cluster := range config.Clusters {
+			cli, mapper, err := clusterGetter.GetDynamicClientAndMapper(ctx, cluster)
+			if err != nil {
+				return err
+			}
+			multiCtx := multicluster.WithCluster(ctx, cluster)
+			go func(multiCtx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c *types.Config, handlers []eventhandler.EventHandler) {
+				resourceController := controller.Setup(multiCtx, cli, mapper, *c, handlers)
+				resourceController.Run(multiCtx.Done())
+			}(multiCtx, cli, mapper, config, w.eventHandlers[k])
 		}
 	}
 	return nil
 }
 
-func getConfigFromSecret(ctx context.Context, clusters []string) ([]*rest.Config, error) {
-	configs := make([]*rest.Config, 0)
+func (w *K8sResourceWatcher) Type() string {
+	return v1alpha1.SourceTypeResourceWatcher
+}
+
+type MultiClustersGetter interface {
+	GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error)
+}
+
+func NewMultiClustersGetter(typ string) (MultiClustersGetter, error) {
 	config := ctrl.GetConfigOrDie()
 	cli, err := client.New(config, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		return nil, err
 	}
-	if len(clusters) == 0 {
-		req, err := labels.NewRequirement(clusterLabel, selection.Exists, nil)
-		if err != nil {
-			return nil, err
-		}
-		secrets := &corev1.SecretList{}
-		if err := cli.List(ctx, secrets, client.MatchingLabelsSelector{labels.NewSelector().Add(*req)}); err != nil {
-			return nil, err
-		}
-		for _, secret := range secrets.Items {
-			configs = append(configs, generateRestConfig(&secret))
-		}
-		configs = append(configs, config)
-		return configs, nil
+	switch typ {
+	case TypeClusterGateway:
+		return &clusterGatewayGetter{}, nil
+	case TypeClusterGatewaySecret:
+		return &clusterGatewaySecretGetter{cli: cli, config: config}, nil
+	default:
+		return nil, fmt.Errorf("unknown multi-cluster getter type %s", typ)
 	}
-	for _, cluster := range clusters {
-		if cluster == defaultCluster {
-			configs = append(configs, config)
-			continue
-		}
-		secret := &corev1.Secret{}
-		if err := cli.Get(ctx, client.ObjectKey{Name: cluster, Namespace: "vela-system"}, secret); err != nil {
-			return nil, err
-		}
-		configs = append(configs, generateRestConfig(secret))
-	}
-	return configs, nil
 }
 
-func generateRestConfig(secret *corev1.Secret) *rest.Config {
-	c := &rest.Config{
+type clusterGatewayGetter struct{}
+
+func (c *clusterGatewayGetter) GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error) {
+	return singleton.DynamicClient.Get(), singleton.RESTMapper.Get(), nil
+}
+
+type clusterGatewaySecretGetter struct {
+	cli    client.Client
+	config *rest.Config
+}
+
+func (c *clusterGatewaySecretGetter) GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error) {
+	if cluster == defaultCluster {
+		return c.getDynamicClientAndMapperFromConfig(ctx, c.config)
+	}
+	config, err := c.getRestConfigFromSecret(ctx, cluster)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c.getDynamicClientAndMapperFromConfig(ctx, config)
+}
+
+func (c *clusterGatewaySecretGetter) getDynamicClientAndMapperFromConfig(ctx context.Context, config *rest.Config) (dynamic.Interface, meta.RESTMapper, error) {
+	cli, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	mapper, err := apiutil.NewDynamicRESTMapper(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cli, mapper, nil
+}
+
+func (c *clusterGatewaySecretGetter) getRestConfigFromSecret(ctx context.Context, cluster string) (*rest.Config, error) {
+	secret := &corev1.Secret{}
+	if err := c.cli.Get(ctx, client.ObjectKey{Name: cluster, Namespace: "vela-system"}, secret); err != nil {
+		return nil, err
+	}
+	// currently we only type X509
+	// TODO: support other types
+	conf := &rest.Config{
 		Host: string(secret.Data[clusterEndpoint]),
 		TLSClientConfig: rest.TLSClientConfig{
 			KeyData:  secret.Data[clusterCertKey],
@@ -162,13 +217,9 @@ func generateRestConfig(secret *corev1.Secret) *rest.Config {
 		},
 	}
 	if ca, ok := secret.Data[clusterCAData]; ok {
-		c.TLSClientConfig.CAData = ca
+		conf.TLSClientConfig.CAData = ca
 	} else {
-		c.Insecure = true
+		conf.Insecure = true
 	}
-	return c
-}
-
-func (w *K8sResourceWatcher) Type() string {
-	return v1alpha1.SourceTypeResourceWatcher
+	return conf, nil
 }

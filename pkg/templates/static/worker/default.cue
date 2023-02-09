@@ -44,6 +44,7 @@ deployment: {
 						"--timeout=\(parameter.config.timeout)",
 						"--workers=\(parameter.config.workers)",
 						"--log-level=\(parameter.config.logLevel)",
+						"--multi-cluster-config-type=\(parameter.config.multiClusterConfigType)",
 					]
 					image: parameter.image
 					name:  "kube-trigger"
@@ -101,12 +102,13 @@ parameter: {
 	}
 	serviceAccount: *"kube-trigger" | string
 	config: {
-		maxRetry:     *5 | int
-		retryDelay:   *2 | int
-		perWorkerQPS: *2 | int
-		queueSize:    *50 | int
-		timeout:      *10 | int
-		workers:      *4 | int
-		logLevel:     *"info" | "debug"
+		maxRetry:               *5 | int
+		retryDelay:             *2 | int
+		perWorkerQPS:           *2 | int
+		queueSize:              *50 | int
+		timeout:                *10 | int
+		workers:                *4 | int
+		logLevel:               *"info" | "debug"
+		multiClusterConfigType: *"cluster-gateway" | "cluster-gateway-secret"
 	}
 }
