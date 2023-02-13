@@ -46,7 +46,7 @@ jobs:
           echo ::set-output name=VERSION::${VERSION}
 
       - name: Build Binaries for All Platforms
-        run: make trigger-all-build
+        run: make trigger-all-package
 
       - name: Attach Binaries to Release
         uses: softprops/action-gh-release@v1

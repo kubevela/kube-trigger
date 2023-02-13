@@ -186,7 +186,7 @@ help: # @HELP print this message
 help: variables
 	echo "TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)    \
-	    | sed --expression='s_.*.mk:__g'         \
+	    | sed 's_.*.mk:__g'                      \
 	    | awk '                                  \
 	        BEGIN {FS = ": *# *@HELP"};          \
 	        { printf "  %-25s %s\n", $$1, $$2 }; \
