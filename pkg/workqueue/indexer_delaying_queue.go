@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	queue_item_cap = 128
+	queueItemCap = 128
 )
 
 type indexerDelayingQueue struct {
@@ -64,11 +64,10 @@ type indexerDelayingQueue struct {
 
 	metrics queueMetrics
 
-	unfinishedWorkUpdatePeriod time.Duration
-
 	processingEntries cacheEntries
 }
 
+// NewIndexerDelayingQueue .
 func NewIndexerDelayingQueue(name string, keyFunc func(obj interface{}) (string, error)) DelayingInterface {
 	return newIndexerDelayingQueue(clock.RealClock{}, name, keyFunc)
 }
@@ -266,7 +265,7 @@ func (q *indexerDelayingQueue) Add(item interface{}) {
 func (q *indexerDelayingQueue) shouldAdd() {
 	q.addCond.L.Lock()
 	defer q.addCond.L.Unlock()
-	for len(q.knownPrepareEntries)+len(q.processingEntries) >= queue_item_cap && !q.shuttingDown {
+	for len(q.knownPrepareEntries)+len(q.processingEntries) >= queueItemCap && !q.shuttingDown {
 		q.addCond.Wait()
 	}
 }
@@ -426,6 +425,7 @@ func (s cacheEntries) len() int {
 	return len(s)
 }
 
+// Compared .
 type Compared interface {
 	LessOrEqual(item interface{}) bool
 }

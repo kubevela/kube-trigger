@@ -41,6 +41,7 @@ func NewRateLimitingQueue(rateLimiter RateLimiter) RateLimitingInterface {
 	}
 }
 
+// NewNamedRateLimitingQueue constructs a new workqueue with rateLimited queuing ability
 func NewNamedRateLimitingQueue(rateLimiter RateLimiter, name string) RateLimitingInterface {
 	return &rateLimitingType{
 		DelayingInterface: NewNamedDelayingQueue(name),

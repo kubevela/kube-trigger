@@ -24,6 +24,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// RateLimiter .
 type RateLimiter interface {
 	// When gets an item and gets to decide how long that item should wait
 	When(item interface{}) time.Duration
@@ -49,16 +50,20 @@ type BucketRateLimiter struct {
 	*rate.Limiter
 }
 
+// RateLimiter .
 var _ RateLimiter = &BucketRateLimiter{}
 
+// When .
 func (r *BucketRateLimiter) When(item interface{}) time.Duration {
 	return r.Limiter.Reserve().Delay()
 }
 
+// NumRequeues .
 func (r *BucketRateLimiter) NumRequeues(item interface{}) int {
 	return 0
 }
 
+// Forget .
 func (r *BucketRateLimiter) Forget(item interface{}) {
 }
 
@@ -74,6 +79,7 @@ type ItemExponentialFailureRateLimiter struct {
 
 var _ RateLimiter = &ItemExponentialFailureRateLimiter{}
 
+// NewItemExponentialFailureRateLimiter creates a new ItemExponentialFailureRateLimiter
 func NewItemExponentialFailureRateLimiter(baseDelay time.Duration, maxDelay time.Duration) RateLimiter {
 	return &ItemExponentialFailureRateLimiter{
 		failures:  map[interface{}]int{},
@@ -82,16 +88,18 @@ func NewItemExponentialFailureRateLimiter(baseDelay time.Duration, maxDelay time
 	}
 }
 
+// DefaultItemBasedRateLimiter is a no-arg constructor for a default rate limiter for a workqueue
 func DefaultItemBasedRateLimiter() RateLimiter {
 	return NewItemExponentialFailureRateLimiter(time.Millisecond, 1000*time.Second)
 }
 
+// When .
 func (r *ItemExponentialFailureRateLimiter) When(item interface{}) time.Duration {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
 
 	exp := r.failures[item]
-	r.failures[item] = r.failures[item] + 1
+	r.failures[item]++
 
 	// The backoff is capped such that 'calculated' value never overflows.
 	backoff := float64(r.baseDelay.Nanoseconds()) * math.Pow(2, float64(exp))
@@ -107,6 +115,7 @@ func (r *ItemExponentialFailureRateLimiter) When(item interface{}) time.Duration
 	return calculated
 }
 
+// NumRequeues .
 func (r *ItemExponentialFailureRateLimiter) NumRequeues(item interface{}) int {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
@@ -114,6 +123,7 @@ func (r *ItemExponentialFailureRateLimiter) NumRequeues(item interface{}) int {
 	return r.failures[item]
 }
 
+// Forget .
 func (r *ItemExponentialFailureRateLimiter) Forget(item interface{}) {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
@@ -131,8 +141,10 @@ type ItemFastSlowRateLimiter struct {
 	slowDelay       time.Duration
 }
 
+// RateLimiter .
 var _ RateLimiter = &ItemFastSlowRateLimiter{}
 
+// NewItemFastSlowRateLimiter creates a new ItemFastSlowRateLimiter
 func NewItemFastSlowRateLimiter(fastDelay, slowDelay time.Duration, maxFastAttempts int) RateLimiter {
 	return &ItemFastSlowRateLimiter{
 		failures:        map[interface{}]int{},
@@ -142,11 +154,12 @@ func NewItemFastSlowRateLimiter(fastDelay, slowDelay time.Duration, maxFastAttem
 	}
 }
 
+// When .
 func (r *ItemFastSlowRateLimiter) When(item interface{}) time.Duration {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
 
-	r.failures[item] = r.failures[item] + 1
+	r.failures[item]++
 
 	if r.failures[item] <= r.maxFastAttempts {
 		return r.fastDelay
@@ -155,6 +168,7 @@ func (r *ItemFastSlowRateLimiter) When(item interface{}) time.Duration {
 	return r.slowDelay
 }
 
+// NumRequeues .
 func (r *ItemFastSlowRateLimiter) NumRequeues(item interface{}) int {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
@@ -162,6 +176,7 @@ func (r *ItemFastSlowRateLimiter) NumRequeues(item interface{}) int {
 	return r.failures[item]
 }
 
+// Forget .
 func (r *ItemFastSlowRateLimiter) Forget(item interface{}) {
 	r.failuresLock.Lock()
 	defer r.failuresLock.Unlock()
@@ -176,6 +191,7 @@ type MaxOfRateLimiter struct {
 	limiters []RateLimiter
 }
 
+// When .
 func (r *MaxOfRateLimiter) When(item interface{}) time.Duration {
 	ret := time.Duration(0)
 	for _, limiter := range r.limiters {
@@ -188,10 +204,12 @@ func (r *MaxOfRateLimiter) When(item interface{}) time.Duration {
 	return ret
 }
 
+// NewMaxOfRateLimiter creates a new MaxOfRateLimiter
 func NewMaxOfRateLimiter(limiters ...RateLimiter) RateLimiter {
 	return &MaxOfRateLimiter{limiters: limiters}
 }
 
+// NumRequeues .
 func (r *MaxOfRateLimiter) NumRequeues(item interface{}) int {
 	ret := 0
 	for _, limiter := range r.limiters {
@@ -204,6 +222,7 @@ func (r *MaxOfRateLimiter) NumRequeues(item interface{}) int {
 	return ret
 }
 
+// Forget .
 func (r *MaxOfRateLimiter) Forget(item interface{}) {
 	for _, limiter := range r.limiters {
 		limiter.Forget(item)
@@ -216,10 +235,12 @@ type WithMaxWaitRateLimiter struct {
 	maxDelay time.Duration
 }
 
+// NewWithMaxWaitRateLimiter creates a new WithMaxWaitRateLimiter
 func NewWithMaxWaitRateLimiter(limiter RateLimiter, maxDelay time.Duration) RateLimiter {
 	return &WithMaxWaitRateLimiter{limiter: limiter, maxDelay: maxDelay}
 }
 
+// When .
 func (w WithMaxWaitRateLimiter) When(item interface{}) time.Duration {
 	delay := w.limiter.When(item)
 	if delay > w.maxDelay {
@@ -229,10 +250,12 @@ func (w WithMaxWaitRateLimiter) When(item interface{}) time.Duration {
 	return delay
 }
 
+// Forget .
 func (w WithMaxWaitRateLimiter) Forget(item interface{}) {
 	w.limiter.Forget(item)
 }
 
+// NumRequeues .
 func (w WithMaxWaitRateLimiter) NumRequeues(item interface{}) int {
 	return w.limiter.NumRequeues(item)
 }

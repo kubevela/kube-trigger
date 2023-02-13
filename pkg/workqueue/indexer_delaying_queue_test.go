@@ -159,7 +159,7 @@ func TestBufferCap(t *testing.T) {
 	q := NewIndexerDelayingQueue("test", func(obj interface{}) (string, error) {
 		return fmt.Sprint(obj), nil
 	})
-	for i := 1; i <= queue_item_cap; i++ {
+	for i := 1; i <= queueItemCap; i++ {
 		q.Add(i)
 	}
 	start := time.Now()

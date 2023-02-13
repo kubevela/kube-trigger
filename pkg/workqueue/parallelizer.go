@@ -23,12 +23,14 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
+// DoWorkPieceFunc is a function that is called for each piece of work.
 type DoWorkPieceFunc func(piece int)
 
 type options struct {
 	chunkSize int
 }
 
+// Options is a function that sets options on the options struct.
 type Options func(*options)
 
 // WithChunkSize allows to set chunks of work items to the workers, rather than

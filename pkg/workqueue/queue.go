@@ -23,6 +23,7 @@ import (
 	"k8s.io/utils/clock"
 )
 
+// Interface is an abstract, pluggable interface for work queues.
 type Interface interface {
 	Add(item interface{})
 	Len() int
@@ -38,6 +39,7 @@ func New() *Type {
 	return NewNamed("")
 }
 
+// NewNamed .
 func NewNamed(name string) *Type {
 	rc := clock.RealClock{}
 	return newQueue(
@@ -258,6 +260,7 @@ func (q *Type) shutdown() {
 	q.cond.Broadcast()
 }
 
+// ShuttingDown .
 func (q *Type) ShuttingDown() bool {
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()
