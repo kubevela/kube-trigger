@@ -14,34 +14,34 @@
 
 all: build
 
-# Build cache of the build container
-BUILDCACHE ?= $$(pwd)/$(DIST)
-
 # ===== BUILD =====
 
+build-dirs:
+	mkdir -p "$(GOCACHE)/gocache" \
+	         "$(GOCACHE)/gomodcache" \
+	         "$(DIST)"
+
 build: # @HELP build binary for current platform
-build: gen-dockerignore
-	mkdir -p "$(BUILDCACHE)/gocache" "$(BUILDCACHE)/gomodcache" && \
-	docker run                                  \
-	    -i                                      \
-	    --rm                                    \
-	    -u $$(id -u):$$(id -g)                  \
-	    -v $$(pwd):/src                         \
-	    -w /src                                 \
-	    -v $(BUILDCACHE)/gocache:/gocache       \
-	    -v $(BUILDCACHE)/gomodcache:/gomodcache \
-	    --env GOCACHE="/gocache"                \
-	    --env GOMODCACHE="/gomodcache"          \
-	    --env ARCH="$(ARCH)"                    \
-	    --env OS="$(OS)"                        \
-	    --env VERSION="$(VERSION)"              \
-	    --env DEBUG="$(DEBUG)"                  \
-	    --env OUTPUT="$(OUTPUT)"                \
-	    --env GOFLAGS="$(GOFLAGS)"              \
-	    --env GOPROXY="$(GOPROXY)"              \
-	    --env HTTP_PROXY="$(HTTP_PROXY)"        \
-	    --env HTTPS_PROXY="$(HTTPS_PROXY)"      \
-	    $(BUILD_IMAGE)                          \
+build: gen-dockerignore build-dirs
+	docker run                               \
+	    -i                                   \
+	    --rm                                 \
+	    -u $$(id -u):$$(id -g)               \
+	    -v $$(pwd):/src                      \
+	    -w /src                              \
+	    -v $$(pwd)/$(GOCACHE):/cache         \
+	    --env GOCACHE="/cache/gocache"       \
+	    --env GOMODCACHE="/cache/gomodcache" \
+	    --env ARCH="$(ARCH)"                 \
+	    --env OS="$(OS)"                     \
+	    --env VERSION="$(VERSION)"           \
+	    --env DEBUG="$(DEBUG)"               \
+	    --env OUTPUT="$(OUTPUT)"             \
+	    --env GOFLAGS="$(GOFLAGS)"           \
+	    --env GOPROXY="$(GOPROXY)"           \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
+	    $(BUILD_IMAGE)                       \
 	    ./build/build.sh $(ENTRY)
 
 # INTERNAL: build-<os>_<arch> to build for a specific platform
@@ -138,6 +138,34 @@ all-container-build-push: $(addprefix build-, $(subst /,_, $(IMAGE_PLATFORMS)))
 
 # ===== MISC =====
 
+# Optional variable to pass arguments to sh
+# Example: make shell CMD="-c 'date'"
+CMD ?=
+
+shell: # @HELP launches a shell in the containerized build environment
+shell: build-dirs
+	echo "# launching a shell in the containerized build environment"
+	docker run                               \
+	    -it                                  \
+	    --rm                                 \
+	    -u $$(id -u):$$(id -g)               \
+	    -v $$(pwd):/src                      \
+	    -w /src                              \
+	    -v $$(pwd)/$(GOCACHE):/cache         \
+	    --env GOCACHE="/cache/gocache"       \
+	    --env GOMODCACHE="/cache/gomodcache" \
+	    --env ARCH="$(ARCH)"                 \
+	    --env OS="$(OS)"                     \
+	    --env VERSION="$(VERSION)"           \
+	    --env DEBUG="$(DEBUG)"               \
+	    --env OUTPUT="$(OUTPUT)"             \
+	    --env GOFLAGS="$(GOFLAGS)"           \
+	    --env GOPROXY="$(GOPROXY)"           \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
+	    $(BUILD_IMAGE)                       \
+	    /bin/sh $(CMD)
+
 # Generate a dockerignore file to ignore everything except
 # current build output directory. This is useful because
 # when building a container, we only need the final binary.
@@ -150,9 +178,10 @@ clean: # @HELP clean built binaries
 clean:
 	rm -rf $(DIST)/$(BIN)*
 
-cleanall: # @HELP clean built binaries, build cache, and helper tools
-cleanall: clean
-	rm -rf $(DIST)
+all-clean: # @HELP clean built binaries, build cache, and helper tools
+all-clean: clean
+	test -d $(GOCACHE) && chmod -R u+w $(GOCACHE) || true
+	rm -rf $(GOCACHE) $(DIST)
 
 version: # @HELP output the version string
 version:

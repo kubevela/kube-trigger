@@ -65,8 +65,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            bin/gomodcache
-            bin/gocache
+            .go/gomodcache
+            .go/gocache
           key: ${{ runner.os }}-gobuildcontainer-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-gobuildcontainer-
