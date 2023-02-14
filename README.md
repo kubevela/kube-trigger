@@ -153,8 +153,8 @@ triggers:
       properties:
         namespace: default
         # Select Applications to bump using labels.
-        matchingLabels:
-          my-label: my-value
+        nameSelector:
+          fromLabel: "watch-this"
 ```
 
 See [examples](https://github.com/kubevela/kube-trigger/tree/main/examples) directory for more instructions.
@@ -218,8 +218,8 @@ triggers:
       properties:
         namespace: default
         # Select Applications to bump using labels.
-        matchingLabels:
-          my-label: my-value
+        nameSelector:
+          fromLabel: "watch-this"
 ```
 
 Let's assume your config file is `config.yaml`, to run kube-trigger:
@@ -256,8 +256,9 @@ spec:
         type: bump-application-revision
         properties:
           namespace: default
-          matchingLabels:
-            my-label: my-value
+          # Select Applications to bump using labels.
+          nameSelector:
+            fromLabel: "watch-this"
 ```
 
 ## Advanced kube-trigger Configuration

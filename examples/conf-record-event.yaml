@@ -10,5 +10,5 @@
       action:
         type: record-event
         properties:
-          name:
+          nameSelector:
             fromLabel: "workflowrun.oam.dev/name"
