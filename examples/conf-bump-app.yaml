@@ -19,5 +19,5 @@ triggers:
       properties:
         namespace: default
         # Select Applications to bump using labels.
-        matchingLabels:
-          my-label: my-value
+        nameSelector:
+          fromLabel: "watch-this"

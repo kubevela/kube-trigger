@@ -3,6 +3,9 @@ kind: ConfigMap
 metadata:
   name: this-will-trigger-update-1
   namespace: "default"
+  labels:
+    "watch-this": "this-will-be-updated-1"
+    "workflowrun.oam.dev/name": "this-will-be-updated-1"
 data:
   content: EDIT_ME_AFTER_APPLY
 
@@ -13,6 +16,8 @@ metadata:
   # Filters will be used to filter this name.
   name: this-will-trigger-update-2
   namespace: "default"
+  labels:
+    "watch-this": "this-will-be-updated-2"
 data:
   content: EDIT_ME_AFTER_APPLY
 
@@ -27,7 +32,7 @@ metadata:
   name: this-will-be-updated-1
   # Labels will be used to select which Application to bump revision.
   labels:
-    my-label: my-value
+    "watch-this": "this-will-be-updated-1"
   namespace: default
 spec:
   components: [ ]
@@ -41,7 +46,7 @@ metadata:
     app.oam.dev/publishVersion: "1"
   name: this-will-be-updated-2
   labels:
-    my-label: my-value
+    "watch-this": "this-will-be-updated-2"
   namespace: default
 spec:
   components: [ ]
@@ -50,5 +55,5 @@ spec:
 apiVersion: standard.oam.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: this-will-trigger-update-1
+  name: this-will-be-updated-1
   namespace: default
