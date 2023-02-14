@@ -14,34 +14,34 @@
 
 all: build
 
-# Build cache of the build container
-BUILDCACHE ?= $$(pwd)/$(DIST)
-
 # ===== BUILD =====
 
+build-dirs:
+	mkdir -p "$(GOCACHE)/gocache" \
+	         "$(GOCACHE)/gomodcache" \
+	         "$(DIST)"
+
 build: # @HELP build binary for current platform
-build: gen-dockerignore
-	mkdir -p "$(BUILDCACHE)/gocache" "$(BUILDCACHE)/gomodcache" && \
-	docker run                                  \
-	    -i                                      \
-	    --rm                                    \
-	    -u $$(id -u):$$(id -g)                  \
-	    -v $$(pwd):/src                         \
-	    -w /src                                 \
-	    -v $(BUILDCACHE)/gocache:/gocache       \
-	    -v $(BUILDCACHE)/gomodcache:/gomodcache \
-	    --env GOCACHE="/gocache"                \
-	    --env GOMODCACHE="/gomodcache"          \
-	    --env ARCH="$(ARCH)"                    \
-	    --env OS="$(OS)"                        \
-	    --env VERSION="$(VERSION)"              \
-	    --env DEBUG="$(DEBUG)"                  \
-	    --env OUTPUT="$(OUTPUT)"                \
-	    --env GOFLAGS="$(GOFLAGS)"              \
-	    --env GOPROXY="$(GOPROXY)"              \
-	    --env HTTP_PROXY="$(HTTP_PROXY)"        \
-	    --env HTTPS_PROXY="$(HTTPS_PROXY)"      \
-	    $(BUILD_IMAGE)                          \
+build: gen-dockerignore build-dirs
+	docker run                               \
+	    -i                                   \
+	    --rm                                 \
+	    -u $$(id -u):$$(id -g)               \
+	    -v $$(pwd):/src                      \
+	    -w /src                              \
+	    -v $$(pwd)/$(GOCACHE):/cache         \
+	    --env GOCACHE="/cache/gocache"       \
+	    --env GOMODCACHE="/cache/gomodcache" \
+	    --env ARCH="$(ARCH)"                 \
+	    --env OS="$(OS)"                     \
+	    --env VERSION="$(VERSION)"           \
+	    --env DEBUG="$(DEBUG)"               \
+	    --env OUTPUT="$(OUTPUT)"             \
+	    --env GOFLAGS="$(GOFLAGS)"           \
+	    --env GOPROXY="$(GOPROXY)"           \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
+	    $(BUILD_IMAGE)                       \
 	    ./build/build.sh $(ENTRY)
 
 # INTERNAL: build-<os>_<arch> to build for a specific platform
@@ -92,26 +92,21 @@ all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 # ===== CONTAINERS =====
 
 container-build: # @HELP build container image for current platform
-container-build: build-$(OS)_$(ARCH)
-	printf "# CONTAINER repotags: %s\ttarget: %s/%s\tbinaryversion: %s\n" "$(IMAGE_REPO_TAGS)" "$(OS)" "$(ARCH)" "$(VERSION)"
+container-build: build-linux_$(ARCH)
+	printf "# CONTAINER repotags: %s\ttarget: %s/%s\tbinaryversion: %s\n" "$(IMAGE_REPO_TAGS)" "linux" "$(ARCH)" "$(VERSION)"
+	if [ "$(OS)" != "linux" ]; then \
+	    echo "# CONTAINER warning: you have set target os to $(OS), but container target os will always be linux"; \
+	fi; \
 	TMPFILE=Dockerfile && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
 	    DOCKER_BUILDKIT=1                      \
 	    docker build                           \
 	    -f $${TMPFILE}                         \
 	    --build-arg "ARCH=$(ARCH)"             \
-	    --build-arg "OS=$(OS)"                 \
+	    --build-arg "OS=linux"                 \
 	    --build-arg "VERSION=$(VERSION)"       \
 	    --build-arg "BASE_IMAGE=$(BASE_IMAGE)" \
 	    $(addprefix -t ,$(IMAGE_REPO_TAGS)) .
-
-# INTERNAL: container-build-<os>_<arch> to build container image for a specific platform
-container-build-%:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) \
-	    docker-build                         \
-	    --no-print-directory                 \
-	    GOOS=$(firstword $(subst _, ,$*))    \
-	    GOARCH=$(lastword $(subst _, ,$*))
 
 container-push: # @HELP push built container image to all repos
 container-push: $(addprefix container-push-, $(subst :,=, $(subst /,_, $(IMAGE_REPO_TAGS))))
@@ -138,6 +133,34 @@ all-container-build-push: $(addprefix build-, $(subst /,_, $(IMAGE_PLATFORMS)))
 
 # ===== MISC =====
 
+# Optional variable to pass arguments to sh
+# Example: make shell CMD="-c 'date'"
+CMD ?=
+
+shell: # @HELP launches a shell in the containerized build environment
+shell: build-dirs
+	echo "# launching a shell in the containerized build environment"
+	docker run                               \
+	    -it                                  \
+	    --rm                                 \
+	    -u $$(id -u):$$(id -g)               \
+	    -v $$(pwd):/src                      \
+	    -w /src                              \
+	    -v $$(pwd)/$(GOCACHE):/cache         \
+	    --env GOCACHE="/cache/gocache"       \
+	    --env GOMODCACHE="/cache/gomodcache" \
+	    --env ARCH="$(ARCH)"                 \
+	    --env OS="$(OS)"                     \
+	    --env VERSION="$(VERSION)"           \
+	    --env DEBUG="$(DEBUG)"               \
+	    --env OUTPUT="$(OUTPUT)"             \
+	    --env GOFLAGS="$(GOFLAGS)"           \
+	    --env GOPROXY="$(GOPROXY)"           \
+	    --env HTTP_PROXY="$(HTTP_PROXY)"     \
+	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
+	    $(BUILD_IMAGE)                       \
+	    /bin/sh $(CMD)
+
 # Generate a dockerignore file to ignore everything except
 # current build output directory. This is useful because
 # when building a container, we only need the final binary.
@@ -150,9 +173,10 @@ clean: # @HELP clean built binaries
 clean:
 	rm -rf $(DIST)/$(BIN)*
 
-cleanall: # @HELP clean built binaries, build cache, and helper tools
-cleanall: clean
-	rm -rf $(DIST)
+all-clean: # @HELP clean built binaries, build cache, and helper tools
+all-clean: clean
+	test -d $(GOCACHE) && chmod -R u+w $(GOCACHE) || true
+	rm -rf $(GOCACHE) $(DIST)
 
 version: # @HELP output the version string
 version:
@@ -186,7 +210,7 @@ help: # @HELP print this message
 help: variables
 	echo "TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)    \
-	    | sed --expression='s_.*.mk:__g'         \
+	    | sed -E 's_.*.mk:__g'                   \
 	    | awk '                                  \
 	        BEGIN {FS = ": *# *@HELP"};          \
 	        { printf "  %-25s %s\n", $$1, $$2 }; \

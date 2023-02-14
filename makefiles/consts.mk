@@ -68,8 +68,10 @@ ifeq ($(OS), windows)
     PKG_FULLNAME := $(subst .exe,,$(if $(FULL_NAME),$(BIN_VERBOSE_BASE),$(BIN_BASENAME))).zip
 endif
 
-# This holds build output, cache, and helper tools
+# This holds build output and helper tools
 DIST             := bin
+# This holds build cache
+GOCACHE          := .go
 BIN_VERBOSE_DIR  := $(DIST)/$(BIN)-$(VERSION)
 # Full output path
 OUTPUT           := $(if $(FULL_NAME),$(BIN_VERBOSE_DIR)/$(BIN_FULLNAME),$(DIST)/$(BIN_FULLNAME))

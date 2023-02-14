@@ -33,7 +33,7 @@ $(foreach p,$(SUBPROJS),$(eval \
     $(p)-%: mk-%.$(p);         \
 ))
 
-# Common targets for subprojects
+# Common targets for subprojects, will be executed on all subprojects
 TARGETS := build             \
     all-build                \
     package                  \
@@ -42,17 +42,20 @@ TARGETS := build             \
     container-push           \
     all-container-build-push \
     clean                    \
-    cleanall                 \
+    all-clean                \
     version                  \
     imageversion             \
     binaryname               \
     variables                \
     help
 
-# Targets to run on all subprojects
+# Run common targets on all subprojects
 $(foreach t,$(TARGETS),$(eval                \
     $(t): $(addprefix mk-$(t).,$(SUBPROJS)); \
 ))
+
+# `shell' only needs to be executed once, not on every subproject
+shell: $(addprefix mk-shell.,$(word 1,$(SUBPROJS)));
 
 mk-%:
 	$(MAKE) -f $(lastword $(subst ., ,$*)).mk $(firstword $(subst ., ,$*))
