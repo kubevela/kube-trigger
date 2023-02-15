@@ -4,7 +4,7 @@
 [![LICENSE](https://img.shields.io/github/license/kubevela/kube-trigger.svg?style=flat-square)](/LICENSE)
 [![Releases](https://img.shields.io/github/release/kubevela/kube-trigger/all.svg?style=flat-square)](https://github.com/kubevela/kube-trigger/releases)
 
-kube-trigger is a tool that combines event listeners and action triggers.
+kube-trigger is a workflow based trigger that combines listeners, filter events and action triggers in a programmable way with CUElang.
 
 ![kube-trigger overview](docs/img/overview.svg)
 
