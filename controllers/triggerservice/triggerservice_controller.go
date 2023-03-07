@@ -120,7 +120,11 @@ func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.Trig
 		}
 		opts = append(opts, cuex.WithExtraData("parameter", ts.Spec.Worker.Properties))
 	}
-	template, err := templates.NewLoader("worker").LoadTemplate(ctx, templateName)
+	loader, err := templates.NewLoader("trigger-worker")
+	if err != nil {
+		return err
+	}
+	template, err := loader.LoadTemplate(ctx, templateName)
 	if err != nil {
 		return err
 	}

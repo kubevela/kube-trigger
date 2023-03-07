@@ -44,7 +44,11 @@ var _ executor.Job = &Job{}
 // method.
 func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, error) {
 	var err error
-	template, err := templates.NewLoader("action").LoadTemplate(context.Background(), meta.Type)
+	loader, err := templates.NewLoader("trigger-action")
+	if err != nil {
+		return nil, err
+	}
+	template, err := loader.LoadTemplate(context.Background(), meta.Type)
 	if err != nil {
 		return nil, err
 	}

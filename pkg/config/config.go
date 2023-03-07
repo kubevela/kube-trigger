@@ -42,9 +42,12 @@ func (c *Config) Validate(ctx context.Context, sourceReg *sourceregistry.Registr
 		if _, ok := sourceReg.Get(w.Source.Type); !ok {
 			return fmt.Errorf("no such source found: %s", w.Source.Type)
 		}
-		if _, err := templates.NewLoader("action").LoadTemplate(ctx, w.Action.Type); err != nil {
-			return fmt.Errorf("no such action found: %s", w.Action.Type)
+		if l, err := templates.NewLoader("trigger-action"); err == nil {
+			if _, err := l.LoadTemplate(ctx, w.Action.Type); err == nil {
+				return nil
+			}
 		}
+		return fmt.Errorf("no such action found: %s", w.Action.Type)
 	}
 
 	return nil

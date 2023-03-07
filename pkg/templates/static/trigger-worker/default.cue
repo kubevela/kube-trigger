@@ -8,6 +8,12 @@ deployment: {
 		labels: {
 			"app.kubernetes.io/name": parameter.name
 			"trigger.oam.dev/name":   triggerService.name
+			if parameter.labels != _|_ {
+				parameter.labels
+			}
+		}
+		if parameter.annotations != _|_ {
+			annotations: parameter.annotations
 		}
 	}
 	spec: {
@@ -23,6 +29,12 @@ deployment: {
 				labels: {
 					"app.kubernetes.io/name": parameter.name
 					"trigger.oam.dev/name":   triggerService.name
+					if parameter.labels != _|_ {
+						parameter.labels
+					}
+				}
+				if parameter.annotations != _|_ {
+					annotations: parameter.annotations
 				}
 			}
 			spec: {
@@ -77,6 +89,12 @@ deployment: {
 						name: triggerService.name
 					}
 				}]
+				if parameter.imagePullSecrets != _|_ {
+					imagePullSecrets: parameter.imagePullSecrets
+				}
+				if parameter.hostAliases != _|_ {
+					hostAliases: parameter.hostAliases
+				}
 			}
 		}
 	}
@@ -88,7 +106,9 @@ triggerService: {
 }
 
 parameter: {
-	name:  *triggerService.name | string
+	name: *triggerService.name | string
+	labels?: [string]:      string
+	annotations?: [string]: string
 	image: *"oamdev/kube-trigger:latest" | string
 	resource: {
 		cpu: {
@@ -111,4 +131,11 @@ parameter: {
 		logLevel:               *"info" | "debug"
 		multiClusterConfigType: *"cluster-gateway" | "cluster-gateway-secret"
 	}
+	imagePullSecrets?: [...{
+		name: string
+	}]
+	hostAliases?: [...{
+		ip?: string
+		hostNames?: [...string]
+	}]
 }

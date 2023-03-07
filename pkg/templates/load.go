@@ -20,6 +20,11 @@ import (
 	"context"
 	"embed"
 	"fmt"
+
+	"github.com/kubevela/pkg/util/template/definition"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	utilclient "github.com/kubevela/kube-trigger/pkg/util/client"
 )
 
 var (
@@ -38,17 +43,22 @@ type Loader interface {
 
 // GenericLoader is a loader that loads templates for sources, filters and actions
 type GenericLoader struct {
-	Type string
+	typ string
+	cli client.Client
 }
 
 // NewLoader creates a new loader for the given type.
-func NewLoader(t string) *GenericLoader {
-	return &GenericLoader{Type: t}
+func NewLoader(t string) (*GenericLoader, error) {
+	cli, err := utilclient.GetClient()
+	if err != nil {
+		return nil, err
+	}
+	return &GenericLoader{typ: t, cli: *cli}, nil
 }
 
 // LoadTemplate loads a template by name.
 func (l *GenericLoader) LoadTemplate(ctx context.Context, name string) (string, error) {
-	files, err := templateFS.ReadDir(fmt.Sprintf("%s/%s", templateDir, l.Type))
+	files, err := templateFS.ReadDir(fmt.Sprintf("%s/%s", templateDir, l.typ))
 	if err != nil {
 		return "", err
 	}
@@ -56,14 +66,15 @@ func (l *GenericLoader) LoadTemplate(ctx context.Context, name string) (string, 
 	staticFilename := name + ".cue"
 	for _, file := range files {
 		if staticFilename == file.Name() {
-			fileName := fmt.Sprintf("%s/%s/%s", templateDir, l.Type, file.Name())
-			fmt.Println()
+			fileName := fmt.Sprintf("%s/%s/%s", templateDir, l.typ, file.Name())
 			content, err := templateFS.ReadFile(fileName)
 			return string(content), err
 		}
 	}
 
-	// TODO(fog): handle templates from api-definitions
-
-	return "", fmt.Errorf("template %s not found", name)
+	template, err := definition.NewTemplateLoader(ctx, l.cli).LoadTemplate(ctx, name, definition.WithType(l.typ))
+	if err != nil {
+		return "", err
+	}
+	return template.Compile(), nil
 }
