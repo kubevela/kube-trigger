@@ -5,7 +5,7 @@ metadata:
   namespace: "default"
   labels:
     "watch-this": "this-will-be-updated-1"
-    "workflowrun.oam.dev/name": "this-will-be-updated-1"
+    "workflowrun.oam.dev/name": "imme-reconcile"
 data:
   content: EDIT_ME_AFTER_APPLY
 

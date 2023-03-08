@@ -12,6 +12,8 @@ spec:
     kind: TriggerService
     listKind: TriggerServiceList
     plural: triggerservices
+    shortNames:
+    - ts
     singular: triggerservice
   scope: Namespaced
   versions:

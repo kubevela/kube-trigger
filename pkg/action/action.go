@@ -21,11 +21,13 @@ import (
 	"strconv"
 
 	"github.com/kubevela/pkg/cue/cuex"
+	"github.com/kubevela/pkg/util/template/definition"
 	"github.com/mitchellh/hashstructure/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/executor"
-	"github.com/kubevela/kube-trigger/pkg/templates"
+	"github.com/kubevela/kube-trigger/pkg/types"
 )
 
 // Job is the type of executor job.
@@ -42,9 +44,8 @@ var _ executor.Job = &Job{}
 // New creates a new job. It will fetch cached Action instance from Registry
 // using provided ActionMeta. sourceType and event will be passed to the Action.Run
 // method.
-func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, error) {
-	var err error
-	template, err := templates.NewLoader("action").LoadTemplate(context.Background(), meta.Type)
+func New(ctx context.Context, cli client.Client, meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, error) {
+	template, err := definition.NewTemplateLoader(ctx, cli).LoadTemplate(ctx, meta.Type, definition.WithType(types.DefinitionTypeTriggerAction))
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func New(meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, er
 	}
 	ret := Job{
 		id:         id,
-		template:   template,
+		template:   template.Compile(),
 		sourceType: meta.Type,
 		context:    contextData,
 		properties: meta.Properties,

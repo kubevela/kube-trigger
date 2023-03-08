@@ -12,6 +12,8 @@ spec:
     kind: EventListener
     listKind: EventListenerList
     plural: eventlisteners
+    shortNames:
+    - el
     singular: eventlistener
   scope: Namespaced
   versions:

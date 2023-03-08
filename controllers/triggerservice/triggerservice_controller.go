@@ -22,7 +22,6 @@ import (
 
 	"cuelang.org/go/cue"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/kubevela/pkg/util/slices"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,10 +35,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/kubevela/pkg/cue/cuex"
+	"github.com/kubevela/pkg/util/slices"
+	"github.com/kubevela/pkg/util/template/definition"
+
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/utils"
-	"github.com/kubevela/kube-trigger/pkg/templates"
-	"github.com/kubevela/pkg/cue/cuex"
+	triggertypes "github.com/kubevela/kube-trigger/pkg/types"
 )
 
 // Reconciler reconciles a TriggerService object.
@@ -120,11 +122,11 @@ func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.Trig
 		}
 		opts = append(opts, cuex.WithExtraData("parameter", ts.Spec.Worker.Properties))
 	}
-	template, err := templates.NewLoader("worker").LoadTemplate(ctx, templateName)
+	template, err := definition.NewTemplateLoader(ctx, r.Client).LoadTemplate(ctx, templateName, definition.WithType(triggertypes.DefinitionTypeTriggerWorker))
 	if err != nil {
 		return err
 	}
-	v, err := cuex.CompileStringWithOptions(ctx, template, opts...)
+	v, err := cuex.CompileStringWithOptions(ctx, template.Compile(), opts...)
 	if err != nil {
 		return err
 	}

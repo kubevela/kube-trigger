@@ -23,18 +23,20 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
 	"github.com/kubevela/kube-trigger/pkg/config"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/executor"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 	"github.com/kubevela/kube-trigger/pkg/source/types"
+	"github.com/kubevela/kube-trigger/pkg/util/client"
 	"github.com/kubevela/kube-trigger/pkg/version"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 // nolint:revive
@@ -121,6 +123,11 @@ func runCli(cmd *cobra.Command, args []string) error {
 	level, _ := logrus.ParseLevel(opt.LogLevel)
 	logrus.SetLevel(level)
 
+	cli, err := client.GetClient()
+	if err != nil {
+		return err
+	}
+
 	// Create registries for Sources
 	sourceReg := sourceregistry.NewWithBuiltinSources()
 
@@ -129,7 +136,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing config %s", opt.Config)
 	}
-	err = conf.Validate(ctx, sourceReg)
+	err = conf.Validate(ctx, cli, sourceReg)
 	if err != nil {
 		return errors.Wrapf(err, "cannot validate config")
 	}
@@ -161,7 +168,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create a EventHandler
-		eh := eventhandler.NewFromConfig(ctx, w.Action, w.Filter, exe)
+		eh := eventhandler.NewFromConfig(ctx, cli, w.Action, w.Filter, exe)
 
 		// Initialize Source, with user-provided prop and event handler
 		err = source.Init(w.Source.Properties, eh)

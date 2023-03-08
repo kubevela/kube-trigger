@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/action"
@@ -58,7 +59,7 @@ func New() EventHandler {
 }
 
 // NewFromConfig creates a new EventHandler from config.
-func NewFromConfig(ctx context.Context, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor) EventHandler {
+func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor) EventHandler {
 	filterLogger := logrus.WithField("eventhandler", "applyfilters")
 	actionLogger := logrus.WithField("eventhandler", "addactionjob")
 	return func(sourceType string, event interface{}, data interface{}) error {
@@ -81,7 +82,7 @@ func NewFromConfig(ctx context.Context, actionMeta v1alpha1.ActionMeta, filterMe
 		filterLogger.Infof("event passed filters")
 
 		// Run actions
-		newJob, err := action.New(actionMeta, context)
+		newJob, err := action.New(ctx, cli, actionMeta, context)
 		if err != nil {
 			actionLogger.Errorf("error when creating new job: %s", err)
 			return err
