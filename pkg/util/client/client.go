@@ -18,8 +18,6 @@ package client
 
 import (
 	oamv1alpha1 "github.com/kubevela/pkg/apis/oam/v1alpha1"
-	v1beta1 "github.com/oam-dev/kubevela-core-api/apis/core.oam.dev/v1beta1"
-
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,11 +33,7 @@ func GetClient() (client.Client, error) {
 	}
 
 	conf := ctrl.GetConfigOrDie()
-	err := v1beta1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		return nil, err
-	}
-	err = oamv1alpha1.AddToScheme(scheme.Scheme)
+	err := oamv1alpha1.AddToScheme(scheme.Scheme)
 	if err != nil {
 		return nil, err
 	}

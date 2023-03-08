@@ -17,6 +17,8 @@ limitations under the License.
 package types
 
 const (
+	// DefinitionTypeTriggerAction .
 	DefinitionTypeTriggerAction = "trigger-action"
+	// DefinitionTypeTriggerWorker .
 	DefinitionTypeTriggerWorker = "trigger-worker"
 )
