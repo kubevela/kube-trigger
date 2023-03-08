@@ -20,9 +20,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kubevela/pkg/util/template/definition"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
-	"github.com/kubevela/kube-trigger/pkg/templates"
+	"github.com/kubevela/kube-trigger/pkg/types"
 )
 
 // Config is what actually stores configs in memory.
@@ -33,7 +37,7 @@ type Config struct {
 }
 
 // Validate validates config.
-func (c *Config) Validate(ctx context.Context, sourceReg *sourceregistry.Registry) error {
+func (c *Config) Validate(ctx context.Context, cli client.Client, sourceReg *sourceregistry.Registry) error {
 	if len(c.Triggers) == 0 {
 		return fmt.Errorf("no triggers found")
 	}
@@ -42,12 +46,9 @@ func (c *Config) Validate(ctx context.Context, sourceReg *sourceregistry.Registr
 		if _, ok := sourceReg.Get(w.Source.Type); !ok {
 			return fmt.Errorf("no such source found: %s", w.Source.Type)
 		}
-		if l, err := templates.NewLoader("trigger-action"); err == nil {
-			if _, err := l.LoadTemplate(ctx, w.Action.Type); err == nil {
-				return nil
-			}
+		if _, err := definition.NewTemplateLoader(ctx, cli).LoadTemplate(ctx, w.Action.Type, definition.WithType(types.DefinitionTypeTriggerAction)); err != nil {
+			return errors.WithMessagef(err, "no such action found: %s", w.Action.Type)
 		}
-		return fmt.Errorf("no such action found: %s", w.Action.Type)
 	}
 
 	return nil

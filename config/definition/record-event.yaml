@@ -1,0 +1,81 @@
+apiVersion: core.oam.dev/v1alpha1
+kind: Definition
+metadata:
+  name: trigger-action-record-event
+  namespace: vela-system
+spec:
+  type: trigger-action
+  templates:
+    main.cue: |
+      import (
+        "vela/kube"
+        "strconv"
+      )
+      meta: {
+        apiVersion: "standard.oam.dev/v1alpha1"
+        kind:       "EventListener"
+        metadata: {
+          if parameter.nameSelector != _|_ {
+            name: context.data.metadata.labels[parameter.nameSelector.fromLabel]
+          }
+          if parameter.nameSelector == _|_ {
+            name: context.data.metadata.name
+          }
+          if parameter.namespaceSelector != _|_ {
+            namespace: context.data.metadata.labels[parameter.namespaceSelector.fromLabel]
+          }
+          if parameter.namespaceSelector == _|_ {
+            namespace: context.data.metadata.namespace
+          }
+        }
+      }
+
+      get: kube.#Get & {
+        $params: {
+          resource: meta
+        }
+      }
+
+      originalEvents: *[] | [...]
+
+      if get.$returns.events != _|_ {
+        originalEvents: get.$returns.events
+      }
+
+      events: originalEvents + [{
+        resource: {
+          apiVersion: context.data.apiVersion
+          kind:       context.data.kind
+          name:       context.data.metadata.name
+          namespace:  context.data.metadata.namespace
+        }
+        type:      context.event.type
+        timestamp: context.timestamp
+      }]
+
+      filter: *events | [...]
+
+      if len(events) > 10 {
+        filter: events[len(events)-10:]
+      }
+
+      "patch": kube.#Patch & {
+        $params: {
+          resource: meta
+          patch: {
+            type: "merge"
+            data: {
+              events: filter
+            }
+          }
+        }
+      }
+
+      parameter: {
+        nameSelector?: {
+          fromLabel: string
+        }
+        namespaceSelector?: {
+          fromLabel: string
+        }
+      }

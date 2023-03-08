@@ -1,0 +1,65 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: definitions.core.oam.dev
+spec:
+  group: core.oam.dev
+  names:
+    kind: Definition
+    listKind: DefinitionList
+    plural: definitions
+    shortNames:
+    - def
+    singular: definition
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.type
+      name: TYPE
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Definition is a internal storage for KubeVela definitions, it
+          will never be exposed directly to end users. It will just like a configmap
+          as internal usage, using a standalone CRD can help us optimize the efficiency
+          for informer.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DefinitionSpec is the spec for definition
+            properties:
+              attributes:
+                nullable: true
+                type: object
+              templates:
+                additionalProperties:
+                  type: string
+                type: object
+              type:
+                type: string
+            required:
+            - templates
+            - type
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources: {}

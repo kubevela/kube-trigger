@@ -4,6 +4,8 @@ metadata:
   name: record-event
   namespace: default
 spec:
+  worker: 
+    config: mul
   triggers:
     - source:
         type: resource-watcher
@@ -19,13 +21,15 @@ spec:
     - source:
         type: resource-watcher
         properties:
+          clusters:
+            - "cn-shanghai"
           apiVersion: apps/v1
           kind: Deployment
           events:
             - update
       filter: context.data.status.readyReplicas == context.data.status.replicas
       action:
-        type: record-event
+        type: sae-record-event
         properties:
           nameSelector:
             fromLabel: "workflowrun.oam.dev/name"
