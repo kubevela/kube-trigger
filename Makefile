@@ -82,6 +82,7 @@ svgformat:
 
 # Check possible issues before committing code
 reviewable: generate checklicense lint
+	go mod tidy
 
 # Run tests
 test: envtest
