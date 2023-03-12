@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The KubeVela Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,24 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mapstructure
+package workqueue
 
 import (
-	"encoding/json"
-
-	"github.com/mitchellh/mapstructure"
+	"math/rand"
+	"os"
+	"testing"
+	"time"
 )
 
-// Decode unmarshalls a map[string]interface{} into a structure.
-func Decode(in map[string]interface{}, out interface{}) error {
-	return mapstructure.Decode(in, out)
-}
-
-// Encode marshals a structure into a map[string]interface{}.
-func Encode(in interface{}, out *map[string]interface{}) error {
-	b, err := json.Marshal(in)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(b, out)
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
+	os.Exit(m.Run())
 }
