@@ -25,7 +25,13 @@ func TestNewFromFileOrDir(t *testing.T) {
 
 func TestNewFromFileOrDirInvalid(t *testing.T) {
 	a := assert.New(t)
-	
+
+	// Report error if file is invalid
 	_, err := NewFromFileOrDir("testdata/invalidext/conf.invalid")
 	a.Error(err)
+
+	// No error if files in dir is invalid, just skips
+	c, err := NewFromFileOrDir("testdata/invalidext")
+	a.NoError(err)
+	a.Equal(0, len(c.Triggers))
 }
