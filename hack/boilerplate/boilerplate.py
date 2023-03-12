@@ -146,8 +146,9 @@ def file_extension(filename):
     return os.path.splitext(filename)[1].split(".")[-1].lower()
 
 skipped_dirs = [
-    '.git',
-    ".go",
+    ".git",
+    ".go/gocache",
+    ".go/gomodcache",
     ".idea",
     ".vscode",
     "default.etcd",
