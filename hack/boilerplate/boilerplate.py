@@ -156,6 +156,7 @@ skipped_dirs = [
     "build",
     "bin",
     "pkg/workqueue",
+    "vendors",
 ]
 
 # list all the files contain 'DO NOT EDIT', but are not generated
