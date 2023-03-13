@@ -146,17 +146,22 @@ def file_extension(filename):
     return os.path.splitext(filename)[1].split(".")[-1].lower()
 
 skipped_dirs = [
-    '.git',
-    "pkg/util/workqueue",
+    ".git",
+    ".go/gocache",
+    ".go/gomodcache",
+    ".idea",
+    ".vscode",
+    "default.etcd",
     "docs",
     "build",
-    "bin"
+    "bin",
+    "pkg/workqueue",
+    "vendors",
 ]
 
 # list all the files contain 'DO NOT EDIT', but are not generated
 skipped_ungenerated_files = [
     'hack/boilerplate/boilerplate.py',
-    "hack/generate-go-const-from-file.sh"
 ]
 
 def normalize_files(files):

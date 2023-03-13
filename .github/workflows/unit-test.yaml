@@ -61,5 +61,12 @@ jobs:
         run: |
           go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo
 
+      - name: Prepare minikube
+        # For whatever reason, certain unit tests relies on k8s.
+        # Although such reliance should be removed, in the meantime,
+        # we set up a local k8s cluster to run such tests.
+        # Use minikube simply because it comes with GitHub runner.
+        run: minikube start
+
       - name: Run tests
         run: make test
