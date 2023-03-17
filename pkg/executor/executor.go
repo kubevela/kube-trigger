@@ -231,6 +231,8 @@ func (e *Executor) RunJobs(ctx context.Context) {
 			e.wg.Done()
 		}()
 	}
+	e.logger.Infof("executor started with %d workers", e.workers)
+
 	<-ctx.Done()
 
 	e.logger.Infof("shutting down executor")
