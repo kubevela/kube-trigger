@@ -28,6 +28,67 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+func TestNormalJobs(t *testing.T) {
+	logrus.SetLevel(logrus.TraceLevel)
+	a := assert.New(t)
+	c := Config{
+		QueueSize:            5,
+		Workers:              3,
+		MaxJobRetries:        0,
+		BaseRetryDelay:       10 * time.Millisecond,
+		RetryJobAfterFailure: false,
+		PerWorkerQPS:         5,
+		Timeout:              200 * time.Millisecond,
+	}
+
+	e, err := New(c)
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 0))
+
+	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "1"})
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 1))
+
+	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "2"})
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 2))
+
+	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "3"})
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 3))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan struct{})
+	go func() {
+		e.RunJobs(ctx)
+		close(ch)
+	}()
+
+	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+		l := 0
+		e.runningJobs.Range(func(_ any, _ any) bool {
+			l += 1
+			return true
+		})
+		return l == 3, nil
+	})
+	a.NoError(err)
+
+	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+		l := 0
+		e.runningJobs.Range(func(_ any, _ any) bool {
+			l += 1
+			return true
+		})
+		return l == 0, nil
+	})
+	a.NoError(err)
+
+	cancel()
+	<-ch
+	a.NoError(waitForAdded(e.queue, 0))
+}
+
 func TestQueueSizeLimits(t *testing.T) {
 	logrus.SetLevel(logrus.TraceLevel)
 	a := assert.New(t)
@@ -83,6 +144,64 @@ func TestQueueSizeLimits(t *testing.T) {
 	a.NoError(waitForAdded(e.queue, 0))
 }
 
+func TestSameJobRequeuing(t *testing.T) {
+	logrus.SetLevel(logrus.TraceLevel)
+	a := assert.New(t)
+	c := Config{
+		QueueSize:            5,
+		Workers:              3,
+		MaxJobRetries:        5,
+		BaseRetryDelay:       10 * time.Millisecond,
+		RetryJobAfterFailure: true,
+		PerWorkerQPS:         10,
+		Timeout:              300 * time.Millisecond,
+	}
+
+	e, err := New(c)
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 0))
+
+	j1 := &sleepingJob{200 * time.Millisecond, "1"}
+	j2 := &sleepingJob{200 * time.Millisecond, "1"}
+	j3 := &sleepingJob{100 * time.Millisecond, "1"}
+
+	err = e.AddJob(j1)
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 1))
+
+	err = e.AddJob(j2)
+	a.NoError(err)
+	a.NoError(waitForAdded(e.queue, 2))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan struct{})
+	go func() {
+		e.RunJobs(ctx)
+		close(ch)
+	}()
+
+	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+		l := 0
+		e.runningJobs.Range(func(_ any, _ any) bool {
+			l += 1
+			return true
+		})
+		return l >= 1, nil
+	})
+	a.NoError(err)
+
+	err = e.AddJob(j3)
+	a.NoError(err)
+
+	err = wait.Poll(1*time.Millisecond, 500*time.Millisecond, func() (done bool, err error) {
+		return e.queue.NumRequeues(j3) >= 2, nil
+	})
+
+	cancel()
+	<-ch
+	a.NoError(waitForAdded(e.queue, 0))
+}
+
 func TestFailedRequeuing(t *testing.T) {
 	logrus.SetLevel(logrus.TraceLevel)
 	a := assert.New(t)
@@ -129,7 +248,7 @@ func TestFailedRequeuing(t *testing.T) {
 	a.NoError(waitForAdded(e.queue, 0))
 }
 
-func TestTimedoutRequeuing(t *testing.T) {
+func TestTimedOutRequeuing(t *testing.T) {
 	logrus.SetLevel(logrus.TraceLevel)
 	a := assert.New(t)
 	c := Config{

@@ -164,6 +164,7 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		e.logger.Infof("worker exiting because %s", ctx.Err())
 		return false
 	}
+
 	item, quit := e.queue.Get()
 	if quit {
 		return false
@@ -201,16 +202,21 @@ func (e *Executor) runJob(ctx context.Context) bool {
 	if err == nil && timeoutCtx.Err() == nil {
 		e.logger.Infof("job %s (%s) finished", j.Type(), j.ID())
 		e.queue.Forget(j)
-	} else if timeoutCtx.Err() != context.Canceled {
-		msg := fmt.Sprintf("job %s (%s) failed because (err=%v, ctxErr=%v)", j.Type(), j.ID(), err, timeoutCtx.Err())
-		if e.allowRetries {
-			msg += fmt.Sprintf(", will retry job %s (%s) later", j.Type(), j.ID())
-			e.requeueJob(j)
-		}
-		e.logger.Errorf(msg)
-	} else { // context cancelled
-		e.logger.Warnf("job %s (%s) failed because %s", j.Type(), j.ID(), timeoutCtx.Err())
+		return true
 	}
+
+	// context cancelled, it is time to die
+	if timeoutCtx.Err() == context.Canceled {
+		e.logger.Infof("job %s (%s) failed because ctx errored: %s, worker will exit soon", j.Type(), j.ID(), timeoutCtx.Err())
+		return false
+	}
+
+	msg := fmt.Sprintf("job %s (%s) failed because (jobErr=%v, ctxErr=%v)", j.Type(), j.ID(), err, timeoutCtx.Err())
+	if e.allowRetries {
+		msg += fmt.Sprintf(", will retry job %s (%s) later", j.Type(), j.ID())
+		e.requeueJob(j)
+	}
+	e.logger.Errorf(msg)
 
 	return true
 }
