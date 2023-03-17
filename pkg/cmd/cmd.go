@@ -148,7 +148,6 @@ func runCli(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "error when creating executor")
 	}
-	defer exe.Shutdown()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -188,7 +187,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 	}
 
 	// Let the workers run Actions.
-	exe.RunJobs(ctx)
+	go exe.RunJobs(ctx)
 
 	// Listen to termination signals.
 	sigterm := make(chan os.Signal, 1)
