@@ -45,17 +45,11 @@ func TestNormalJobs(t *testing.T) {
 	a.NoError(err)
 	a.NoError(waitForAdded(e.queue, 0))
 
-	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "1"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 1))
-
-	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "2"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 2))
-
-	err = e.AddJob(&sleepingJob{100 * time.Millisecond, "3"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 3))
+	for i := 1; i <= 3; i++ {
+		err = e.AddJob(&sleepingJob{100 * time.Millisecond, fmt.Sprint(i)})
+		a.NoError(err)
+		a.NoError(waitForAdded(e.queue, i))
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan struct{})
@@ -64,6 +58,7 @@ func TestNormalJobs(t *testing.T) {
 		close(ch)
 	}()
 
+	// Wait for all jobs to run
 	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
@@ -74,6 +69,7 @@ func TestNormalJobs(t *testing.T) {
 	})
 	a.NoError(err)
 
+	// Wait for all jobs to end
 	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
@@ -106,18 +102,13 @@ func TestQueueSizeLimits(t *testing.T) {
 	a.NoError(err)
 	a.NoError(waitForAdded(e.queue, 0))
 
-	err = e.AddJob(&sleepingJob{10 * time.Second, "1"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 1))
+	for i := 1; i <= 3; i++ {
+		err = e.AddJob(&sleepingJob{10 * time.Second, fmt.Sprint(i)})
+		a.NoError(err)
+		a.NoError(waitForAdded(e.queue, i))
+	}
 
-	err = e.AddJob(&sleepingJob{10 * time.Second, "2"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 2))
-
-	err = e.AddJob(&sleepingJob{10 * time.Second, "3"})
-	a.NoError(err)
-	a.NoError(waitForAdded(e.queue, 3))
-
+	// Queue full
 	err = e.AddJob(&sleepingJob{10 * time.Second, "4"})
 	a.Error(err)
 	a.NoError(waitForAdded(e.queue, 3))
@@ -161,6 +152,7 @@ func TestSameJobRequeuing(t *testing.T) {
 	a.NoError(err)
 	a.NoError(waitForAdded(e.queue, 0))
 
+	// Jobs with same id
 	j1 := &sleepingJob{200 * time.Millisecond, "1"}
 	j2 := &sleepingJob{200 * time.Millisecond, "1"}
 	j3 := &sleepingJob{100 * time.Millisecond, "1"}
