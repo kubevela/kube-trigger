@@ -35,8 +35,7 @@ TARGETS := build       \
     version            \
     imageversion       \
     binaryname         \
-    variables          \
-    help
+    variables
 
 # Default target, subprojects will be called with default target too
 all: $(addprefix mk-all.,$(SUBPROJS));
@@ -53,6 +52,22 @@ $(foreach t,$(TARGETS),$(eval                \
 
 # `shell' only needs to be executed once, not on every subproject
 shell: $(addprefix mk-shell.,$(word 1,$(SUBPROJS)));
+
+# `help' is handled separately to show targets in this file.
+help: # @HELP show general help message
+help:
+	echo "GENERAL_TARGETS:"
+	grep -E '^.*: *# *@HELP' $(firstword $(MAKEFILE_LIST)) \
+	    | sed -E 's_.*.mk:__g'                   \
+	    | awk '                                  \
+	        BEGIN {FS = ": *# *@HELP"};          \
+	        { printf "  %-23s %s\n", $$1, $$2 }; \
+	    '
+	echo
+	echo "Please run 'make all-help' to see the full help message for all subprojects."
+
+all-help: # @HELP show help messages for all subjects
+all-help: $(addprefix mk-help.,$(SUBPROJS))
 
 # Run `make TARGET' to run TARGET for both kube-trigger and manager.
 #   For example, `make build' will build both kube-trigger and manager binaries.
@@ -72,31 +87,31 @@ mk-%:
 	echo "# make -f $(lastword $(subst ., ,$*)).mk $(firstword $(subst ., ,$*))"
 	$(MAKE) -f $(lastword $(subst ., ,$*)).mk $(firstword $(subst ., ,$*))
 
-# ===== Misc Targets ======
+# ===== General Targets ======
 
 # Go packages to lint or test
 GOCODEDIR := ./api/... ./cmd/... ./controllers/... ./pkg/...
 
-# Call `make generate' on all subprojects
+generate: # @HELP generate code
 generate: $(addprefix mk-generate.,$(SUBPROJS))
 
-# Lint code
+lint: # @HELP lint code
 lint:
 	build/lint.sh $(GOCODEDIR)
 
-# Check file header
+checklicense: # @HELP check file header
 checklicense:
 	hack/verify-boilerplate.sh
 
-# Format svg images
+svgformat: # @HELP format svg images, used in docs
 svgformat:
 	hack/format-svg-image.sh
 
-# Check possible issues before committing code
+reviewable: # @HELP check possible issues before committing code, make your code ready to review
 reviewable: generate checklicense lint
 	go mod tidy
 
-# Run tests
+test: # @HELP run tests
 test: envtest
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
 	    go test -coverprofile=cover.out $(GOCODEDIR)
