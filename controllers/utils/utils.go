@@ -17,10 +17,11 @@ limitations under the License.
 package utils
 
 import (
-	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+
+	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 )
 
 // SetOwnerReference set owner reference for trigger service.
@@ -30,7 +31,7 @@ func SetOwnerReference(obj metav1.Object, ts *standardv1alpha1.TriggerService) {
 		Kind:               standardv1alpha1.TriggerServiceKind,
 		Name:               ts.Name,
 		UID:                ts.GetUID(),
-		BlockOwnerDeletion: pointer.BoolPtr(true),
+		BlockOwnerDeletion: pointer.Bool(true),
 	}})
 }
 
