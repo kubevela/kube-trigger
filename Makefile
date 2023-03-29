@@ -17,7 +17,42 @@ include makefiles/common.mk
 
 # ===== Common Targets for subprojects (trigger and manager) ======
 
-SUBPROJS := $(patsubst %.mk,%,$(wildcard *.mk))
+SUBPROJS := $(patsubst %.mk, %, $(wildcard *.mk))
+
+# Run `make TARGET' to run TARGET for both foo and bar.
+#   For example, `make build' will build both foo and bar binaries.
+
+# Common targets for subprojects, will be executed on all subprojects
+TARGETS := build       \
+    all-build          \
+    package            \
+    all-package        \
+    container          \
+    container-push     \
+    all-container-push \
+    clean              \
+    all-clean          \
+    version            \
+    imageversion       \
+    binaryname         \
+    variables          \
+    help
+
+# Default target, subprojects will be called with default target too
+all: $(addprefix mk-all.,$(SUBPROJS));
+
+# Default target for subprojects. make foo / make bar
+$(foreach p,$(SUBPROJS),$(eval \
+    $(p): mk-all.$(p);         \
+))
+
+# Run common targets on all subprojects
+$(foreach t,$(TARGETS),$(eval                \
+    $(t): $(addprefix mk-$(t).,$(SUBPROJS)); \
+))
+
+# `shell' only needs to be executed once, not on every subproject
+shell: $(addprefix mk-shell.,$(word 1,$(SUBPROJS)));
 
 # Run `make TARGET' to run TARGET for both kube-trigger and manager.
 #   For example, `make build' will build both kube-trigger and manager binaries.
@@ -33,31 +68,8 @@ $(foreach p,$(SUBPROJS),$(eval \
     $(p)-%: mk-%.$(p);         \
 ))
 
-# Common targets for subprojects, will be executed on all subprojects
-TARGETS := build             \
-    all-build                \
-    package                  \
-    all-package              \
-    container-build          \
-    container-push           \
-    all-container-build-push \
-    clean                    \
-    all-clean                \
-    version                  \
-    imageversion             \
-    binaryname               \
-    variables                \
-    help
-
-# Run common targets on all subprojects
-$(foreach t,$(TARGETS),$(eval                \
-    $(t): $(addprefix mk-$(t).,$(SUBPROJS)); \
-))
-
-# `shell' only needs to be executed once, not on every subproject
-shell: $(addprefix mk-shell.,$(word 1,$(SUBPROJS)));
-
 mk-%:
+	echo "# make -f $(lastword $(subst ., ,$*)).mk $(firstword $(subst ., ,$*))"
 	$(MAKE) -f $(lastword $(subst ., ,$*)).mk $(firstword $(subst ., ,$*))
 
 # ===== Misc Targets ======

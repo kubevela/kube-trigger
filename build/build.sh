@@ -43,12 +43,12 @@ export GOOS="${OS}"
 export GO111MODULE=on
 export GOFLAGS="${GOFLAGS:-} -mod=mod "
 
-printf "# BINARY output: %s\ttarget: %s/%s\tversion: %s\n" \
+printf "# BUILD output: %s\ttarget: %s/%s\tversion: %s\n" \
   "${OUTPUT}" "${OS}" "${ARCH}" "${VERSION}"
 
-printf "# BINARY building for "
+printf "# BUILD building for "
 
-if [ -z "${DEBUG:-}" ]; then
+if [ "${DEBUG:-}" != "1" ]; then
   # release build
   # trim paths, disable symbols and DWARF.
   goasmflags="all=-trimpath=$(pwd)"

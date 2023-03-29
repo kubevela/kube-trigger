@@ -147,16 +147,14 @@ def file_extension(filename):
 
 skipped_dirs = [
     ".git",
-    ".go/gocache",
-    ".go/gomodcache",
+    ".go",
     ".idea",
     ".vscode",
     "default.etcd",
     "docs",
-    "build",
-    "bin",
     "pkg/workqueue",
-    "vendors",
+    "bin",
+    "vendor",
 ]
 
 # list all the files contain 'DO NOT EDIT', but are not generated
@@ -167,7 +165,8 @@ skipped_ungenerated_files = [
 def normalize_files(files):
     newfiles = []
     for pathname in files:
-        if any(x in pathname for x in skipped_dirs):
+        pathname = os.path.relpath(pathname, args.rootdir)
+        if any(pathname.startswith(x) for x in skipped_dirs):
             continue
         newfiles.append(pathname)
     for i, pathname in enumerate(newfiles):
@@ -180,15 +179,7 @@ def get_files(extensions):
     if len(args.filenames) > 0:
         files = args.filenames
     else:
-        for root, dirs, walkfiles in os.walk(args.rootdir):
-            # don't visit certain dirs. This is just a performance improvement
-            # as we would prune these later in normalize_files(). But doing it
-            # cuts down the amount of filesystem walking we do and cuts down
-            # the size of the file list
-            for d in skipped_dirs:
-                if d in dirs:
-                    dirs.remove(d)
-
+        for root, _, walkfiles in os.walk(args.rootdir):
             for name in walkfiles:
                 pathname = os.path.join(root, name)
                 files.append(pathname)
