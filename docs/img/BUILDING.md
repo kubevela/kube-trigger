@@ -7,7 +7,11 @@ This document describes how to build this project and briefly introduces the bui
 This is a list of basic build commands that can get you started.
 
 - `make`, `make build`: build `trigger` and `manager` binary into `bin`. The exact binary name can be seen in the build output.
+- `make trigger`, `make trigger-build`: only build `trigger` binary into `bin`.
+- `make manager`, `make manager-build`: only build `manager` binary into `bin`.
 - `make container`: build `trigger` and `manager` containers. Tags can be seen in the build output.
+- `make trigger-container`: only build `trigger` container.
+- `make manager-container`: only build `manager` container.
 - `make clean`: clean built binaries
 - `make test`: run tests
 - `make reviewable`: check possible issues before committing code, make your code ready to review
