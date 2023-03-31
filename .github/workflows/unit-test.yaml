@@ -74,6 +74,7 @@ jobs:
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
         with:
+          # This is a public repo, so token is not required.
           # token: ${{ secrets.CODECOV_TOKEN }}
           files: ./cover.out
           flags: unittests
