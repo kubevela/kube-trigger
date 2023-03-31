@@ -11,6 +11,7 @@ permissions:
 
 env:
   GO_VERSION: '1.19'
+  USE_BUILD_CONTAINER: '1'
 
 jobs:
   kube-trigger:
@@ -43,7 +44,7 @@ jobs:
         id: get_version
         run: |
           VERSION=$(make trigger-version)
-          echo ::set-output name=VERSION::${VERSION}
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build Binaries for All Platforms
         run: make trigger-all-package
@@ -55,6 +56,4 @@ jobs:
           fail_on_unmatched_files: true
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') }}
           files: |
-            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*.zip
-            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/kube-trigger-*.tar.gz
-            bin/kube-trigger-${{ steps.get_version.outputs.VERSION }}/*-checksums.txt
+            bin/kube-trigger-packages-latest/*

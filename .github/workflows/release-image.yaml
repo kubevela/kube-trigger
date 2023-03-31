@@ -8,6 +8,9 @@ on:
       - "v*"
   workflow_dispatch: { }
 
+env:
+  USE_BUILD_CONTAINER: '1'
+
 jobs:
   kube-trigger:
     name: Release kube-trigger Images
@@ -56,7 +59,7 @@ jobs:
         run: make trigger-variables
 
       - name: Build and Push Images
-        run: make trigger-all-container-build-push
+        run: make trigger-all-container-push
 
   manager:
     name: Release manager Images
@@ -105,4 +108,4 @@ jobs:
         run: make manager-variables
 
       - name: Build and Push Images
-        run: make manager-all-container-build-push
+        run: make manager-all-container-push

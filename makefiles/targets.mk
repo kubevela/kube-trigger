@@ -17,15 +17,20 @@ all: build
 # ===== BUILD =====
 
 build-dirs:
+ifeq (1, $(USE_BUILD_CONTAINER))
 	mkdir -p "$(GOCACHE)/gocache" \
-	         "$(GOCACHE)/gomodcache" \
-	         "$(DIST)"
+	         "$(GOCACHE)/gomodcache"
+endif
+	mkdir -p "$(BIN_OUTPUT_DIR)"
 
-build: # @HELP build binary for current platform
+build: # @HELP (default) build binary for current platform
 build: gen-dockerignore build-dirs
+ifeq (1, $(USE_BUILD_CONTAINER))
+	echo "# BUILD using build container: $(BUILD_IMAGE)"
 	docker run                               \
 	    -i                                   \
 	    --rm                                 \
+	    --network host                       \
 	    -u $$(id -u):$$(id -g)               \
 	    -v $$(pwd):/src                      \
 	    -w /src                              \
@@ -43,6 +48,21 @@ build: gen-dockerignore build-dirs
 	    --env HTTPS_PROXY="$(HTTPS_PROXY)"   \
 	    $(BUILD_IMAGE)                       \
 	    ./build/build.sh $(ENTRY)
+else
+	echo "# BUILD using local go sdk: $(LOCAL_GO_VERSION) , set USE_BUILD_CONTAINER=1 to use containerized build environment"
+	ARCH="$(ARCH)"                   \
+	    OS="$(OS)"                   \
+	    OUTPUT="$(OUTPUT)"           \
+	    VERSION="$(VERSION)"         \
+	    GOFLAGS="$(GOFLAGS)"         \
+	    GOPROXY="$(GOPROXY)"         \
+	    DEBUG="$(DEBUG)"             \
+	    HTTP_PROXY="$(HTTP_PROXY)"   \
+	    HTTPS_PROXY="$(HTTPS_PROXY)" \
+	    bash build/build.sh $(ENTRY)
+endif
+	echo "# BUILD linking $(DIST)/$(BIN_BASENAME) <==> $(OUTPUT) ..."
+	ln -f "$(OUTPUT)" "$(DIST)/$(BIN_BASENAME)"
 
 # INTERNAL: build-<os>_<arch> to build for a specific platform
 build-%:
@@ -50,8 +70,7 @@ build-%:
 	    build                                \
 	    --no-print-directory                 \
 	    GOOS=$(firstword $(subst _, ,$*))    \
-	    GOARCH=$(lastword $(subst _, ,$*))   \
-	    FULL_NAME=1
+	    GOARCH=$(lastword $(subst _, ,$*))
 
 all-build: # @HELP build binaries for all platforms
 all-build: $(addprefix build-, $(subst /,_, $(BIN_PLATFORMS)))
@@ -60,19 +79,17 @@ all-build: $(addprefix build-, $(subst /,_, $(BIN_PLATFORMS)))
 
 package: # @HELP build and package binary for current platform
 package: build
-	mkdir -p "$(BIN_VERBOSE_DIR)"
-	cp LICENSE "$(BIN_VERBOSE_DIR)/LICENSE"
-	cp "$(OUTPUT)" "$(BIN_VERBOSE_DIR)/$(BIN_BASENAME)"
-	echo "# PACKAGE compressing $(BIN) to $(BIN_VERBOSE_DIR)/$(PKG_FULLNAME)"
-	cd $(BIN_VERBOSE_DIR) &&              \
-	    if [ "$(OS)" == "windows" ]; then \
-	        zip "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE;     \
-	    else                                                     \
-	        tar czf "$(PKG_FULLNAME)" "$(BIN_BASENAME)" LICENSE; \
-	    fi;                                                      \
-	    sha256sum "$(PKG_FULLNAME)" >> "$(BIN)-$(VERSION)-checksums.txt"; \
-	    rm -f LICENSE "$(BIN_BASENAME)"
-	echo "# PACKAGE checksum saved to $(BIN_VERBOSE_DIR)/$(BIN)-$(VERSION)-checksums.txt"
+	mkdir -p "$(PKG_OUTPUT_DIR)"
+	ln -f LICENSE "$(DIST)/LICENSE"
+	echo "# PACKAGE compressing $(OUTPUT) to $(PKG_OUTPUT)"
+	$(RM) "$(PKG_OUTPUT)"
+	if [ "$(OS)" == "windows" ]; then \
+	    zip "$(PKG_OUTPUT)" -j "$(DIST)/$(BIN_BASENAME)" "$(DIST)/LICENSE"; \
+	else \
+	    tar czf "$(PKG_OUTPUT)" -C "$(DIST)" "$(BIN_BASENAME)" LICENSE; \
+	fi;
+	cd "$(PKG_OUTPUT_DIR)" && sha256sum "$(PKG_FULLNAME)" >> "$(CHECKSUM_FULLNAME)";
+	echo "# PACKAGE checksum saved to $(PKG_OUTPUT_DIR)/$(CHECKSUM_FULLNAME)"
 
 # INTERNAL: package-<os>_<arch> to build and package for a specific platform
 package-%:
@@ -80,24 +97,27 @@ package-%:
 	    package                              \
 	    --no-print-directory                 \
 	    GOOS=$(firstword $(subst _, ,$*))    \
-	    GOARCH=$(lastword $(subst _, ,$*))   \
-	    FULL_NAME=1
+	    GOARCH=$(lastword $(subst _, ,$*))
 
 all-package: # @HELP build and package binaries for all platforms
 all-package: $(addprefix package-, $(subst /,_, $(BIN_PLATFORMS)))
 # overwrite previous checksums
-	cd "$(BIN_VERBOSE_DIR)" && sha256sum *{.tar.gz,.zip} > "$(BIN)-$(VERSION)-checksums.txt"
-	echo "# PACKAGE all checksums saved to $(BIN_VERBOSE_DIR)/$(BIN)-$(VERSION)-checksums.txt"
+	cd "$(PKG_OUTPUT_DIR)" && shopt -s nullglob && \
+	    sha256sum *.{tar.gz,zip} > "$(CHECKSUM_FULLNAME)"
+	echo "# PACKAGE all checksums saved to $(PKG_OUTPUT_DIR)/$(CHECKSUM_FULLNAME)"
+	echo "# PACKAGE linking $(DIST)/$(BIN)-packages-latest <==> $(PKG_OUTPUT_DIR)s"
+	ln -snf "$(BIN)-$(VERSION)/packages" "$(DIST)/$(BIN)-packages-latest"
 
 # ===== CONTAINERS =====
 
-container-build: # @HELP build container image for current platform
+container: # @HELP build container image for current platform
+container: container-build
 container-build: build-linux_$(ARCH)
-	printf "# CONTAINER repotags: %s\ttarget: %s/%s\tbinaryversion: %s\n" "$(IMAGE_REPO_TAGS)" "linux" "$(ARCH)" "$(VERSION)"
+	printf "# CONTAINER tag: %s\tname: %s\trepos: %s\tarch: %s\n" "$(IMAGE_TAG)" "$(IMAGE_NAME)" "$(IMAGE_REPOS)" "linux/$(ARCH)"
 	if [ "$(OS)" != "linux" ]; then \
-	    echo "# CONTAINER warning: you have set target os to $(OS), but container target os will always be linux"; \
+	    echo "# CONTAINER warning: container target os $(OS) is not valid, only linux is allowed and will be used"; \
 	fi; \
-	TMPFILE=Dockerfile && \
+	TMPFILE=Dockerfile.tmp && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
 	    DOCKER_BUILDKIT=1                      \
 	    docker build                           \
@@ -106,7 +126,7 @@ container-build: build-linux_$(ARCH)
 	    --build-arg "OS=linux"                 \
 	    --build-arg "VERSION=$(VERSION)"       \
 	    --build-arg "BASE_IMAGE=$(BASE_IMAGE)" \
-	    $(addprefix -t ,$(IMAGE_REPO_TAGS)) .
+	    $(addprefix -t ,$(IMAGE_REPO_TAGS)) $(BIN_OUTPUT_DIR)
 
 container-push: # @HELP push built container image to all repos
 container-push: $(addprefix container-push-, $(subst :,=, $(subst /,_, $(IMAGE_REPO_TAGS))))
@@ -118,18 +138,17 @@ container-push-%:
 
 BUILDX_PLATFORMS := $(shell echo "$(IMAGE_PLATFORMS)" | sed 's/ /,/g')
 
-all-container-build-push: # @HELP build and push container images for all platforms
-all-container-build-push: $(addprefix build-, $(subst /,_, $(IMAGE_PLATFORMS)))
-	echo -e "# Building and pushing images for platforms $(IMAGE_PLATFORMS)"
-	echo -e "# target: $(OS)/$(ARCH)\tversion: $(VERSION)\ttags: $(IMAGE_REPO_TAGS)"
-	TMPFILE=Dockerfile && \
+all-container-push: # @HELP build and push container images for all platforms
+all-container-push: $(addprefix build-, $(subst /,_, $(IMAGE_PLATFORMS)))
+	printf "# CONTAINER tag: %s\tname: %s\trepos: %s\tarch: %s\n" "$(IMAGE_TAG)" "$(IMAGE_NAME)" "$(IMAGE_REPOS)" "$(IMAGE_PLATFORMS)"
+	TMPFILE=Dockerfile.tmp && \
 	    sed 's/$${BIN}/$(BIN)/g' Dockerfile.in > $${TMPFILE} && \
 	    docker buildx build --push             \
 	    -f $${TMPFILE}                         \
 	    --platform "$(BUILDX_PLATFORMS)"       \
 	    --build-arg "VERSION=$(VERSION)"       \
 	    --build-arg "BASE_IMAGE=$(BASE_IMAGE)" \
-	    $(addprefix -t ,$(IMAGE_REPO_TAGS)) .
+	    $(addprefix -t ,$(IMAGE_REPO_TAGS)) $(BIN_OUTPUT_DIR)
 
 # ===== MISC =====
 
@@ -137,12 +156,13 @@ all-container-build-push: $(addprefix build-, $(subst /,_, $(IMAGE_PLATFORMS)))
 # Example: make shell CMD="-c 'date'"
 CMD ?=
 
-shell: # @HELP launches a shell in the containerized build environment
+shell: # @HELP launch a shell in the build container
 shell: build-dirs
-	echo "# launching a shell in the containerized build environment"
+	echo "# launching a shell in the build container"
 	docker run                               \
 	    -it                                  \
 	    --rm                                 \
+	    --network host                       \
 	    -u $$(id -u):$$(id -g)               \
 	    -v $$(pwd):/src                      \
 	    -w /src                              \
@@ -167,16 +187,16 @@ shell: build-dirs
 # So we can avoid copying unnecessary files to the build
 # context.
 gen-dockerignore:
-	echo -e "*\n!$(BIN_VERBOSE_DIR)" > .dockerignore
+	echo -e "*\n!$(BIN_OUTPUT_DIR)" > .dockerignore
 
 clean: # @HELP clean built binaries
 clean:
-	rm -rf $(DIST)/$(BIN)*
+	$(RM) -r $(DIST)/$(BIN)*
 
 all-clean: # @HELP clean built binaries, build cache, and helper tools
 all-clean: clean
 	test -d $(GOCACHE) && chmod -R u+w $(GOCACHE) || true
-	rm -rf $(GOCACHE) $(DIST)
+	$(RM) -r $(GOCACHE) $(DIST)
 
 version: # @HELP output the version string
 version:
@@ -192,26 +212,36 @@ binaryname:
 
 variables: # @HELP print makefile variables
 variables:
-	echo "VARIABLES:"
-	echo "  OUTPUT            $(OUTPUT)"
-	echo "  VERSION           $(VERSION)"
-	echo "  CURRENT_OS        $(OS)"
-	echo "  CURRENT_ARCH      $(ARCH)"
-	echo "  BIN_PLATFORMS     $(BIN_PLATFORMS)"
-	echo "  IMAGE_TAG         $(IMAGE_TAG)"
-	echo "  IMAGE_REPOS       $(IMAGE_REPOS)"
-	echo "  IMAGE_REPO_TAGS   $(IMAGE_REPO_TAGS)"
-	echo "  IMAGE_PLATFORMS   $(IMAGE_PLATFORMS)"
-	echo "  DEBUG             $(DEBUG)"
-	echo "  GOPROXY           $(GOPROXY)"
-	echo "  GOFLAGS           $(GOFLAGS)"
+	echo "BUILD:"
+	echo "  build_output             $(OUTPUT)"
+	echo "  app_version              $(VERSION)"
+	echo "  debug_build_enabled      $(DEBUG)"
+	echo "  use_build_container      $(USE_BUILD_CONTAINER)"
+	echo "  build_container_image    $(BUILD_IMAGE)"
+	echo "  local_go_sdk             $(LOCAL_GO_VERSION)"
+	echo "CONTAINER:"
+	echo "  container_base_image     $(BASE_IMAGE)"
+	echo "  container_img_tag        $(IMAGE_TAG)"
+	echo "  container_img_name       $(IMAGE_NAME)"
+	echo "  container_repos          $(IMAGE_REPOS)"
+	echo "  container_img_full       $(IMAGE_REPO_TAGS)"
+	echo "PLATFORM:"
+	echo "  current_os               $(OS)"
+	echo "  current_arch             $(ARCH)"
+	echo "  all_bin_os_arch          $(BIN_PLATFORMS)"
+	echo "  all_container_os_arch    $(IMAGE_PLATFORMS)"
+	echo "ENVIRONMENTS:"
+	echo "  GOPROXY                  $(GOPROXY)"
+	echo "  GOFLAGS                  $(GOFLAGS)"
+	echo "  HTTP_PROXY               $(HTTP_PROXY)"
+	echo "  HTTPS_PROXY              $(HTTPS_PROXY)"
 
 help: # @HELP print this message
 help: variables
-	echo "TARGETS:"
+	echo "MAKE_TARGETS:"
 	grep -E '^.*: *# *@HELP' $(MAKEFILE_LIST)    \
 	    | sed -E 's_.*.mk:__g'                   \
 	    | awk '                                  \
 	        BEGIN {FS = ": *# *@HELP"};          \
-	        { printf "  %-25s %s\n", $$1, $$2 }; \
+	        { printf "  %-23s %s\n", $$1, $$2 }; \
 	    '
