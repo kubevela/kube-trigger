@@ -6,6 +6,8 @@
 [![codecov](https://codecov.io/gh/kubevela/kube-trigger/branch/main/graph/badge.svg)](https://codecov.io/gh/kubevela/kube-trigger)
 ![Docker Pulls](https://img.shields.io/docker/pulls/oamdev/kube-trigger)
 [![TODOs](https://img.shields.io/endpoint?url=https://api.tickgit.com/badge?repo=github.com/kubevela/kube-trigger)](https://www.tickgit.com/browse?repo=github.com/kubevela/kube-trigger)
+[![Go Checks](https://github.com/kubevela/kube-trigger/actions/workflows/go-checks.yaml/badge.svg?branch=main)](https://github.com/kubevela/kube-trigger/actions/workflows/go-checks.yaml)
+[![Unit Tests](https://github.com/kubevela/kube-trigger/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/kubevela/kube-trigger/actions/workflows/unit-test.yaml)
 
 kube-trigger is a workflow based trigger that combines listeners, filter events and action triggers in a programmable way with CUElang.
 
