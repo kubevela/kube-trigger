@@ -41,6 +41,13 @@ type Source interface {
 	// Type returns the type of this Source. Name your source as something-doer,
 	// instead of do-something.
 	Type() string
+
+	// Singleton defines if this type of Source will only be initialized once.
+	// For example, if Singleton is true, all Source's in config with the same
+	// type will share the same instance (New will be called only once)
+	// and Init will be called multiple times for each Source of the same type.
+	// Otherwise, each Source will have its own instance, i.e., each New for each Init.
+	Singleton() bool
 }
 
 // SourceMeta is what users type in their configurations, specifying what source

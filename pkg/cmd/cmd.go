@@ -161,9 +161,12 @@ func runCli(cmd *cobra.Command, args []string) error {
 		if !ok {
 			return fmt.Errorf("source type %s does not exist", w.Source.Type)
 		}
+
 		source := s.New()
-		if s, ok := instances[w.Source.Type]; ok {
-			source = s
+		if s.Singleton() {
+			if s, ok := instances[w.Source.Type]; ok {
+				source = s
+			}
 		}
 
 		// Create a EventHandler

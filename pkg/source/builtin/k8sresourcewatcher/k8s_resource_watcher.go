@@ -147,6 +147,10 @@ func (w *K8sResourceWatcher) Type() string {
 	return v1alpha1.SourceTypeResourceWatcher
 }
 
+func (w *K8sResourceWatcher) Singleton() bool {
+	return true
+}
+
 type MultiClustersGetter interface {
 	GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error)
 }
