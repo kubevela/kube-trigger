@@ -1,0 +1,9 @@
+triggers:
+  - source:
+      type: cronjob
+      properties:
+        schedule: "* * * * *"
+        timeZone: "Asia/Shanghai" # Optional
+    filter: ""
+    action:
+      # TODO: add your action here
