@@ -111,6 +111,7 @@ func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInfor
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent types.InformerEvent
 	var err error
+	//nolint:errcheck // no need to check err here
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			newEvent.Type = types.EventTypeCreate
@@ -193,7 +194,7 @@ func (c *Controller) processNextItem() bool {
 
 	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
 	err := c.processItem(newEvent.(types.InformerEvent))
-	//nolint:gocritic
+	//nolint:gocritic // no need to use switch statement here
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(newEvent)
