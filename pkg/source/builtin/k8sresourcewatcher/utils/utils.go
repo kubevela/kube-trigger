@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetObjectMetaData .
 func GetObjectMetaData(obj interface{}) metav1.Object {
 	return obj.(metav1.Object)
 }

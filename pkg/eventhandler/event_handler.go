@@ -19,9 +19,9 @@ package eventhandler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
@@ -66,9 +66,10 @@ func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.A
 		// TODO: use handler to handle
 		// Apply filters
 		context := map[string]interface{}{
-			"event":     event,
-			"data":      data,
-			"timestamp": time.Now().Format(time.RFC3339),
+			"sourceType": sourceType,
+			"event":      event,
+			"data":       data,
+			"timestamp":  metav1.Now(),
 		}
 		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
 		if err != nil {

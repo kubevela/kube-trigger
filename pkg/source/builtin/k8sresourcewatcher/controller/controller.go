@@ -193,6 +193,7 @@ func (c *Controller) processNextItem() bool {
 
 	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
 	err := c.processItem(newEvent.(types.InformerEvent))
+	//nolint:gocritic
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(newEvent)
@@ -242,7 +243,7 @@ func (c *Controller) callEventHandler(obj metav1.Object, e types.Event) {
 	for _, fn := range c.eventHandlers {
 		err := fn(c.controllerType, e, obj)
 		if err != nil {
-			c.logger.Warnf("calling event handler failed: %s", err)
+			c.logger.Infof("calling event handler failed: %s", err)
 		}
 	}
 }

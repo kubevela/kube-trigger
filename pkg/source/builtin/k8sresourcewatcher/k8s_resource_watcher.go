@@ -33,13 +33,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
+	"github.com/kubevela/pkg/multicluster"
+	"github.com/kubevela/pkg/util/singleton"
+
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/controller"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	sourcetypes "github.com/kubevela/kube-trigger/pkg/source/types"
-	"github.com/kubevela/pkg/multicluster"
-	"github.com/kubevela/pkg/util/singleton"
 )
 
 func init() {
@@ -50,11 +51,14 @@ func init() {
 }
 
 var (
+	// MultiClusterConfigType .
 	MultiClusterConfigType string
 )
 
 const (
-	TypeClusterGateway       string = "cluster-gateway"
+	// TypeClusterGateway .
+	TypeClusterGateway string = "cluster-gateway"
+	// TypeClusterGatewaySecret .
 	TypeClusterGatewaySecret string = "cluster-gateway-secret"
 
 	clusterLabel    string = "cluster.core.oam.dev/cluster-credential-type"
@@ -65,6 +69,7 @@ const (
 	clusterEndpoint string = "endpoint"
 )
 
+// K8sResourceWatcher watches k8s resources.
 type K8sResourceWatcher struct {
 	configs       map[string]*types.Config
 	eventHandlers map[string][]eventhandler.EventHandler
@@ -73,6 +78,7 @@ type K8sResourceWatcher struct {
 
 var _ sourcetypes.Source = &K8sResourceWatcher{}
 
+// New .
 func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	return &K8sResourceWatcher{
 		configs:       make(map[string]*types.Config),
@@ -80,6 +86,7 @@ func (w *K8sResourceWatcher) New() sourcetypes.Source {
 	}
 }
 
+// Parse .
 func (w *K8sResourceWatcher) Parse(properties *runtime.RawExtension) (*types.Config, error) {
 	props, err := properties.MarshalJSON()
 	if err != nil {
@@ -93,6 +100,7 @@ func (w *K8sResourceWatcher) Parse(properties *runtime.RawExtension) (*types.Con
 	return ctrlConf, nil
 }
 
+// Init .
 func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhandler.EventHandler) error {
 	var err error
 
@@ -119,6 +127,7 @@ func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhand
 	return nil
 }
 
+// Run .
 func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 	clusterGetter, err := NewMultiClustersGetter(MultiClusterConfigType)
 	if err != nil {
@@ -143,18 +152,22 @@ func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 	return nil
 }
 
+// Type .
 func (w *K8sResourceWatcher) Type() string {
 	return v1alpha1.SourceTypeResourceWatcher
 }
 
+// Singleton .
 func (w *K8sResourceWatcher) Singleton() bool {
 	return true
 }
 
+// MultiClustersGetter .
 type MultiClustersGetter interface {
 	GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error)
 }
 
+// NewMultiClustersGetter new a MultiClustersGetter
 func NewMultiClustersGetter(typ string) (MultiClustersGetter, error) {
 	config := ctrl.GetConfigOrDie()
 	cli, err := client.New(config, client.Options{Scheme: scheme.Scheme})
