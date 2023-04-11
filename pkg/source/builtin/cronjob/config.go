@@ -28,12 +28,15 @@ type Config struct {
 }
 
 func (c *Config) String() string {
+	// When TZ is set in schedule, ignore timeZone, just use schedule as is.
+	// This is not the intended use case, but we want to support it.
 	if strings.Contains(c.Schedule, "TZ") {
 		return c.Schedule
 	}
 
 	if c.TimeZone != "" {
 		// We don't check if the timezone is valid here.
+		// cron lib will do it.
 		return fmt.Sprintf("TZ=%s %s", c.TimeZone, c.Schedule)
 	}
 
@@ -41,8 +44,10 @@ func (c *Config) String() string {
 }
 
 func formatSchedule(c Config) string {
+	// When TZ is set in schedule, warn the user. This is not the intended use case.
+	// However, it should still work, so we can continue.
 	if strings.Contains(c.Schedule, "TZ") {
-		logger.Warnf("using TZ in schedule is not supported, use timeZone instead")
+		logger.Warnf("do NOT set 'TZ' in schedule, setting 'timeZone' is the preferred way. With 'TZ' set, any 'timeZone' setting will be ignored.")
 	}
 
 	return c.String()

@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -29,7 +30,12 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/source/types"
 )
 
+func init() {
+	logger = logrus.WithField("source", cronJobType)
+}
+
 var (
+	logger      *logrus.Entry
 	cronJobType = "cronjob"
 )
 
@@ -98,4 +104,10 @@ func (c *CronJob) Type() string {
 // Singleton .
 func (c *CronJob) Singleton() bool {
 	return false
+}
+
+// Event is the context passed to Actions.
+type Event struct {
+	Config    `json:",inline"`
+	TimeFired metav1.Time `json:"timeFired"`
 }
