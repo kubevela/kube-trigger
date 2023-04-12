@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/syncmap"
 	"golang.org/x/time/rate"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -89,7 +88,7 @@ func New(c Config) (*Executor, error) {
 	e.maxRetries = c.MaxJobRetries
 	e.allowRetries = c.RetryJobAfterFailure
 	e.wg = sync.WaitGroup{}
-	e.runningJobs = syncmap.Map{}
+	e.runningJobs = sync.Map{}
 	// Create a rate limited queue, with a token bucket for overall limiting,
 	// and exponential failure for per-item limiting.
 	e.queue = workqueue.NewRateLimitingQueue(
