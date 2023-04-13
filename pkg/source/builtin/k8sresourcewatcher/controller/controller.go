@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kubevela/pkg/multicluster"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +56,7 @@ type Controller struct {
 	sourceConf     types.Config
 	listenEvents   map[types.EventType]bool
 	controllerType string
+	cluster        string
 }
 
 // Setup prepares controllers
@@ -91,7 +93,7 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 		cache.Indexers{},
 	)
 
-	c := newResourceController(logger, informer, ctrlConf.Kind)
+	c := newResourceController(ctx, logger, informer, ctrlConf.Kind)
 	// precheck ->
 	c.sourceConf = ctrlConf
 	c.eventHandlers = eh
@@ -107,13 +109,17 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 	return c
 }
 
-func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
+func newResourceController(ctx context.Context, logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	var newEvent types.InformerEvent
 	var err error
+	cluster, _ := multicluster.ClusterFrom(ctx)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			newEvent.Type = types.EventTypeCreate
+			newEvent.Event = types.Event{
+				Type:    types.EventTypeCreate,
+				Cluster: cluster,
+			}
 			newEvent.EventObj = obj
 			meta := utils.GetObjectMetaData(obj)
 			logger.Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
@@ -122,7 +128,10 @@ func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInfor
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
-			newEvent.Type = types.EventTypeUpdate
+			newEvent.Event = types.Event{
+				Type:    types.EventTypeUpdate,
+				Cluster: cluster,
+			}
 			newEvent.EventObj = new
 			meta := utils.GetObjectMetaData(new)
 			logger.Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
@@ -131,7 +140,10 @@ func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInfor
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			newEvent.Type = types.EventTypeDelete
+			newEvent.Event = types.Event{
+				Type:    types.EventTypeDelete,
+				Cluster: cluster,
+			}
 			newEvent.EventObj = obj
 			meta := utils.GetObjectMetaData(obj)
 			logger.Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
@@ -145,6 +157,7 @@ func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInfor
 		logger:   logger,
 		informer: informer,
 		queue:    queue,
+		cluster:  cluster,
 	}
 }
 
@@ -152,19 +165,20 @@ func newResourceController(logger *logrus.Entry, informer cache.SharedIndexInfor
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-
-	c.logger.Info("starting...")
+	c.logger = c.logger.WithFields(logrus.Fields{
+		"apiVersion": c.sourceConf.APIVersion,
+		"kind":       c.sourceConf.Kind,
+		"cluster":    c.cluster,
+	})
+	c.logger.Info("starting watch k8s resources...")
 	serverStartTime = time.Now().Local()
 
 	go c.informer.Run(stopCh)
-
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 		return
 	}
-
-	c.logger.Info("synced and ready")
-
+	c.logger.Info("resource watcher synced resources and ready for work")
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
@@ -238,7 +252,7 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 }
 
 func (c *Controller) callEventHandler(obj metav1.Object, e types.Event) {
-	c.logger.Infof("%s event %s/%s happened, calling event handlers", e.Type, obj.GetName(), obj.GetNamespace())
+	c.logger.Infof("%s event %s/%s/%s happened, calling event handlers", e.Type, e.Cluster, obj.GetNamespace(), obj.GetName())
 	for _, fn := range c.eventHandlers {
 		err := fn(c.controllerType, e, obj)
 		if err != nil {
