@@ -33,9 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/cache"
+	clientcache "k8s.io/client-go/tools/cache"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/pkg/cache"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/utils"
@@ -74,7 +75,7 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 	}
 
 	informer := cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		&clientcache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
@@ -90,7 +91,7 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 		},
 		&unstructured.Unstructured{},
 		0, // Skip resync
-		cache.Indexers{},
+		clientcache.Indexers{},
 	)
 
 	c := newResourceController(ctx, logger, informer, ctrlConf.Kind)
@@ -237,19 +238,8 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 	}
 
 	// Process events based on its type
-	switch newEvent.Type {
-	case types.EventTypeCreate:
-		// Compare CreationTimestamp and serverStartTime and alert only on latest events
-		// Could be Replaced by using Delta or DeltaFIFO
-		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
-			c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
-			c.callEventHandler(objectMeta, newEvent.Event)
-			return nil
-		}
-	default:
-		c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
-		c.callEventHandler(objectMeta, newEvent.Event)
-	}
+	c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
+	c.callEventHandler(objectMeta, newEvent.Event)
 	return nil
 }
 
