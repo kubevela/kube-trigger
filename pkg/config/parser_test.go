@@ -17,9 +17,10 @@ limitations under the License.
 package config
 
 import (
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromFileOrDir(t *testing.T) {
