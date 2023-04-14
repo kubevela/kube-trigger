@@ -15,7 +15,6 @@ on:
 
 env:
   GO_VERSION: '1.19'
-  GOLANGCI_VERSION: 'v1.47.2'
 
 jobs:
   detect-noop:
@@ -74,8 +73,7 @@ jobs:
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
         with:
-          # This is a public repo, so token is not required.
-          # token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./cover.out
           flags: unittests
           name: codecov-umbrella
