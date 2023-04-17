@@ -53,6 +53,11 @@ const (
 	defaultTimeout      = 10
 
 	defaultRegistrySize = 100
+
+	// Values taken from: https://github.com/kubernetes/component-base/blob/master/config/v1alpha1/defaults.go
+	defaultLeaseDuration = 15 * time.Second
+	defaultRenewDeadline = 10 * time.Second
+	defaultRetryPeriod   = 2 * time.Second
 )
 
 func newOption() *option {
