@@ -109,6 +109,40 @@ spec:
         }
       }
 
+      if parameter.createService  {
+        service:{
+          apiVersion: "v1"
+          kind:       "Service"
+          metadata: {
+            name:      parameter.name
+            namespace: triggerService.namespace
+          }
+          spec:{
+              selector:{
+                "app.kubernetes.io/name": parameter.name
+                "trigger.oam.dev/name":   triggerService.name
+              }
+              ports:[
+                {
+                  name: "default"
+                  port: 80
+                  targetPort: 80
+                },
+                {
+                  for _,v in parameter.service.ports{
+                    name: v.name
+                    port: v.port
+                    targetPort: v.targetPort
+                  }
+                }]
+              if parameter.service.clusterIp != _|_ {
+                  clusterIp: parameter.service.clusterIp
+              }
+              type: "ClusterIP"
+          }
+        }
+      }
+      
       triggerService: {
         name:      string
         namespace: *"vela-system" | string
@@ -147,4 +181,13 @@ spec:
           ip?: string
           hostNames?: [...string]
         }]
+        createService: *true | bool
+        service?: {
+          ports:[...{
+            name: string
+            port: int
+            targetPort: int|string
+          }]
+          clusterIp?: string
+        }
       }
