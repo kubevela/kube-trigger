@@ -182,7 +182,7 @@ spec:
           hostNames?: [...string]
         }]
         createService: *true | bool
-        service?: {
+        service: {
           ports:[...{
             name: string
             port: int
