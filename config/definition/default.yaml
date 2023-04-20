@@ -109,8 +109,8 @@ spec:
         }
       }
 
-      if parameter.createService  {
-        service:{
+      if parameter.createService == true {
+        service: {
           apiVersion: "v1"
           kind:       "Service"
           metadata: {
@@ -122,23 +122,14 @@ spec:
                 "app.kubernetes.io/name": parameter.name
                 "trigger.oam.dev/name":   triggerService.name
               }
-              ports:[
-                {
-                  name: "default"
-                  port: 80
-                  targetPort: 80
-                },
-                {
-                  for _,v in parameter.service.ports{
+              ports:[{
+                  for _,v in parameter.service.ports {
                     name: v.name
                     port: v.port
                     targetPort: v.targetPort
                   }
                 }]
-              if parameter.service.clusterIp != _|_ {
-                  clusterIp: parameter.service.clusterIp
-              }
-              type: "ClusterIP"
+              type: parameter.service.type
           }
         }
       }
@@ -183,11 +174,15 @@ spec:
         }]
         createService: *true | bool
         service: {
-          ports:[...{
-            name: string
-            port: int
-            targetPort: int|string
-          }]
-  type: *"ClusterIP" | "NodePort" | "LoadBalancer" | "ExternalName"
+          ports: *[{
+                  name: "default"
+                  port: 80
+                  targetPort: 80
+                }] | [...{
+                   name: string
+                   port: int
+                   targetPort: int
+                }]
+          type: *"ClusterIP" | "NodePort" | "LoadBalancer" | "ExternalName"
         }
       }

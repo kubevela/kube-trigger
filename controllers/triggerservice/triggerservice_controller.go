@@ -209,12 +209,25 @@ func (r *Reconciler) createRoles(ctx context.Context, ts *standardv1alpha1.Trigg
 }
 
 func (r *Reconciler) createService(ctx context.Context, ts *standardv1alpha1.TriggerService, v cue.Value) error {
-	data, err := v.LookupPath(cue.ParsePath("service")).MarshalJSON()
+	needCreateService, err := v.LookupPath(cue.ParsePath("parameter.createService")).Bool()
 	if err != nil {
 		return err
 	}
-	if data == nil {
-		return nil
+
+	if !needCreateService {
+		existSvc := new(corev1.Service)
+		if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: ts.Name}, existSvc); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		return r.Delete(ctx, existSvc)
+	}
+
+	data, err := v.LookupPath(cue.ParsePath("service")).MarshalJSON()
+	if err != nil {
+		return err
 	}
 
 	expectSvc := new(corev1.Service)
