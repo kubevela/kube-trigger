@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"cuelang.org/go/cue"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -34,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"cuelang.org/go/cue"
 
 	"github.com/kubevela/pkg/cue/cuex"
 	"github.com/kubevela/pkg/util/slices"
@@ -91,25 +92,36 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	deploymentList := &appsv1.DeploymentList{}
-	if err := r.List(ctx, deploymentList, client.MatchingLabels(map[string]string{
-		triggerNameLabel: ts.Name,
-	})); err != nil {
+	if err := r.handleWorker(ctx, ts); err != nil {
+		logger.Error(err, "failed to handle trigger worker")
 		return ctrl.Result{}, err
 	}
-	// if no worker deployment exists, create a new one to run trigger
-	if len(deploymentList.Items) == 0 {
-		if err := r.createWorker(ctx, ts); err != nil {
-			logger.Error(err, "failed to create worker deployment for trigger")
-			return ctrl.Result{}, err
-		}
-		logger.Info("successfully create worker deployment for trigger")
-	}
-
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
+func (r *Reconciler) handleWorker(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
+
+	v, err := r.loadTemplateCueValue(ctx, ts)
+	if err != nil {
+		return err
+	}
+
+	if err := r.createRoles(ctx, ts, v); err != nil {
+		return err
+	}
+
+	if err := r.createDeployment(ctx, ts, v); err != nil {
+		return err
+	}
+
+	if err := r.createService(ctx, ts, v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) loadTemplateCueValue(ctx context.Context, ts *standardv1alpha1.TriggerService) (cue.Value, error) {
 	templateName := "default"
 	opts := make([]cuex.CompileOption, 0)
 	opts = append(opts, cuex.WithExtraData("triggerService", map[string]string{
@@ -124,25 +136,38 @@ func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.Trig
 	}
 	template, err := definition.NewTemplateLoader(ctx, r.Client).LoadTemplate(ctx, templateName, definition.WithType(triggertypes.DefinitionTypeTriggerWorker))
 	if err != nil {
-		return err
+		return cue.Value{}, err
 	}
+
 	v, err := cuex.CompileStringWithOptions(ctx, template.Compile(), opts...)
 	if err != nil {
-		return err
+		return cue.Value{}, err
 	}
-	if err := r.createRoles(ctx, ts, v); err != nil {
-		return err
-	}
+
+	return v, nil
+}
+
+func (r *Reconciler) createDeployment(ctx context.Context, ts *standardv1alpha1.TriggerService, v cue.Value) error {
 	data, err := v.LookupPath(cue.ParsePath("deployment")).MarshalJSON()
 	if err != nil {
 		return err
 	}
-	deploy := &appsv1.Deployment{}
-	if err := json.Unmarshal(data, deploy); err != nil {
+
+	expectedDeployment := new(appsv1.Deployment)
+	if err := json.Unmarshal(data, expectedDeployment); err != nil {
 		return err
 	}
-	utils.SetOwnerReference(deploy, ts)
-	return r.Create(ctx, deploy)
+
+	existDeployment := new(appsv1.Deployment)
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: ts.Name}, existDeployment); err != nil {
+		if apierrors.IsNotFound(err) {
+			utils.SetOwnerReference(expectedDeployment, ts)
+			return r.Create(ctx, expectedDeployment)
+		}
+		return err
+	}
+
+	return r.Patch(ctx, expectedDeployment, client.Merge)
 }
 
 func (r *Reconciler) createRoles(ctx context.Context, ts *standardv1alpha1.TriggerService, v cue.Value) error {
@@ -181,6 +206,31 @@ func (r *Reconciler) createRoles(ctx context.Context, ts *standardv1alpha1.Trigg
 		return r.Update(ctx, role)
 	}
 	return nil
+}
+
+func (r *Reconciler) createService(ctx context.Context, ts *standardv1alpha1.TriggerService, v cue.Value) error {
+	data, err := v.LookupPath(cue.ParsePath("service")).MarshalJSON()
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return nil
+	}
+
+	expectSvc := new(corev1.Service)
+	if err := json.Unmarshal(data, expectSvc); err != nil {
+		return err
+	}
+
+	existSvc := new(corev1.Service)
+	if err := r.Client.Get(ctx, types.NamespacedName{Namespace: ts.Namespace, Name: ts.Name}, existSvc); err != nil {
+		if apierrors.IsNotFound(err) {
+			utils.SetOwnerReference(expectSvc, ts)
+			return r.Client.Create(ctx, expectSvc)
+		}
+		return err
+	}
+	return r.Client.Patch(ctx, expectSvc, client.Merge)
 }
 
 func (r *Reconciler) handleTriggerConfig(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
