@@ -188,6 +188,6 @@ spec:
             port: int
             targetPort: int|string
           }]
-          clusterIp?: string
+  type: *"ClusterIP" | "NodePort" | "LoadBalancer" | "ExternalName"
         }
       }
