@@ -8,7 +8,7 @@ updated whenever the ConfigMaps that are referenced by `ref-objects` are updated
 
 - Install [KubeVela](https://kubevela.net/docs/install) in your cluster
 - Enable the `kube-trigger` addon
-```
+```shell
 vela addon enable kube-trigger
 ```
 
@@ -30,7 +30,7 @@ Apply `sample.yaml` to create 2 Applications and 2 ConfigMaps in the default nam
 trigger 2 Application updates.
 
 ```shell
-kubectl apply sample.yaml
+kubectl apply -f examples/sample.yaml
 ```
 
 2. **Run kube-trigger**
