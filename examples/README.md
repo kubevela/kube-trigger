@@ -7,6 +7,10 @@ updated whenever the ConfigMaps that are referenced by `ref-objects` are updated
 ## Prerequisites
 
 - Install [KubeVela](https://kubevela.net/docs/install) in your cluster
+- Enable the `kube-trigger` addon
+```
+vela addon enable kube-trigger
+```
 
 ## What we want to achieve?
 
