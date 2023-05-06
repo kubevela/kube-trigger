@@ -47,7 +47,9 @@ Standalone:
 In-Cluster:
 
 ```shell
-kubectl apply -f config/
+kubectl apply -f config/crd/
+kubectl apply -f config/definition/
+kubectl apply -f config/manager/
 ```
 
 3. **Watch ApplicationRevision changes** so that you can see what it does.
