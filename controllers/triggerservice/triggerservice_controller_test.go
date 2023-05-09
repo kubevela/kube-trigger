@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"github.com/kubevela/pkg/util/slices"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"path/filepath"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/utils"
@@ -44,15 +45,23 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 	tsNoServiceJSON, _ := yaml.YAMLToJSON([]byte(normalTriggerServiceWithOutService))
 
 	BeforeEach(func() {
-		Expect(utils.InstallDefaultDefinition()).Should(BeNil())
+		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
+			Expect(utils.InstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
+				Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
+		}
 		Expect(json.Unmarshal(tsJSON, &ts)).Should(BeNil())
 		Expect(json.Unmarshal(tsNoServiceJSON, &tsNoService)).Should(BeNil())
 	})
 
 	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, ts.DeepCopy())).Should(BeNil())
-		Expect(k8sClient.Delete(ctx, tsNoService.DeepCopy())).Should(BeNil())
-		Expect(utils.UnInstallDefaultDefinition()).Should(BeNil())
+		Expect(k8sClient.Delete(ctx, ts.DeepCopy())).
+			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		Expect(k8sClient.Delete(ctx, tsNoService.DeepCopy())).
+			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
+			Expect(utils.UnInstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
+				Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		}
 	})
 
 	It("test normal triggerInstance create relevant resource", func() {
