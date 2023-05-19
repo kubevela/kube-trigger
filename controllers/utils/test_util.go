@@ -19,10 +19,11 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"os"
+
 	"github.com/onsi/gomega/format"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
@@ -43,12 +44,12 @@ func InstallDefinition(ctx context.Context, cli client.Client, defaultDefinition
 		return err
 	}
 	s := string(b)
-	defJson, err := yaml.YAMLToJSON([]byte(s))
+	defJSON, err := yaml.YAMLToJSON([]byte(s))
 	if err != nil {
 		return err
 	}
 	u := &unstructured.Unstructured{}
-	if err := json.Unmarshal(defJson, u); err != nil {
+	if err := json.Unmarshal(defJSON, u); err != nil {
 		return err
 	}
 	return cli.Create(ctx, u.DeepCopy())
@@ -61,12 +62,12 @@ func UnInstallDefinition(ctx context.Context, cli client.Client, defaultDefiniti
 		return err
 	}
 	s := string(b)
-	defJson, err := yaml.YAMLToJSON([]byte(s))
+	defJSON, err := yaml.YAMLToJSON([]byte(s))
 	if err != nil {
 		return err
 	}
 	u := &unstructured.Unstructured{}
-	if err := json.Unmarshal(defJson, u); err != nil {
+	if err := json.Unmarshal(defJSON, u); err != nil {
 		return err
 	}
 	return cli.Delete(ctx, u.DeepCopy())

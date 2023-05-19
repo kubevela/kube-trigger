@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"github.com/kubevela/pkg/util/slices"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
@@ -44,7 +45,14 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 	tsNoService := v1alpha1.TriggerService{}
 	tsNoServiceJSON, _ := yaml.YAMLToJSON([]byte(normalTriggerServiceWithOutService))
 
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "vela-system",
+		},
+	}
+
 	BeforeEach(func() {
+		Expect(k8sClient.Create(ctx, ns.DeepCopy())).Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
 		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
 			Expect(utils.InstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
 				Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
