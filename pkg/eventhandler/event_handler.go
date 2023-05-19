@@ -66,10 +66,9 @@ func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.A
 		// TODO: use handler to handle
 		// Apply filters
 		context := map[string]interface{}{
-			"sourceType": sourceType,
-			"event":      event,
-			"data":       data,
-			"timestamp":  time.Now().Format(time.RFC3339),
+			"event":     event,
+			"data":      data,
+			"timestamp": time.Now().Format(time.RFC3339),
 		}
 		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
 		if err != nil {

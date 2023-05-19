@@ -159,15 +159,11 @@ func runCli(cmd *cobra.Command, args []string) error {
 		// Make this Source type exists.
 		s, ok := sourceReg.Get(w.Source.Type)
 		if !ok {
-			logger.Errorf("source type %s does not exist", w.Source.Type)
-			continue
+			return fmt.Errorf("source type %s does not exist", w.Source.Type)
 		}
-
 		source := s.New()
-		if s.Singleton() {
-			if s, ok := instances[w.Source.Type]; ok {
-				source = s
-			}
+		if s, ok := instances[w.Source.Type]; ok {
+			source = s
 		}
 
 		// Create a EventHandler
@@ -176,8 +172,7 @@ func runCli(cmd *cobra.Command, args []string) error {
 		// Initialize Source, with user-provided prop and event handler
 		err = source.Init(w.Source.Properties, eh)
 		if err != nil {
-			logger.Errorf("failed to initialize source %s: %s", source.Type(), err)
-			continue
+			return errors.Wrapf(err, "failed to initialize source %s", source.Type())
 		}
 
 		instances[w.Source.Type] = source
@@ -186,8 +181,8 @@ func runCli(cmd *cobra.Command, args []string) error {
 	for _, instance := range instances {
 		err := instance.Run(ctx)
 		if err != nil {
-			logger.Errorf("source %s failed to run: %v", instance.Type(), err)
-			continue
+			logger.Fatalf("source %s failed to run: %v", instance.Type(), err)
+			return err
 		}
 	}
 

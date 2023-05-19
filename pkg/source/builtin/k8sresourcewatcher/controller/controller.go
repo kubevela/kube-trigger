@@ -114,7 +114,6 @@ func newResourceController(ctx context.Context, logger *logrus.Entry, informer c
 	var newEvent types.InformerEvent
 	var err error
 	cluster, _ := multicluster.ClusterFrom(ctx)
-	//nolint:errcheck // no need to check err here
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			newEvent.Event = types.Event{
@@ -208,7 +207,6 @@ func (c *Controller) processNextItem() bool {
 
 	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
 	err := c.processItem(newEvent.(types.InformerEvent))
-	//nolint:gocritic // no need to use switch statement here
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(newEvent)

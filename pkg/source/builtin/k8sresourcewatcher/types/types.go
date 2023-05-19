@@ -33,7 +33,6 @@ type Config struct {
 	Clusters       []string          `json:"clusters,omitempty"`
 }
 
-// Key returns the identifier of a Config.
 func (c *Config) Key() string {
 	var labels string
 	if len(c.MatchingLabels) > 0 {
@@ -44,7 +43,6 @@ func (c *Config) Key() string {
 	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels}, "-")
 }
 
-// Merge merges two Configs.
 func (c *Config) Merge(new Config) {
 	for _, event := range new.Events {
 		if !slices.Contains(c.Events, event) {
@@ -59,10 +57,8 @@ func (c *Config) Merge(new Config) {
 	}
 }
 
-// EventType is the type of the observed event.
 type EventType string
 
-// EventTypes
 const (
 	EventTypeCreate EventType = "create"
 	EventTypeUpdate EventType = "update"

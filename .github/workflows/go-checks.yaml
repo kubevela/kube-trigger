@@ -15,8 +15,7 @@ on:
 
 env:
   GO_VERSION: '1.19'
-  # Keep this in sync with build/lint.sh
-  GOLANGCI_VERSION: '1.49.0'
+  GOLANGCI_VERSION: 'v1.49.0'
   USE_BUILD_CONTAINER: '1'
 
 jobs:
@@ -52,11 +51,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      # Use this action instead of running golangci directly because it can comment on pr.
       - name: Lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v${{ env.GOLANGCI_VERSION }}
+          version: ${{ env.GOLANGCI_VERSION }}
 
       - name: Check Diff
         run: make checkdiff

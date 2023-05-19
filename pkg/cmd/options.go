@@ -20,9 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/kubevela/kube-trigger/pkg/executor"
+	"github.com/sirupsen/logrus"
 )
 
 type option struct {

@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/kubevela/kube-trigger/pkg/source/builtin/cronjob"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher"
 	"github.com/kubevela/kube-trigger/pkg/source/types"
 )
@@ -25,7 +24,6 @@ import (
 // RegisterBuiltinSources register builtin sources.
 func RegisterBuiltinSources(reg *Registry) {
 	registerFromInstance(reg, &k8sresourcewatcher.K8sResourceWatcher{})
-	registerFromInstance(reg, &cronjob.CronJob{})
 }
 
 func registerFromInstance(reg *Registry, act types.Source) {
