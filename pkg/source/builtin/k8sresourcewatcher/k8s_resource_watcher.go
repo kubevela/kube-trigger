@@ -113,7 +113,7 @@ func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhand
 	}
 	w.eventHandlers[ctrlConf.Key()] = append(w.eventHandlers[ctrlConf.Key()], eh)
 
-	w.logger = logrus.WithField("source-type", v1alpha1.SourceTypeResourceWatcher)
+	w.logger = logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
 
 	w.logger.Debugf("initialized")
 	return nil

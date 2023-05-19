@@ -67,8 +67,7 @@ const (
 
 // Event represent an event got from k8s api server
 type Event struct {
-	Type    EventType `json:"type"`
-	Cluster string    `json:"cluster"`
+	Type EventType `json:"type"`
 }
 
 // InformerEvent indicate the informerEvent
