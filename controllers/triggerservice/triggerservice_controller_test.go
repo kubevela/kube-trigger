@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"github.com/kubevela/pkg/util/slices"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path/filepath"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/controllers/utils"
@@ -43,16 +45,43 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 	tsNoService := v1alpha1.TriggerService{}
 	tsNoServiceJSON, _ := yaml.YAMLToJSON([]byte(normalTriggerServiceWithOutService))
 
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "vela-system",
+		},
+	}
+
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kube-trigger",
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
 	BeforeEach(func() {
-		Expect(utils.InstallDefaultDefinition()).Should(BeNil())
+		Expect(k8sClient.Create(ctx, ns.DeepCopy())).Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
+		Expect(k8sClient.Create(ctx, clusterRoleBinding.DeepCopy())).Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
+		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
+			Expect(utils.InstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
+				Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
+		}
 		Expect(json.Unmarshal(tsJSON, &ts)).Should(BeNil())
 		Expect(json.Unmarshal(tsNoServiceJSON, &tsNoService)).Should(BeNil())
 	})
 
 	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, ts.DeepCopy())).Should(BeNil())
-		Expect(k8sClient.Delete(ctx, tsNoService.DeepCopy())).Should(BeNil())
-		Expect(utils.UnInstallDefaultDefinition()).Should(BeNil())
+		Expect(k8sClient.Delete(ctx, ts.DeepCopy())).
+			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		Expect(k8sClient.Delete(ctx, tsNoService.DeepCopy())).
+			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
+			Expect(utils.UnInstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
+				Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
+		}
 	})
 
 	It("test normal triggerInstance create relevant resource", func() {
@@ -89,8 +118,6 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 			Name:      "kube-trigger",
 			Namespace: ts.Namespace,
 		}
-		Expect(clusterRoleBing.Subjects[0].Name).Should(Equal("kube-trigger"))
-		Expect(clusterRoleBing.Subjects[0].Namespace).Should(Equal("vela-system"))
 		Expect(slices.Contains(clusterRoleBing.Subjects, subject)).Should(BeTrue())
 
 		sa := corev1.ServiceAccount{}
