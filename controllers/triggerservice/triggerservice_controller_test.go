@@ -51,8 +51,20 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 		},
 	}
 
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kube-trigger",
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
 	BeforeEach(func() {
 		Expect(k8sClient.Create(ctx, ns.DeepCopy())).Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
+		Expect(k8sClient.Create(ctx, clusterRoleBinding.DeepCopy())).Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
 		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
 			Expect(utils.InstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
 				Should(SatisfyAny(Succeed(), &utils.AlreadyExistMatcher{}))
@@ -106,8 +118,6 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 			Name:      "kube-trigger",
 			Namespace: ts.Namespace,
 		}
-		Expect(clusterRoleBing.Subjects[0].Name).Should(Equal("kube-trigger"))
-		Expect(clusterRoleBing.Subjects[0].Namespace).Should(Equal("vela-system"))
 		Expect(slices.Contains(clusterRoleBing.Subjects, subject)).Should(BeTrue())
 
 		sa := corev1.ServiceAccount{}
