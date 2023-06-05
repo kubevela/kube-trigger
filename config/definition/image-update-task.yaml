@@ -1,0 +1,91 @@
+apiVersion: core.oam.dev/v1alpha1
+kind: Definition
+metadata:
+  name: image-update-task
+  namespace: vela-system
+spec:
+  type: trigger-action
+  templates:
+    # create a Job resource as an action in the same namespace as the source (by default)
+    main.cue: |
+      import (
+        "vela/kube"
+      )
+
+      apply: kube.#Apply & {
+        $params: {
+          resource: {
+            apiVersion: "batch/v1"
+            kind: "Job"
+            metadata: {
+              name: context.data.metadata.name
+              namespace: parameter.namespace
+              if context.data.metadata.labels != _|_ {
+                labels: context.data.metadata.labels
+              }
+              ownerReferences: [
+                {
+                  apiVersion: context.data.apiVersion
+                  kind:       context.data.kind
+                  name:       context.data.metadata.name
+                  uid:        context.data.metadata.uid
+                  controller: true
+                },
+              ]
+            }
+
+            spec: {
+              if parameter.ttlSecondsAfterFinished != _|_ {
+                ttlSecondsAfterFinished: parameter.ttlSecondsAfterFinished
+              }
+
+              template: {
+                spec: {
+                  restartPolicy: parameter.restart
+                  containers: [{
+                    name: context.data.metadata.name
+                    image: parameter.image
+                    command: parameter.cmd
+
+                    env: [{
+                      name: "SOURCE_NAME"
+                      value: context.data.metadata.name
+                    },{
+                      name: "SOURCE_NAMESPACE"
+                      value: context.data.metadata.namespace
+                    },
+                    if parameter.env != _|_ {
+                      parameter.env
+                    }]
+                  }]
+                }
+              }
+            }
+          }
+        }
+      }
+
+      parameter: {
+        // +usage=The image to run the job container on
+        image: string
+
+        // +usage=The namespace to create the Job in
+        namespace: *context.data.metadata.namespace | string
+
+        // +usage=Define the job restart policy, the value can only be Never or OnFailure. By default, it's Never.
+        restart: *"Never" | string
+
+        // +usage=Number of seconds to wait before a successfully completed job is cleaned up
+        ttlSecondsAfterFinished?: uint
+
+        // +usage=Commands to run in the container
+        cmd: [...string]
+
+        // +usage=Define evironment variables for the Job container
+        env?: [...{
+          // +usage=Name of the environment variable
+          name: string
+          // +usage=Value of the environment variable
+          value: string
+        }]
+      }
