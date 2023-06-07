@@ -47,16 +47,25 @@ spec:
                     image: parameter.image
                     command: parameter.cmd
 
-                    env: [{
-                      name: "SOURCE_NAME"
-                      value: context.data.metadata.name
-                    },{
-                      name: "SOURCE_NAMESPACE"
-                      value: context.data.metadata.namespace
-                    },
+                    if parameter.env == _|_ {
+                      env: [{
+                        name: "SOURCE_NAME"
+                        value: context.data.metadata.name
+                      },{
+                        name: "SOURCE_NAMESPACE"
+                        value: context.data.metadata.namespace
+                      }]
+                    }
+
                     if parameter.env != _|_ {
-                      parameter.env
-                    }]
+                      env: [{
+                        name: "SOURCE_NAME"
+                        value: context.data.metadata.name
+                      },{
+                        name: "SOURCE_NAMESPACE"
+                        value: context.data.metadata.namespace
+                      }] + parameter.env
+                    }
                   }]
                 }
               }

@@ -23,9 +23,6 @@ spec:
         type: image-update-task
         properties:
           cmd: [/bin/sh, -c, "echo Image: ${SOURCE_NAME} in namespace: ${SOURCE_NAMESPACE} has been successfully rebased at $(date)"]
-          env:
-          - name: TEST_KEY
-            value: TEST_VALUE
           image: busybox
           name: image-update-task
           ttlSecondsAfterFinished: 600
