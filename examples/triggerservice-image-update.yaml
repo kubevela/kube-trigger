@@ -20,7 +20,7 @@ spec:
         context.data.status.latestBuildReason == "STACK" && context.data.status.conditions[0].status == "True"
       
       action:
-        type: image-update-task
+        type: task
         properties:
           cmd: [/bin/sh, -c, "echo Image: ${SOURCE_NAME} in namespace: ${SOURCE_NAMESPACE} has been successfully rebased at $(date)"]
           image: busybox

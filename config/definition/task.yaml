@@ -1,7 +1,7 @@
 apiVersion: core.oam.dev/v1alpha1
 kind: Definition
 metadata:
-  name: image-update-task
+  name: task
   namespace: vela-system
 spec:
   type: trigger-action
@@ -18,7 +18,7 @@ spec:
             apiVersion: "batch/v1"
             kind: "Job"
             metadata: {
-              name: context.data.metadata.name
+              name: parameter.name
               namespace: parameter.namespace
               if context.data.metadata.labels != _|_ {
                 labels: context.data.metadata.labels
@@ -43,7 +43,7 @@ spec:
                 spec: {
                   restartPolicy: parameter.restart
                   containers: [{
-                    name: context.data.metadata.name
+                    name: parameter.name
                     image: parameter.image
                     command: parameter.cmd
 
@@ -77,6 +77,9 @@ spec:
       parameter: {
         // +usage=The image to run the job container on
         image: string
+
+        // +usage=Name of the cron job
+        name: *context.data.metadata.name | string
 
         // +usage=The namespace to create the Job in
         namespace: *context.data.metadata.namespace | string
