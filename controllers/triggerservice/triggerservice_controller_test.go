@@ -73,17 +73,6 @@ var _ = Describe("TriggerinstanceController", Ordered, func() {
 		Expect(json.Unmarshal(tsNoServiceJSON, &tsNoService)).Should(BeNil())
 	})
 
-	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, ts.DeepCopy())).
-			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
-		Expect(k8sClient.Delete(ctx, tsNoService.DeepCopy())).
-			Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
-		for _, file := range []string{"bump-application-revision", "create-event-listener", "default", "patch-resource", "record-event"} {
-			Expect(utils.UnInstallDefinition(ctx, k8sClient, filepath.Join("../../config/definition", file+".yaml"))).
-				Should(SatisfyAny(Succeed(), &utils.NotFoundMatcher{}))
-		}
-	})
-
 	It("test normal triggerInstance create relevant resource", func() {
 		tsKey := client.ObjectKey{
 			Namespace: ts.Namespace,
