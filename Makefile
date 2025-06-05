@@ -130,4 +130,4 @@ ENVTEST             ?= bin/setup-envtest
 envtest:
 	mkdir -p bin
 	[ -f $(ENVTEST) ] || GOBIN=$(PWD)/bin \
-	    go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	    go install sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.17
