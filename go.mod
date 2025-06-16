@@ -1,6 +1,6 @@
 module github.com/kubevela/kube-trigger
 
-go 1.19
+go 1.23
 
 require (
 	cuelang.org/go v0.5.0-beta.5

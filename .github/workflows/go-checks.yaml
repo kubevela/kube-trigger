@@ -14,9 +14,9 @@ on:
   workflow_dispatch: { }
 
 env:
-  GO_VERSION: '1.19'
+  GO_VERSION: '1.23'
   # Keep this in sync with build/lint.sh
-  GOLANGCI_VERSION: '1.49.0'
+  GOLANGCI_VERSION: '1.60.1'
   USE_BUILD_CONTAINER: '1'
 
 jobs:
