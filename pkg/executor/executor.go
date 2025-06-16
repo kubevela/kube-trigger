@@ -150,8 +150,8 @@ func (e *Executor) requeueJob(j Job) {
 func (e *Executor) AddJob(j Job) error {
 	if e.queue.Len() >= e.maxQueueSize {
 		msg := fmt.Sprintf("job %s (%s) cannot be added, queue size full %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
-		e.logger.Errorf(msg)
-		return fmt.Errorf(msg)
+		e.logger.Error(msg)
+		return fmt.Errorf("%s", msg)
 	}
 	e.queue.Add(j)
 	e.logger.Debugf("job %s (%s) added to queue, currnet queue size: %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
@@ -215,7 +215,7 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		msg += fmt.Sprintf(", will retry job %s (%s) later", j.Type(), j.ID())
 		e.requeueJob(j)
 	}
-	e.logger.Errorf(msg)
+	e.logger.Error(msg)
 
 	return true
 }

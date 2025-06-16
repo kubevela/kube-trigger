@@ -54,17 +54,17 @@ type BucketRateLimiter struct {
 var _ RateLimiter = &BucketRateLimiter{}
 
 // When .
-func (r *BucketRateLimiter) When(item interface{}) time.Duration {
+func (r *BucketRateLimiter) When(_ interface{}) time.Duration {
 	return r.Limiter.Reserve().Delay()
 }
 
 // NumRequeues .
-func (r *BucketRateLimiter) NumRequeues(item interface{}) int {
+func (r *BucketRateLimiter) NumRequeues(_ interface{}) int {
 	return 0
 }
 
 // Forget .
-func (r *BucketRateLimiter) Forget(item interface{}) {
+func (r *BucketRateLimiter) Forget(_ interface{}) {
 }
 
 // ItemExponentialFailureRateLimiter does a simple baseDelay*2^<num-failures> limit

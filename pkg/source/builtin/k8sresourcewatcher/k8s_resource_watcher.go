@@ -186,7 +186,7 @@ func NewMultiClustersGetter(typ string) (MultiClustersGetter, error) {
 
 type clusterGatewayGetter struct{}
 
-func (c *clusterGatewayGetter) GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error) {
+func (c *clusterGatewayGetter) GetDynamicClientAndMapper(_ context.Context, _ string) (dynamic.Interface, meta.RESTMapper, error) {
 	return singleton.DynamicClient.Get(), singleton.RESTMapper.Get(), nil
 }
 
@@ -207,7 +207,7 @@ func (c *clusterGatewaySecretGetter) GetDynamicClientAndMapper(ctx context.Conte
 	return c.getDynamicClientAndMapperFromConfig(ctx, config)
 }
 
-func (c *clusterGatewaySecretGetter) getDynamicClientAndMapperFromConfig(ctx context.Context, config *rest.Config) (dynamic.Interface, meta.RESTMapper, error) {
+func (c *clusterGatewaySecretGetter) getDynamicClientAndMapperFromConfig(_ context.Context, config *rest.Config) (dynamic.Interface, meta.RESTMapper, error) {
 	cli, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, nil, err
