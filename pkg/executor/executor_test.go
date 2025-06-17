@@ -340,7 +340,7 @@ func (f *failingJob) AllowConcurrency() bool {
 func waitForAdded(q workqueue.TypedDelayingInterface[Job], depth int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	err := wait.PollUntilContextTimeout(ctx, 1*time.Millisecond, 1*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		if q.Len() == depth {
 			return true, nil

@@ -217,7 +217,7 @@ func (c *clusterGatewaySecretGetter) getDynamicClientAndMapperFromConfig(_ conte
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	mapper, err := apiutil.NewDynamicRESTMapper(config, httpClient)
 	if err != nil {
 		return nil, nil, err
