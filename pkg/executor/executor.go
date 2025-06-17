@@ -43,7 +43,7 @@ type Executor struct {
 	timeout      time.Duration
 	logger       *logrus.Entry
 	runningJobs  sync.Map
-	queue        workqueue.RateLimitingInterface
+	queue        workqueue.TypedRateLimitingInterface[Job]
 }
 
 // Job is an Action to be executed by the workers in the Executor.
@@ -91,10 +91,10 @@ func New(c Config) (*Executor, error) {
 	e.runningJobs = sync.Map{}
 	// Create a rate limited queue, with a token bucket for overall limiting,
 	// and exponential failure for per-item limiting.
-	e.queue = workqueue.NewRateLimitingQueue(
-		workqueue.NewMaxOfRateLimiter(
-			workqueue.NewItemExponentialFailureRateLimiter(c.BaseRetryDelay, maxRetryDelay),
-			&workqueue.BucketRateLimiter{
+	e.queue = workqueue.NewTypedRateLimitingQueue[Job](
+		workqueue.NewTypedMaxOfRateLimiter[Job](
+			workqueue.NewTypedItemExponentialFailureRateLimiter[Job](c.BaseRetryDelay, maxRetryDelay),
+			&workqueue.TypedBucketRateLimiter[Job]{
 				// Token Bucket limiter, with
 				// qps = workers * qpsToWorkerRatio, maxBurst = QueueSize
 				Limiter: rate.NewLimiter(rate.Limit(c.Workers*c.PerWorkerQPS), c.QueueSize),
@@ -164,17 +164,12 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		return false
 	}
 
-	item, quit := e.queue.Get()
+	j, quit := e.queue.Get()
 	if quit {
 		return false
 	}
+	defer e.queue.Done(j)
 
-	defer e.queue.Done(item)
-
-	j, ok := item.(Job)
-	if !ok {
-		return true
-	}
 	if j == nil {
 		return true
 	}
