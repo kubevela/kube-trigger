@@ -124,7 +124,7 @@ checkdiff: generate
 	fi
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION := 1.24.1
+ENVTEST_K8S_VERSION := 1.27.0
 ENVTEST             ?= bin/setup-envtest
 
 envtest:
