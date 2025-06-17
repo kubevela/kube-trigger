@@ -2,8 +2,6 @@ module github.com/kubevela/kube-trigger
 
 go 1.23.8
 
-toolchain go1.24.1
-
 require (
 	cuelang.org/go v0.9.2
 	github.com/crossplane/crossplane-runtime v0.19.2
@@ -22,7 +20,7 @@ require (
 	k8s.io/client-go v0.31.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
-	sigs.k8s.io/controller-runtime v0.19.0
+	sigs.k8s.io/controller-runtime v0.19.1
 )
 
 require (
@@ -69,7 +67,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/oam-dev/cluster-gateway v1.9.1-0.20241120140625-33c8891b781c // indirect
+	github.com/oam-dev/cluster-gateway v1.9.2-0.20250617035916-cb1381478584 // indirect
 	github.com/openshift/library-go v0.0.0-20230327085348-8477ec72b725 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.19.1 // indirect
@@ -119,7 +117,7 @@ require (
 	open-cluster-management.io/api v0.11.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy v0.0.30 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.30.4 // indirect
-	sigs.k8s.io/apiserver-runtime v1.1.2-0.20221118041430-0a6394f6dda3 // indirect
+	sigs.k8s.io/apiserver-runtime v1.1.2-0.20250117204231-9282f514a674 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
