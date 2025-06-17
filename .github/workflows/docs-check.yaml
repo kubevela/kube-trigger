@@ -13,6 +13,9 @@ on:
       - release-*
   workflow_dispatch: { }
 
+env:
+  GO_VERSION: '1.23'
+
 jobs:
   checks:
     name: Check Docs
@@ -30,7 +33,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.23
+          go-version: ${{ env.GO_VERSION }}
           cache: true
 
       # Currently not required
