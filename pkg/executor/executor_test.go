@@ -307,8 +307,6 @@ func (s *sleepingJob) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	}
-
-	return nil
 }
 
 func (s *sleepingJob) AllowConcurrency() bool {
@@ -339,8 +337,11 @@ func (f *failingJob) AllowConcurrency() bool {
 	return false
 }
 
-func waitForAdded(q workqueue.DelayingInterface, depth int) error {
-	err := wait.Poll(1*time.Millisecond, 1*time.Second, func() (done bool, err error) {
+func waitForAdded(q workqueue.TypedDelayingInterface[Job], depth int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := wait.PollUntilContextTimeout(ctx, 1*time.Millisecond, 1*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		if q.Len() == depth {
 			return true, nil
 		}

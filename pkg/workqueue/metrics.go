@@ -143,9 +143,9 @@ func (m *defaultQueueMetrics) updateUnfinishedWork() {
 
 type noMetrics struct{}
 
-func (noMetrics) add(item t)            {}
-func (noMetrics) get(item t)            {}
-func (noMetrics) done(item t)           {}
+func (noMetrics) add(_ t)               {}
+func (noMetrics) get(_ t)               {}
+func (noMetrics) done(_ t)              {}
 func (noMetrics) updateUnfinishedWork() {}
 
 // Gets the time since the specified start in seconds.
@@ -182,31 +182,31 @@ type MetricsProvider interface {
 
 type noopMetricsProvider struct{}
 
-func (noopMetricsProvider) NewDepthMetric(name string) GaugeMetric {
+func (noopMetricsProvider) NewDepthMetric(_ string) GaugeMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewAddsMetric(name string) CounterMetric {
+func (noopMetricsProvider) NewAddsMetric(_ string) CounterMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewLatencyMetric(name string) HistogramMetric {
+func (noopMetricsProvider) NewLatencyMetric(_ string) HistogramMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewWorkDurationMetric(name string) HistogramMetric {
+func (noopMetricsProvider) NewWorkDurationMetric(_ string) HistogramMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewUnfinishedWorkSecondsMetric(name string) SettableGaugeMetric {
+func (noopMetricsProvider) NewUnfinishedWorkSecondsMetric(_ string) SettableGaugeMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewLongestRunningProcessorSecondsMetric(name string) SettableGaugeMetric {
+func (noopMetricsProvider) NewLongestRunningProcessorSecondsMetric(_ string) SettableGaugeMetric {
 	return noopMetric{}
 }
 
-func (noopMetricsProvider) NewRetriesMetric(name string) CounterMetric {
+func (noopMetricsProvider) NewRetriesMetric(_ string) CounterMetric {
 	return noopMetric{}
 }
 

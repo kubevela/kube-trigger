@@ -43,7 +43,7 @@ type Executor struct {
 	timeout      time.Duration
 	logger       *logrus.Entry
 	runningJobs  sync.Map
-	queue        workqueue.RateLimitingInterface
+	queue        workqueue.TypedRateLimitingInterface[Job]
 }
 
 // Job is an Action to be executed by the workers in the Executor.
@@ -91,10 +91,10 @@ func New(c Config) (*Executor, error) {
 	e.runningJobs = sync.Map{}
 	// Create a rate limited queue, with a token bucket for overall limiting,
 	// and exponential failure for per-item limiting.
-	e.queue = workqueue.NewRateLimitingQueue(
-		workqueue.NewMaxOfRateLimiter(
-			workqueue.NewItemExponentialFailureRateLimiter(c.BaseRetryDelay, maxRetryDelay),
-			&workqueue.BucketRateLimiter{
+	e.queue = workqueue.NewTypedRateLimitingQueue[Job](
+		workqueue.NewTypedMaxOfRateLimiter[Job](
+			workqueue.NewTypedItemExponentialFailureRateLimiter[Job](c.BaseRetryDelay, maxRetryDelay),
+			&workqueue.TypedBucketRateLimiter[Job]{
 				// Token Bucket limiter, with
 				// qps = workers * qpsToWorkerRatio, maxBurst = QueueSize
 				Limiter: rate.NewLimiter(rate.Limit(c.Workers*c.PerWorkerQPS), c.QueueSize),
@@ -150,8 +150,8 @@ func (e *Executor) requeueJob(j Job) {
 func (e *Executor) AddJob(j Job) error {
 	if e.queue.Len() >= e.maxQueueSize {
 		msg := fmt.Sprintf("job %s (%s) cannot be added, queue size full %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
-		e.logger.Errorf(msg)
-		return fmt.Errorf(msg)
+		e.logger.Error(msg)
+		return fmt.Errorf("%s", msg)
 	}
 	e.queue.Add(j)
 	e.logger.Debugf("job %s (%s) added to queue, currnet queue size: %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
@@ -164,17 +164,12 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		return false
 	}
 
-	item, quit := e.queue.Get()
+	j, quit := e.queue.Get()
 	if quit {
 		return false
 	}
+	defer e.queue.Done(j)
 
-	defer e.queue.Done(item)
-
-	j, ok := item.(Job)
-	if !ok {
-		return true
-	}
 	if j == nil {
 		return true
 	}
@@ -215,7 +210,7 @@ func (e *Executor) runJob(ctx context.Context) bool {
 		msg += fmt.Sprintf(", will retry job %s (%s) later", j.Type(), j.ID())
 		e.requeueJob(j)
 	}
-	e.logger.Errorf(msg)
+	e.logger.Error(msg)
 
 	return true
 }

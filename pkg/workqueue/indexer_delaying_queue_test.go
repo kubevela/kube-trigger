@@ -29,11 +29,11 @@ func TestIndexerDelayingQueue_Version(t *testing.T) {
 	q := NewIndexerDelayingQueue("test", metaNamespaceKeyFunc)
 
 	var p1 = &podWrap{&corev1.Pod{}}
-	p1.Name = "ss"
-	p1.Namespace = "abc"
-	p1.ResourceVersion = "111"
+	p1.ObjectMeta.Name = "ss"
+	p1.ObjectMeta.Namespace = "abc"
+	p1.ObjectMeta.ResourceVersion = "111"
 	var p2 = &podWrap{p1.DeepCopy()}
-	p2.ResourceVersion = "112"
+	p2.ObjectMeta.ResourceVersion = "112"
 
 	q.Add(p1)
 	func() {
@@ -48,8 +48,8 @@ func TestIndexerDelayingQueue_Version(t *testing.T) {
 		t.Errorf("expect queue len: 1, but %d", q.Len())
 		return
 	}
-	if item.(*podWrap).ResourceVersion != "112" {
-		t.Errorf("expect the resource version : 112, but %s", item.(*podWrap).ResourceVersion)
+	if item.(*podWrap).ObjectMeta.ResourceVersion != "112" {
+		t.Errorf("expect the resource version : 112, but %s", item.(*podWrap).ObjectMeta.ResourceVersion)
 		return
 	}
 	q.Done(item)
@@ -63,11 +63,11 @@ func TestIndexerDelayingQueue_Parallel(t *testing.T) {
 	q := NewIndexerDelayingQueue("test", metaNamespaceKeyFunc)
 
 	var p1 = &podWrap{&corev1.Pod{}}
-	p1.Name = "ss"
-	p1.Namespace = "abc"
-	p1.ResourceVersion = "111"
+	p1.ObjectMeta.Name = "ss"
+	p1.ObjectMeta.Namespace = "abc"
+	p1.ObjectMeta.ResourceVersion = "111"
 	var p2 = &podWrap{p1.DeepCopy()}
-	p2.ResourceVersion = "112"
+	p2.ObjectMeta.ResourceVersion = "112"
 
 	q.Add(p1)
 	first := make(chan struct{})
@@ -88,16 +88,16 @@ func TestIndexerDelayingQueue_Parallel(t *testing.T) {
 		t.Errorf("expect don't process the same key at the same time")
 		return
 	}
-	if item.(*podWrap).ResourceVersion != "112" {
-		t.Errorf("expect resource version: \"112\", but %s", item.(*podWrap).ResourceVersion)
+	if item.(*podWrap).ObjectMeta.ResourceVersion != "112" {
+		t.Errorf("expect resource version: \"112\", but %s", item.(*podWrap).ObjectMeta.ResourceVersion)
 		return
 	}
 	q.AddAfter(item, time.Second)
 	q.Done(item)
 
 	item, _ = q.Get()
-	if item.(*podWrap).ResourceVersion != "112" {
-		t.Errorf("expect resource version: \"112\", but %s", item.(*podWrap).ResourceVersion)
+	if item.(*podWrap).ObjectMeta.ResourceVersion != "112" {
+		t.Errorf("expect resource version: \"112\", but %s", item.(*podWrap).ObjectMeta.ResourceVersion)
 		return
 	}
 	q.Done(item)

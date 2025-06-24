@@ -19,7 +19,7 @@ package utils
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	pointer "k8s.io/utils/ptr"
 
 	standardv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
 )
@@ -31,7 +31,7 @@ func SetOwnerReference(obj metav1.Object, ts *standardv1alpha1.TriggerService) {
 		Kind:               standardv1alpha1.TriggerServiceKind,
 		Name:               ts.Name,
 		UID:                ts.GetUID(),
-		BlockOwnerDeletion: pointer.Bool(true),
+		BlockOwnerDeletion: pointer.To(true),
 	}})
 }
 

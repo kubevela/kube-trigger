@@ -23,7 +23,7 @@ ifeq (, $(shell which go))
   USE_BUILD_CONTAINER := 1
 endif
 # Go version used as the image of the build container, grabbed from go.mod
-GO_VERSION       := $(shell grep -E '^go [[:digit:]]{1,3}\.[[:digit:]]{1,3}$$' go.mod | sed 's/go //')
+GO_VERSION := $(shell grep -E '^go [[:digit:]]{1,3}\.[[:digit:]]{1,3}' go.mod | sed 's/go \([0-9]\+\.[0-9]\+\).*/\1/')
 # Local Go release version (only supports go1.16 and later)
 LOCAL_GO_VERSION := $(shell go env GOVERSION 2>/dev/null | grep -oE "go[[:digit:]]{1,3}\.[[:digit:]]{1,3}" || echo "none")
 ifneq (1, $(USE_BUILD_CONTAINER)) # If not using build container, whcih means user have go installed. We need some checks.

@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-GOLANGCI_VERSION="1.49.0"
+GOLANGCI_VERSION="1.60.1"
 
 GOLANGCI="${GOLANGCI:-golangci-lint}"
 

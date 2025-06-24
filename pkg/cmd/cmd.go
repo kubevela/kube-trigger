@@ -97,7 +97,7 @@ func NewCommand() *cobra.Command {
 		Use:  "kubetrigger",
 		Long: cmdLongHelp,
 		RunE: runCli,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, _ []string) error {
 			logger.Infof("kube-trigger version=%s", version.Version)
 			return nil
 		},
@@ -114,7 +114,7 @@ func newVersionCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "version",
 		Short: "show kube-trigger version and exit",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			//nolint:forbidigo // print version
 			fmt.Println(version.Version)
 		},
@@ -140,7 +140,7 @@ func addFlags(opt *option, f *pflag.FlagSet) {
 	f.DurationVar(&retryPeriod, FlagLeaderElectionRetryPeriod, defaultRetryPeriod, "The duration the LeaderElector clients should wait between tries of actions.")
 }
 
-func runCli(cmd *cobra.Command, args []string) error {
+func runCli(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 	r := NewRunner()

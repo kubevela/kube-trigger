@@ -53,7 +53,7 @@ type Config struct {
 
 // New create a new EventHandler that does nothing.
 func New() EventHandler {
-	return func(sourceType string, event interface{}, data interface{}) error {
+	return func(_ string, _ interface{}, _ interface{}) error {
 		return nil
 	}
 }

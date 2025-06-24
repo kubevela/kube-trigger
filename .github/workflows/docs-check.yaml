@@ -13,6 +13,9 @@ on:
       - release-*
   workflow_dispatch: { }
 
+env:
+  GO_VERSION: '1.23'
+
 jobs:
   checks:
     name: Check Docs

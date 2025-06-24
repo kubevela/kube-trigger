@@ -128,7 +128,7 @@ func newResourceController(ctx context.Context, logger *logrus.Entry, informer c
 				queue.Add(newEvent)
 			}
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(_, new interface{}) {
 			newEvent.Event = types.Event{
 				Type:    types.EventTypeUpdate,
 				Cluster: cluster,
