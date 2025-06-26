@@ -6,7 +6,7 @@ require (
 	cuelang.org/go v0.9.2
 	github.com/crossplane/crossplane-runtime v0.19.2
 	github.com/google/go-cmp v0.6.0
-	github.com/kubevela/pkg v1.9.3-0.20250501012450-f76e317febc4
+	github.com/kubevela/pkg v1.9.3-0.20250625225831-a2894a62a307
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
@@ -19,7 +19,7 @@ require (
 	k8s.io/apimachinery v0.31.10
 	k8s.io/client-go v0.31.10
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	sigs.k8s.io/controller-runtime v0.19.7
 )
 
@@ -91,7 +91,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
@@ -108,11 +108,11 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.31.0 // indirect
-	k8s.io/apiserver v0.31.1 // indirect
-	k8s.io/component-base v0.31.1 // indirect
+	k8s.io/apiextensions-apiserver v0.31.2 // indirect
+	k8s.io/apiserver v0.31.10 // indirect
+	k8s.io/component-base v0.31.10 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kms v0.31.1 // indirect
+	k8s.io/kms v0.31.10 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	open-cluster-management.io/api v0.11.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy v0.0.30 // indirect
