@@ -24,9 +24,9 @@ require (
 )
 
 replace (
-	github.com/kubevela/pkg => github.com/anishbista60/pkg v0.0.0-20260722113652-beae530b4299
-	github.com/oam-dev/cluster-gateway => github.com/anishbista60/cluster-gateway v0.0.0-20260722105355-6e33354105aa
-	sigs.k8s.io/apiserver-runtime => github.com/anishbista60/apiserver-runtime v1.1.2-0.20260722113728-2a3e4ab162bf
+	github.com/kubevela/pkg => github.com/anishbista60/pkg v0.0.0-20260722123526-34480bf014a5
+	github.com/oam-dev/cluster-gateway => github.com/anishbista60/cluster-gateway v0.0.0-20260722123514-9f9fb7c6e81d
+	sigs.k8s.io/apiserver-runtime => github.com/anishbista60/apiserver-runtime v1.1.2-0.20260722123624-38ed2f9bdeb6
 )
 
 require (
