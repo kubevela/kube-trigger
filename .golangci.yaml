@@ -50,7 +50,7 @@ linters:
       - linters:
           - dupl
           - errcheck
-          - exportloopref
+          - copyloopvar
           - gocyclo
           - gosec
           - unparam
