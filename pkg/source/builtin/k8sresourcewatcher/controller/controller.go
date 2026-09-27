@@ -111,54 +111,42 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 
 func newResourceController(ctx context.Context, logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-	var newEvent types.InformerEvent
-	var err error
 	cluster, _ := multicluster.ClusterFrom(ctx)
 	//nolint:errcheck // no need to check err here
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeCreate,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = obj
-			meta := utils.GetObjectMetaData(obj)
-			logger.Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		UpdateFunc: func(_, new interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeUpdate,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = new
-			meta := utils.GetObjectMetaData(new)
-			logger.Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeDelete,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = obj
-			meta := utils.GetObjectMetaData(obj)
-			logger.Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-	})
+	informer.AddEventHandler(resourceEventHandler(logger, queue, kind, cluster))
 
 	return &Controller{
 		logger:   logger,
 		informer: informer,
 		queue:    queue,
 		cluster:  cluster,
+	}
+}
+
+// resourceEventHandler queues each informer event for the worker.
+func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInterface, kind string, cluster string) cache.ResourceEventHandlerFuncs {
+	enqueue := func(typ types.EventType, obj interface{}) {
+		meta, ok := utils.GetObjectMetaData(obj)
+		if !ok {
+			logger.Warnf("skipping %s event for %v: no object in %T", typ, kind, obj)
+			return
+		}
+		logger.Tracef("received %s event: %v %s/%s", typ, kind, meta.GetName(), meta.GetNamespace())
+		queue.Add(types.InformerEvent{
+			Event:    types.Event{Type: typ, Cluster: cluster},
+			EventObj: meta,
+		})
+	}
+	return cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			enqueue(types.EventTypeCreate, obj)
+		},
+		UpdateFunc: func(_, new interface{}) {
+			enqueue(types.EventTypeUpdate, new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			enqueue(types.EventTypeDelete, obj)
+		},
 	}
 }
 
@@ -206,7 +194,7 @@ func (c *Controller) processNextItem() bool {
 	}
 	defer c.queue.Done(newEvent)
 
-	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
+	meta := newEvent.(types.InformerEvent).EventObj
 	err := c.processItem(newEvent.(types.InformerEvent))
 	//nolint:gocritic // no need to use switch statement here
 	if err == nil {
@@ -227,7 +215,7 @@ func (c *Controller) processNextItem() bool {
 
 func (c *Controller) processItem(newEvent types.InformerEvent) error {
 	// Get object's metadata
-	objectMeta := utils.GetObjectMetaData(newEvent.EventObj)
+	objectMeta := newEvent.EventObj
 	// Fetching (create,update,delete) event Obj of k8s
 	c.logger.Debugf("Fetching obj (%+v) with newEvent(%s/%s) and eventType=%s from event", newEvent.EventObj, objectMeta.GetName(), objectMeta.GetNamespace(), newEvent.Type)
 

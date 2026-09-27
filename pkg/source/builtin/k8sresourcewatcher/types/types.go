@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/kubevela/pkg/util/slices"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Config is the config for resource controller
@@ -78,5 +79,5 @@ type Event struct {
 // InformerEvent indicate the informerEvent
 type InformerEvent struct {
 	Event
-	EventObj interface{}
+	EventObj metav1.Object
 }
