@@ -160,3 +160,40 @@ func TestWatcherStartingLaterKeepsEarlierWatchersCreates(t *testing.T) {
 	a.NoError(first.processItem(types.InformerEvent{Event: types.Event{Type: types.EventTypeCreate}, EventObj: obj}))
 	a.Equal(1, handled)
 }
+
+func TestUpdateWithoutAChangeIsSkipped(t *testing.T) {
+	configMap := func(resourceVersion string) *unstructured.Unstructured {
+		obj := &unstructured.Unstructured{}
+		obj.SetName("watched")
+		obj.SetResourceVersion(resourceVersion)
+		return obj
+	}
+
+	testcases := map[string]struct {
+		old, new *unstructured.Unstructured
+		queued   int
+	}{
+		"a write changes the resourceVersion": {
+			old:    configMap("1"),
+			new:    configMap("2"),
+			queued: 1,
+		},
+		// A relist reports every cached object as an update, changed or not.
+		"a relist of an unchanged object": {
+			old:    configMap("1"),
+			new:    configMap("1"),
+			queued: 0,
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+			defer queue.ShutDown()
+			handler := resourceEventHandler(logrus.NewEntry(logrus.New()), queue, "ConfigMap", "local")
+
+			handler.OnUpdate(tc.old, tc.new)
+			assert.Equal(t, tc.queued, queue.Len())
+		})
+	}
+}

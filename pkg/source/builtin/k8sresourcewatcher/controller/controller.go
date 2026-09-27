@@ -159,7 +159,14 @@ func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInte
 		AddFunc: func(obj interface{}) {
 			enqueue(types.EventTypeCreate, obj)
 		},
-		UpdateFunc: func(_, new interface{}) {
+		UpdateFunc: func(old, new interface{}) {
+			// A relist reports every cached object as an update; an unchanged
+			// resourceVersion means nothing was written.
+			oldMeta, oldOK := utils.GetObjectMetaData(old)
+			newMeta, newOK := utils.GetObjectMetaData(new)
+			if oldOK && newOK && oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
+				return
+			}
 			enqueue(types.EventTypeUpdate, new)
 		},
 		DeleteFunc: func(obj interface{}) {
