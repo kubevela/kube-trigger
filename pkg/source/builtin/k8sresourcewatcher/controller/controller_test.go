@@ -78,3 +78,37 @@ func TestDeleteHandlesTombstones(t *testing.T) {
 		})
 	}
 }
+
+func TestForEventsOnlyPassesItsTriggersEvents(t *testing.T) {
+	testcases := map[string]struct {
+		events []types.EventType
+		called []types.EventType
+	}{
+		"trigger watching create": {
+			events: []types.EventType{types.EventTypeCreate},
+			called: []types.EventType{types.EventTypeCreate},
+		},
+		"trigger watching update and delete": {
+			events: []types.EventType{types.EventTypeUpdate, types.EventTypeDelete},
+			called: []types.EventType{types.EventTypeUpdate, types.EventTypeDelete},
+		},
+		"trigger with no events gets all": {
+			events: nil,
+			called: []types.EventType{types.EventTypeCreate, types.EventTypeUpdate, types.EventTypeDelete},
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			var called []types.EventType
+			eh := ForEvents(tc.events, func(_ string, event interface{}, _ interface{}) error {
+				called = append(called, event.(types.Event).Type)
+				return nil
+			})
+			for _, typ := range []types.EventType{types.EventTypeCreate, types.EventTypeUpdate, types.EventTypeDelete} {
+				assert.NoError(t, eh("resource-watcher", types.Event{Type: typ}, nil))
+			}
+			assert.Equal(t, tc.called, called)
+		})
+	}
+}

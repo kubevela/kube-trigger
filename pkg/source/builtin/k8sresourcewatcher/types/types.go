@@ -45,11 +45,16 @@ func (c *Config) Key() string {
 	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels}, "-")
 }
 
-// Merge merges two Configs.
+// Merge merges two Configs watching the same resources. The merged Events is
+// what the shared watcher listens for; no Events means all of them.
 func (c *Config) Merge(new Config) {
-	for _, event := range new.Events {
-		if !slices.Contains(c.Events, event) {
-			c.Events = append(c.Events, event)
+	if len(c.Events) == 0 || len(new.Events) == 0 {
+		c.Events = nil
+	} else {
+		for _, event := range new.Events {
+			if !slices.Contains(c.Events, event) {
+				c.Events = append(c.Events, event)
+			}
 		}
 	}
 	for k, v := range new.MatchingLabels {

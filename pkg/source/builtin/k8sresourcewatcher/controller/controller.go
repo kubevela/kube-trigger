@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/kubevela/pkg/multicluster"
@@ -120,6 +121,22 @@ func newResourceController(ctx context.Context, logger *logrus.Entry, informer c
 		informer: informer,
 		queue:    queue,
 		cluster:  cluster,
+	}
+}
+
+// ForEvents calls eh only for the event types its trigger asked for; no events
+// means all of them. Triggers watching the same resources share one watcher,
+// which listens for every event any of them asked for.
+func ForEvents(events []types.EventType, eh eventhandler.EventHandler) eventhandler.EventHandler {
+	if len(events) == 0 {
+		return eh
+	}
+	events = slices.Clone(events)
+	return func(sourceType string, event interface{}, data interface{}) error {
+		if !slices.Contains(events, event.(types.Event).Type) {
+			return nil
+		}
+		return eh(sourceType, event, data)
 	}
 }
 
