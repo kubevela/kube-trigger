@@ -45,8 +45,6 @@ import (
 
 const maxRetries = 5
 
-var serverStartTime time.Time
-
 // Controller object
 type Controller struct {
 	logger   *logrus.Entry
@@ -58,6 +56,9 @@ type Controller struct {
 	listenEvents   map[types.EventType]bool
 	controllerType string
 	cluster        string
+	// startTime is when Run started; creates of objects older than it are
+	// skipped, as the initial list reports them too.
+	startTime time.Time
 }
 
 // Setup prepares controllers
@@ -177,7 +178,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		"cluster":    c.cluster,
 	})
 	c.logger.Info("starting watch k8s resources...")
-	serverStartTime = time.Now().Local()
+	c.startTime = time.Now().Local()
 
 	go c.informer.Run(stopCh)
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
@@ -244,9 +245,9 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 	// Process events based on its type
 	switch newEvent.Type {
 	case types.EventTypeCreate:
-		// Compare CreationTimestamp and serverStartTime and alert only on latest events
+		// Compare CreationTimestamp and startTime and alert only on latest events
 		// Could be Replaced by using Delta or DeltaFIFO
-		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
+		if objectMeta.GetCreationTimestamp().Sub(c.startTime).Seconds() > 0 {
 			c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
 			c.callEventHandler(objectMeta, newEvent.Event)
 			return nil

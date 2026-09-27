@@ -17,13 +17,23 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 	"github.com/kubevela/kube-trigger/pkg/workqueue"
 )
@@ -111,4 +121,42 @@ func TestForEventsOnlyPassesItsTriggersEvents(t *testing.T) {
 			assert.Equal(t, tc.called, called)
 		})
 	}
+}
+
+func TestWatcherStartingLaterKeepsEarlierWatchersCreates(t *testing.T) {
+	a := assert.New(t)
+	gvr := schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
+	mapper := meta.NewDefaultRESTMapper(nil)
+	mapper.Add(schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"}, meta.RESTScopeNamespace)
+	scheme := runtime.NewScheme()
+	a.NoError(corev1.AddToScheme(scheme))
+	cli := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, map[schema.GroupVersionResource]string{gvr: "ConfigMapList"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var handled int
+	start := func(eh eventhandler.EventHandler) *Controller {
+		c := Setup(ctx, cli, mapper, types.Config{APIVersion: "v1", Kind: "ConfigMap"}, []eventhandler.EventHandler{eh})
+		go c.Run(ctx.Done())
+		a.NoError(wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
+			return c.HasSynced(), nil
+		}))
+		return c
+	}
+	first := start(func(_ string, _ interface{}, _ interface{}) error {
+		handled++
+		return nil
+	})
+
+	// Created after the first watcher started, at the second precision of
+	// creationTimestamp, and before the second watcher starts.
+	time.Sleep(1100 * time.Millisecond)
+	obj := &unstructured.Unstructured{}
+	obj.SetName("created")
+	obj.SetCreationTimestamp(metav1.Now())
+	time.Sleep(1100 * time.Millisecond)
+	start(func(_ string, _ interface{}, _ interface{}) error { return nil })
+
+	a.NoError(first.processItem(types.InformerEvent{Event: types.Event{Type: types.EventTypeCreate}, EventObj: obj}))
+	a.Equal(1, handled)
 }
