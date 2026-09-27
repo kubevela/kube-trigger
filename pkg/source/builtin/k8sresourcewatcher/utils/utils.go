@@ -17,7 +17,11 @@ limitations under the License.
 package utils
 
 import (
+	"encoding/json"
+
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utiljson "k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -30,4 +34,25 @@ func GetObjectMetaData(obj interface{}) (metav1.Object, bool) {
 	}
 	o, ok := obj.(metav1.Object)
 	return o, ok
+}
+
+// MergePatch returns the RFC 7386 merge patch that turns from into to: the
+// fields that differ with their new values, a removed field as null, and a
+// changed list whole. It is decoded as unstructured objects are, so whole
+// numbers stay int64 for CUE.
+func MergePatch(from, to interface{}) (map[string]interface{}, error) {
+	fromJSON, err := json.Marshal(from)
+	if err != nil {
+		return nil, err
+	}
+	toJSON, err := json.Marshal(to)
+	if err != nil {
+		return nil, err
+	}
+	patchJSON, err := jsonpatch.CreateMergePatch(fromJSON, toJSON)
+	if err != nil {
+		return nil, err
+	}
+	patch := map[string]interface{}{}
+	return patch, utiljson.Unmarshal(patchJSON, &patch)
 }

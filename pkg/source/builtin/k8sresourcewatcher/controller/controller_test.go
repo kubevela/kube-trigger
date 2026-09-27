@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -82,7 +83,7 @@ func TestDeleteHandlesTombstones(t *testing.T) {
 				return
 			}
 			item, _ := queue.Get()
-			event := item.(types.InformerEvent)
+			event := item.(*types.InformerEvent)
 			a.Equal(types.EventTypeDelete, event.Type)
 			a.Equal(tc.queued, event.EventObj)
 		})
@@ -111,12 +112,12 @@ func TestForEventsOnlyPassesItsTriggersEvents(t *testing.T) {
 	for name, tc := range testcases {
 		t.Run(name, func(t *testing.T) {
 			var called []types.EventType
-			eh := ForEvents(tc.events, func(_ string, event interface{}, _ interface{}) error {
-				called = append(called, event.(types.Event).Type)
+			eh := ForEvents(tc.events, func(p eventhandler.Payload) error {
+				called = append(called, p.Event.(types.Event).Type)
 				return nil
 			})
 			for _, typ := range []types.EventType{types.EventTypeCreate, types.EventTypeUpdate, types.EventTypeDelete} {
-				assert.NoError(t, eh("resource-watcher", types.Event{Type: typ}, nil))
+				assert.NoError(t, eh(eventhandler.Payload{SourceType: "resource-watcher", Event: types.Event{Type: typ}}))
 			}
 			assert.Equal(t, tc.called, called)
 		})
@@ -143,7 +144,7 @@ func TestWatcherStartingLaterKeepsEarlierWatchersCreates(t *testing.T) {
 		}))
 		return c
 	}
-	first := start(func(_ string, _ interface{}, _ interface{}) error {
+	first := start(func(_ eventhandler.Payload) error {
 		handled++
 		return nil
 	})
@@ -155,9 +156,9 @@ func TestWatcherStartingLaterKeepsEarlierWatchersCreates(t *testing.T) {
 	obj.SetName("created")
 	obj.SetCreationTimestamp(metav1.Now())
 	time.Sleep(1100 * time.Millisecond)
-	start(func(_ string, _ interface{}, _ interface{}) error { return nil })
+	start(func(_ eventhandler.Payload) error { return nil })
 
-	a.NoError(first.processItem(types.InformerEvent{Event: types.Event{Type: types.EventTypeCreate}, EventObj: obj}))
+	a.NoError(first.processItem(&types.InformerEvent{Event: types.Event{Type: types.EventTypeCreate}, EventObj: obj}))
 	a.Equal(1, handled)
 }
 
@@ -202,4 +203,111 @@ func TestUpdateWithoutAChangeIsSkipped(t *testing.T) {
 			assert.Equal(t, tc.queued, queue.Len())
 		})
 	}
+}
+
+func TestUpdateCarriesWhatChanged(t *testing.T) {
+	a := assert.New(t)
+	configMap := func(resourceVersion, value string) *unstructured.Unstructured {
+		obj := &unstructured.Unstructured{Object: map[string]interface{}{"data": map[string]interface{}{"key": value}}}
+		obj.SetName("watched")
+		obj.SetResourceVersion(resourceVersion)
+		return obj
+	}
+	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	defer queue.ShutDown()
+	handler := resourceEventHandler(logrus.NewEntry(logrus.New()), queue, "ConfigMap", "local")
+
+	handler.OnAdd(configMap("1", "a"), false)
+	handler.OnUpdate(configMap("1", "a"), configMap("2", "b"))
+	handler.OnDelete(configMap("2", "b"))
+
+	var changed []map[string]interface{}
+	for queue.Len() > 0 {
+		item, _ := queue.Get()
+		changed = append(changed, item.(*types.InformerEvent).Changed)
+		queue.Done(item)
+	}
+	a.Equal([]map[string]interface{}{
+		nil,
+		{"metadata": map[string]interface{}{"resourceVersion": "2"}, "data": map[string]interface{}{"key": "b"}},
+		nil,
+	}, changed)
+}
+
+type handled struct {
+	eventType types.EventType
+	version   string
+	changed   interface{}
+}
+
+// version reads the label the test bumps on each write.
+func version(obj interface{}) string {
+	return obj.(metav1.Object).GetLabels()["version"]
+}
+
+func TestHandlersReceiveChangedOnUpdate(t *testing.T) {
+	a := assert.New(t)
+	gvr := schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
+	mapper := meta.NewDefaultRESTMapper(nil)
+	mapper.Add(schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"}, meta.RESTScopeNamespace)
+	scheme := runtime.NewScheme()
+	a.NoError(corev1.AddToScheme(scheme))
+	cli := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, map[schema.GroupVersionResource]string{gvr: "ConfigMapList"})
+
+	var mu sync.Mutex
+	var got []handled
+	eh := eventhandler.EventHandler(func(p eventhandler.Payload) error {
+		mu.Lock()
+		defer mu.Unlock()
+		var changed interface{}
+		if p.Changed != nil {
+			changed = p.Changed["metadata"].(map[string]interface{})["labels"]
+		}
+		got = append(got, handled{p.Event.(types.Event).Type, version(p.Data), changed})
+		return nil
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := Setup(ctx, cli, mapper, types.Config{
+		APIVersion: "v1",
+		Kind:       "ConfigMap",
+		Namespace:  "default",
+		Events:     []types.EventType{types.EventTypeCreate, types.EventTypeUpdate, types.EventTypeDelete},
+	}, []eventhandler.EventHandler{eh})
+	go c.Run(ctx.Done())
+	a.NoError(wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
+		return c.HasSynced(), nil
+	}))
+	// Create events are only handled for objects created after the watcher
+	// started, compared at the second precision of creationTimestamp.
+	time.Sleep(time.Second)
+
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion("v1")
+	obj.SetKind("ConfigMap")
+	obj.SetName("watched")
+	obj.SetNamespace("default")
+	obj.SetCreationTimestamp(metav1.Now())
+	obj.SetLabels(map[string]string{"version": "1"})
+	res := cli.Resource(gvr).Namespace("default")
+	_, err := res.Create(ctx, obj, metav1.CreateOptions{})
+	a.NoError(err)
+	obj.SetLabels(map[string]string{"version": "2"})
+	// The fake client leaves resourceVersion to the caller.
+	obj.SetResourceVersion("2")
+	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
+	a.NoError(err)
+	a.NoError(res.Delete(ctx, "watched", metav1.DeleteOptions{}))
+
+	a.NoError(wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(got) == 3, nil
+	}))
+	a.Equal([]handled{
+		{types.EventTypeCreate, "1", nil},
+		{types.EventTypeUpdate, "2", map[string]interface{}{"version": "2"}},
+		{types.EventTypeDelete, "2", nil},
+	}, got)
 }

@@ -133,31 +133,33 @@ func ForEvents(events []types.EventType, eh eventhandler.EventHandler) eventhand
 		return eh
 	}
 	events = slices.Clone(events)
-	return func(sourceType string, event interface{}, data interface{}) error {
-		if !slices.Contains(events, event.(types.Event).Type) {
+	return func(p eventhandler.Payload) error {
+		if !slices.Contains(events, p.Event.(types.Event).Type) {
 			return nil
 		}
-		return eh(sourceType, event, data)
+		return eh(p)
 	}
 }
 
 // resourceEventHandler queues each informer event for the worker.
 func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInterface, kind string, cluster string) cache.ResourceEventHandlerFuncs {
-	enqueue := func(typ types.EventType, obj interface{}) {
+	enqueue := func(typ types.EventType, obj interface{}, changed map[string]interface{}) {
 		meta, ok := utils.GetObjectMetaData(obj)
 		if !ok {
 			logger.Warnf("skipping %s event for %v: no object in %T", typ, kind, obj)
 			return
 		}
 		logger.Tracef("received %s event: %v %s/%s", typ, kind, meta.GetName(), meta.GetNamespace())
-		queue.Add(types.InformerEvent{
+		// A pointer, as the queue keys its items and Changed is a map.
+		queue.Add(&types.InformerEvent{
 			Event:    types.Event{Type: typ, Cluster: cluster},
 			EventObj: meta,
+			Changed:  changed,
 		})
 	}
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			enqueue(types.EventTypeCreate, obj)
+			enqueue(types.EventTypeCreate, obj, nil)
 		},
 		UpdateFunc: func(old, new interface{}) {
 			// A relist reports every cached object as an update; an unchanged
@@ -167,10 +169,15 @@ func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInte
 			if oldOK && newOK && oldMeta.GetResourceVersion() != "" && oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
 				return
 			}
-			enqueue(types.EventTypeUpdate, new)
+			// Diffed here so the queue holds the patch, not the old object too.
+			changed, err := utils.MergePatch(old, new)
+			if err != nil {
+				logger.Errorf("cannot compute changed fields for %v update, handling it without: %s", kind, err)
+			}
+			enqueue(types.EventTypeUpdate, new, changed)
 		},
 		DeleteFunc: func(obj interface{}) {
-			enqueue(types.EventTypeDelete, obj)
+			enqueue(types.EventTypeDelete, obj, nil)
 		},
 	}
 }
@@ -219,8 +226,8 @@ func (c *Controller) processNextItem() bool {
 	}
 	defer c.queue.Done(newEvent)
 
-	meta := newEvent.(types.InformerEvent).EventObj
-	err := c.processItem(newEvent.(types.InformerEvent))
+	meta := newEvent.(*types.InformerEvent).EventObj
+	err := c.processItem(newEvent.(*types.InformerEvent))
 	//nolint:gocritic // no need to use switch statement here
 	if err == nil {
 		// No error, reset the ratelimit counters
@@ -238,7 +245,7 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-func (c *Controller) processItem(newEvent types.InformerEvent) error {
+func (c *Controller) processItem(newEvent *types.InformerEvent) error {
 	// Get object's metadata
 	objectMeta := newEvent.EventObj
 	// Fetching (create,update,delete) event Obj of k8s
@@ -256,20 +263,21 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 		// Could be Replaced by using Delta or DeltaFIFO
 		if objectMeta.GetCreationTimestamp().Sub(c.startTime).Seconds() > 0 {
 			c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
-			c.callEventHandler(objectMeta, newEvent.Event)
+			c.callEventHandler(objectMeta, newEvent.Event, nil)
 			return nil
 		}
 	default:
 		c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
-		c.callEventHandler(objectMeta, newEvent.Event)
+		c.callEventHandler(objectMeta, newEvent.Event, newEvent.Changed)
 	}
 	return nil
 }
 
-func (c *Controller) callEventHandler(obj metav1.Object, e types.Event) {
+func (c *Controller) callEventHandler(obj metav1.Object, e types.Event, changed map[string]interface{}) {
 	c.logger.Infof("%s event %s/%s/%s happened, calling event handlers", e.Type, e.Cluster, obj.GetNamespace(), obj.GetName())
+	p := eventhandler.Payload{SourceType: c.controllerType, Event: e, Data: obj, Changed: changed}
 	for _, fn := range c.eventHandlers {
-		err := fn(c.controllerType, e, obj)
+		err := fn(p)
 		if err != nil {
 			c.logger.Infof("calling event handler failed: %s", err)
 		}

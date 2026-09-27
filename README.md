@@ -46,6 +46,47 @@ events that passed the Filter will then trigger an [Action](#Action).
 filter: context.data.status.readyReplicas == context.data.status.replicas
 ```
 
+Filters and Actions see the same `context`:
+
+| Field | Contents |
+| --- | --- |
+| `context.sourceType` | The Source that raised the event, e.g. `resource-watcher`. |
+| `context.event` | What happened, e.g. `{type: "update", cluster: "local"}` from the `resource-watcher`. |
+| `context.data` | The object the event is about. On a delete, its last known state. |
+| `context.changed` | What the event changed in `data`, as a [JSON merge patch](https://www.rfc-editor.org/rfc/rfc7386). Set only on a `resource-watcher` update. |
+| `context.timestamp` | When the event was handled, in RFC 3339. |
+
+`context.changed` lets a Filter decide when to run from what changed. It holds only the fields that differ, with their
+new values. A field that was removed, or set to `null`, is `null`; a merge patch cannot tell the two apart, so read
+`context.data` to see which. A list that changed in any way appears whole.
+
+Test a path with `!= _|_`. It is `false` when the path is not there, including on a create or delete where `changed` is
+absent, so a trigger watching every event type needs no guard:
+
+```yaml
+# keep updates that changed the spec, skipping status-only writes
+filter: context.changed.spec != _|_
+```
+
+```yaml
+# keep updates that added, changed or removed any label
+filter: context.changed.metadata.labels != _|_
+```
+
+To test a value, unify it rather than compare it: `==` on a path that is not there is an error, not `false`, so it
+would log one for every update that did not touch the field.
+
+```yaml
+# keep updates where the phase became Running
+filter: (context.changed.status.phase & "Running") != _|_
+```
+
+Test a map rather than a key inside it where the key may be removed: removing the only label drops the whole map, so
+`changed` holds `labels: null` and `context.changed.metadata.labels.tier` is absent.
+
+`metadata.resourceVersion` and `metadata.managedFields` change on every write, so `context.changed.metadata` is present
+on every update; test the fields under it that you care about.
+
 ### Actions
 
 An Action is a job that does what the user specified when an event happens. For example, the user can send

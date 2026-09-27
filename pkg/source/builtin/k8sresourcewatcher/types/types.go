@@ -85,4 +85,7 @@ type Event struct {
 type InformerEvent struct {
 	Event
 	EventObj metav1.Object
+	// Changed is the merge patch from the previous object on an update, and
+	// nil for other events.
+	Changed map[string]interface{}
 }
