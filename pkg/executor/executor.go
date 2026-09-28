@@ -211,6 +211,7 @@ func (e *Executor) runJob(ctx context.Context) bool {
 	// context cancelled, it is time to die
 	if timeoutCtx.Err() == context.Canceled {
 		e.logger.Infof("job %s (%s) failed because ctx errored: %s, worker will exit soon", j.Type(), j.ID(), timeoutCtx.Err())
+		e.release(j)
 		return false
 	}
 
@@ -261,4 +262,18 @@ func (e *Executor) RunJobs(ctx context.Context) {
 	case <-time.After(e.timeout):
 		e.logger.Infof("shutdown timed out")
 	}
+	e.dropUnstarted()
+}
+
+// dropUnstarted clears the jobs that never started: those still queued and
+// those waiting in lines. Workers stop taking jobs once ctx ends, so these
+// are lost on shutdown; they are logged so that is visible.
+func (e *Executor) dropUnstarted() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if queued := e.queue.Len(); queued > 0 || e.waiting > 0 {
+		e.logger.Warnf("shutting down without running %d queued and %d waiting jobs", queued, e.waiting)
+	}
+	e.lines = make(map[string][]Job)
+	e.waiting = 0
 }

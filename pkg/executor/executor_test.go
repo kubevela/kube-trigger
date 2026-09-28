@@ -564,3 +564,43 @@ func waitForAdded(q workqueue.TypedDelayingInterface[Job], depth int) error {
 	}
 	return err
 }
+
+// blockingJob runs until its context ends.
+type blockingJob struct {
+	started chan struct{}
+}
+
+func (b *blockingJob) Type() string           { return "blocking-job" }
+func (b *blockingJob) ID() string             { return "same" }
+func (b *blockingJob) AllowConcurrency() bool { return false }
+func (b *blockingJob) Run(ctx context.Context) error {
+	close(b.started)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestShutdownReleasesAndClearsLines(t *testing.T) {
+	a := assert.New(t)
+	e, err := New(Config{QueueSize: 5, Workers: 2, MaxJobRetries: 0, BaseRetryDelay: 10 * time.Millisecond,
+		PerWorkerQPS: 100, Timeout: time.Second})
+	a.NoError(err)
+
+	running := &blockingJob{started: make(chan struct{})}
+	a.NoError(e.AddJob(running))
+	a.NoError(e.AddJob(&blockingJob{started: make(chan struct{})}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		e.RunJobs(ctx)
+		close(done)
+	}()
+	<-running.started
+	cancel()
+	<-done
+
+	a.Equal(0, e.claimedIDs(), "the cancelled job's ID was released")
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	a.Equal(0, e.waiting, "jobs left waiting at shutdown were dropped, and logged")
+}
