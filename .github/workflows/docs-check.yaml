@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install xmllint
-        run: sudo apt-get install -y libxml2-utils
+        # The runner image's package index goes stale; refresh it or the install 404s.
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
 
       - name: Checkout Code
         uses: actions/checkout@v3
