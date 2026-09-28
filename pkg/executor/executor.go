@@ -265,9 +265,10 @@ func (e *Executor) RunJobs(ctx context.Context) {
 	e.dropUnstarted()
 }
 
-// dropUnstarted clears the jobs that never started: those still queued and
-// those waiting in lines. Workers stop taking jobs once ctx ends, so these
-// are lost on shutdown; they are logged so that is visible.
+// dropUnstarted logs how many jobs never started, those still queued and
+// those waiting in lines, and resets the lines. Workers stop taking jobs once
+// ctx ends, so these are lost on shutdown. After a shutdown timeout, workers
+// may still be finishing, so the counts are approximate.
 func (e *Executor) dropUnstarted() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
