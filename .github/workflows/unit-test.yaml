@@ -77,6 +77,8 @@ jobs:
         with:
           name: coverage
           path: cover.out
+          # A re-run of the workflow uploads it again under the same name.
+          overwrite: true
           if-no-files-found: error
 
   upload-coverage:
@@ -91,7 +93,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Fetch coverage report
         uses: actions/download-artifact@v4
