@@ -32,6 +32,11 @@ func TestMergeEvents(t *testing.T) {
 			second: []EventType{EventTypeUpdate},
 			merged: []EventType{EventTypeCreate, EventTypeUpdate},
 		},
+		"overlapping events are listed once": {
+			first:  []EventType{EventTypeCreate, EventTypeUpdate},
+			second: []EventType{EventTypeUpdate, EventTypeDelete},
+			merged: []EventType{EventTypeCreate, EventTypeUpdate, EventTypeDelete},
+		},
 		"no events means all, and stays all": {
 			first:  nil,
 			second: []EventType{EventTypeUpdate},

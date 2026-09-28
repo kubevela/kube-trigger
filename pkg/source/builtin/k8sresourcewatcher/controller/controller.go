@@ -164,7 +164,7 @@ func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInte
 			// resourceVersion means nothing was written.
 			oldMeta, oldOK := utils.GetObjectMetaData(old)
 			newMeta, newOK := utils.GetObjectMetaData(new)
-			if oldOK && newOK && oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
+			if oldOK && newOK && oldMeta.GetResourceVersion() != "" && oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
 				return
 			}
 			enqueue(types.EventTypeUpdate, new)

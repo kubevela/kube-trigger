@@ -184,6 +184,12 @@ func TestUpdateWithoutAChangeIsSkipped(t *testing.T) {
 			new:    configMap("1"),
 			queued: 0,
 		},
+		// Only a fake or hand-built object lacks one; there is nothing to compare.
+		"no resourceVersion on either": {
+			old:    configMap(""),
+			new:    configMap(""),
+			queued: 1,
+		},
 	}
 
 	for name, tc := range testcases {
