@@ -5,6 +5,7 @@ go 1.23.8
 require (
 	cuelang.org/go v0.14.1
 	github.com/crossplane/crossplane-runtime v0.19.2
+	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/google/go-cmp v0.7.0
 	github.com/kubevela/pkg v1.9.3-0.20250625225831-a2894a62a307
 	github.com/mitchellh/hashstructure/v2 v2.0.2
@@ -38,7 +39,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/emicklei/proto v1.14.2 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
-	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
