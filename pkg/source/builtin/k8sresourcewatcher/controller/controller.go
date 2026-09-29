@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/kubevela/pkg/multicluster"
@@ -44,8 +45,6 @@ import (
 
 const maxRetries = 5
 
-var serverStartTime time.Time
-
 // Controller object
 type Controller struct {
 	logger   *logrus.Entry
@@ -57,6 +56,9 @@ type Controller struct {
 	listenEvents   map[types.EventType]bool
 	controllerType string
 	cluster        string
+	// startTime is when Run started; creates of objects older than it are
+	// skipped, as the initial list reports them too.
+	startTime time.Time
 }
 
 // Setup prepares controllers
@@ -111,54 +113,65 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 
 func newResourceController(ctx context.Context, logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-	var newEvent types.InformerEvent
-	var err error
 	cluster, _ := multicluster.ClusterFrom(ctx)
 	//nolint:errcheck // no need to check err here
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeCreate,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = obj
-			meta := utils.GetObjectMetaData(obj)
-			logger.Tracef("received add event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		UpdateFunc: func(_, new interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeUpdate,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = new
-			meta := utils.GetObjectMetaData(new)
-			logger.Tracef("received update event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			newEvent.Event = types.Event{
-				Type:    types.EventTypeDelete,
-				Cluster: cluster,
-			}
-			newEvent.EventObj = obj
-			meta := utils.GetObjectMetaData(obj)
-			logger.Tracef("received delete event: %v %s/%s", kind, meta.GetName(), meta.GetNamespace())
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-	})
+	informer.AddEventHandler(resourceEventHandler(logger, queue, kind, cluster))
 
 	return &Controller{
 		logger:   logger,
 		informer: informer,
 		queue:    queue,
 		cluster:  cluster,
+	}
+}
+
+// ForEvents calls eh only for the event types its trigger asked for; no events
+// means all of them. Triggers watching the same resources share one watcher,
+// which listens for every event any of them asked for.
+func ForEvents(events []types.EventType, eh eventhandler.EventHandler) eventhandler.EventHandler {
+	if len(events) == 0 {
+		return eh
+	}
+	events = slices.Clone(events)
+	return func(sourceType string, event interface{}, data interface{}) error {
+		if !slices.Contains(events, event.(types.Event).Type) {
+			return nil
+		}
+		return eh(sourceType, event, data)
+	}
+}
+
+// resourceEventHandler queues each informer event for the worker.
+func resourceEventHandler(logger *logrus.Entry, queue workqueue.RateLimitingInterface, kind string, cluster string) cache.ResourceEventHandlerFuncs {
+	enqueue := func(typ types.EventType, obj interface{}) {
+		meta, ok := utils.GetObjectMetaData(obj)
+		if !ok {
+			logger.Warnf("skipping %s event for %v: no object in %T", typ, kind, obj)
+			return
+		}
+		logger.Tracef("received %s event: %v %s/%s", typ, kind, meta.GetName(), meta.GetNamespace())
+		queue.Add(types.InformerEvent{
+			Event:    types.Event{Type: typ, Cluster: cluster},
+			EventObj: meta,
+		})
+	}
+	return cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			enqueue(types.EventTypeCreate, obj)
+		},
+		UpdateFunc: func(old, new interface{}) {
+			// A relist reports every cached object as an update; an unchanged
+			// resourceVersion means nothing was written.
+			oldMeta, oldOK := utils.GetObjectMetaData(old)
+			newMeta, newOK := utils.GetObjectMetaData(new)
+			if oldOK && newOK && oldMeta.GetResourceVersion() != "" && oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
+				return
+			}
+			enqueue(types.EventTypeUpdate, new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			enqueue(types.EventTypeDelete, obj)
+		},
 	}
 }
 
@@ -172,7 +185,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		"cluster":    c.cluster,
 	})
 	c.logger.Info("starting watch k8s resources...")
-	serverStartTime = time.Now().Local()
+	c.startTime = time.Now().Local()
 
 	go c.informer.Run(stopCh)
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
@@ -206,7 +219,7 @@ func (c *Controller) processNextItem() bool {
 	}
 	defer c.queue.Done(newEvent)
 
-	meta := utils.GetObjectMetaData(newEvent.(types.InformerEvent).EventObj)
+	meta := newEvent.(types.InformerEvent).EventObj
 	err := c.processItem(newEvent.(types.InformerEvent))
 	//nolint:gocritic // no need to use switch statement here
 	if err == nil {
@@ -227,7 +240,7 @@ func (c *Controller) processNextItem() bool {
 
 func (c *Controller) processItem(newEvent types.InformerEvent) error {
 	// Get object's metadata
-	objectMeta := utils.GetObjectMetaData(newEvent.EventObj)
+	objectMeta := newEvent.EventObj
 	// Fetching (create,update,delete) event Obj of k8s
 	c.logger.Debugf("Fetching obj (%+v) with newEvent(%s/%s) and eventType=%s from event", newEvent.EventObj, objectMeta.GetName(), objectMeta.GetNamespace(), newEvent.Type)
 
@@ -239,9 +252,9 @@ func (c *Controller) processItem(newEvent types.InformerEvent) error {
 	// Process events based on its type
 	switch newEvent.Type {
 	case types.EventTypeCreate:
-		// Compare CreationTimestamp and serverStartTime and alert only on latest events
+		// Compare CreationTimestamp and startTime and alert only on latest events
 		// Could be Replaced by using Delta or DeltaFIFO
-		if objectMeta.GetCreationTimestamp().Sub(serverStartTime).Seconds() > 0 {
+		if objectMeta.GetCreationTimestamp().Sub(c.startTime).Seconds() > 0 {
 			c.logger.Debugf("add %s event: %s/%s", newEvent.Type, objectMeta.GetName(), objectMeta.GetNamespace())
 			c.callEventHandler(objectMeta, newEvent.Event)
 			return nil
