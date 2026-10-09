@@ -66,7 +66,7 @@ bin:
 CONTROLLER_GEN ?= bin/controller-gen
 
 # Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.16.4
+CONTROLLER_TOOLS_VERSION ?= v0.22.0
 
 controller-gen: bin
 	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
