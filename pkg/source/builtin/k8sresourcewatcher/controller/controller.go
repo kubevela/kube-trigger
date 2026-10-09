@@ -73,15 +73,17 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
 	}
 
+	// The list and watch calls keep using ctx rather than the reflector's
+	// context, because ctx carries the target cluster for the multicluster client.
 	informer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(_ context.Context, options metav1.ListOptions) (runtime.Object, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
 				}
 				return cli.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).List(ctx, options)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(_ context.Context, options metav1.ListOptions) (watch.Interface, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
 				}

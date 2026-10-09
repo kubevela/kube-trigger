@@ -66,7 +66,7 @@ const (
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggers,verbs=get;list
 //+kubebuilder:rbac:groups=standard.oam.dev,resources=kubetriggers/status,verbs=get
 
-//+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;update
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update
 
 // Reconcile reconciles a TriggerService object.
 // For more details, check Reconcile and its Result here:

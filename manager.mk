@@ -63,13 +63,15 @@ bin:
 	mkdir -p bin
 
 # Tool Binaries
-CONTROLLER_GEN ?= bin/controller-gen
+# Each version gets its own directory so a bump installs the new tool.
+CONTROLLER_GEN_DIR ?= bin/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+CONTROLLER_GEN ?= $(CONTROLLER_GEN_DIR)/controller-gen
 
 # Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.16.4
+CONTROLLER_TOOLS_VERSION ?= v0.22.0
 
 controller-gen: bin
-	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(PWD)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	[ -f $(CONTROLLER_GEN) ] || GOBIN=$(CURDIR)/$(CONTROLLER_GEN_DIR) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 # Setup common targets
 include makefiles/targets.mk

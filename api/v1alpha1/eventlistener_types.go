@@ -63,7 +63,3 @@ type EventResource struct {
 	Name       string `json:"name"`
 	Namespace  string `json:"namespace"`
 }
-
-func init() {
-	SchemeBuilder.Register(&EventListener{}, &EventListenerList{})
-}
