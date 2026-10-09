@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-GOLANGCI_VERSION="1.60.1"
+GOLANGCI_VERSION="2.12.2"
 
 GOLANGCI="${GOLANGCI:-golangci-lint}"
 
@@ -28,7 +28,7 @@ fi
 
 function print_install_help() {
   echo "Automatic installation failed, you can install golangci-lint v${GOLANGCI_VERSION} manually by running:"
-  echo "  curl -sSfL \"https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh\" | sh -s -- -b \"$(pwd)/bin\" v${GOLANGCI_VERSION}"
+  echo "  GOBIN=\"$(pwd)/bin\" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_VERSION}"
   echo "It will be installed to \"$(pwd)/bin/golangci-lint\" so that it won't interfere with existing versions (if any)."
   exit 1
 }
@@ -36,8 +36,7 @@ function print_install_help() {
 function install_golangci() {
   echo "Installing golangci-lint v${GOLANGCI_VERSION} ..."
   echo "It will be installed to \"$(pwd)/bin/golangci-lint\" so that it won't interfere with existing versions (if any)."
-  curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" |
-    sh -s -- -b "$(pwd)/bin" v${GOLANGCI_VERSION} || print_install_help
+  GOBIN="$(pwd)/bin" go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_VERSION}" || print_install_help
 }
 
 if ! ${GOLANGCI} version >/dev/null 2>&1; then
