@@ -18,9 +18,6 @@ linters:
     errcheck:
       check-type-assertions: false
       check-blank: false
-      exclude-functions:
-        - fmt:.*
-        - io/ioutil:^Read.*
     exhaustive:
       default-signifies-exhaustive: true
     goconst:
