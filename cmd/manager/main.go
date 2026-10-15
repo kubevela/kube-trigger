@@ -60,6 +60,12 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
+	var celExpressions, requireCELExpressionOptIn bool
+	flag.BoolVar(&celExpressions, "enable-cel-expressions", true,
+		"Let workers render $( ) CEL expressions in action properties, where a literal $( is written $$(. "+
+			"A TriggerService annotated "+standardv1alpha1.AnnotationCELExpressions+": \"false\" opts out.")
+	flag.BoolVar(&requireCELExpressionOptIn, "require-cel-expression-opt-in", false,
+		"Only render expressions for TriggerServices annotated "+standardv1alpha1.AnnotationCELExpressions+": \"true\".")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -91,8 +97,10 @@ func main() {
 	}
 
 	if err = (&triggerservice.Reconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		CELExpressions:            celExpressions,
+		RequireCELExpressionOptIn: requireCELExpressionOptIn,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerService")
 		os.Exit(1)

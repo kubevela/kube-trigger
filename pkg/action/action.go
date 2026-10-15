@@ -23,6 +23,7 @@ import (
 	"github.com/kubevela/pkg/cue/cuex"
 	"github.com/kubevela/pkg/util/template/definition"
 	"github.com/mitchellh/hashstructure/v2"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
@@ -43,8 +44,10 @@ var _ executor.Job = &Job{}
 
 // New creates a new job. It will fetch cached Action instance from Registry
 // using provided ActionMeta. sourceType and event will be passed to the Action.Run
-// method.
-func New(ctx context.Context, cli client.Client, meta v1alpha1.ActionMeta, contextData map[string]interface{}) (*Job, error) {
+// method. properties are the ones the job runs with, which may be meta's
+// rendered for this event; the job's ID comes from meta as written, so jobs
+// from one trigger share it.
+func New(ctx context.Context, cli client.Client, meta v1alpha1.ActionMeta, properties *runtime.RawExtension, contextData map[string]interface{}) (*Job, error) {
 	template, err := definition.NewTemplateLoader(ctx, cli).LoadTemplate(ctx, meta.Type, definition.WithType(types.DefinitionTypeTriggerAction))
 	if err != nil {
 		return nil, err
@@ -58,7 +61,7 @@ func New(ctx context.Context, cli client.Client, meta v1alpha1.ActionMeta, conte
 		template:   template.Compile(),
 		sourceType: meta.Type,
 		context:    contextData,
-		properties: meta.Properties,
+		properties: properties,
 	}
 
 	return &ret, nil

@@ -15,7 +15,8 @@ vela addon enable kube-trigger
 ## What we want to achieve?
 
 - use a `resource-watcher` Source to listen to update events of ConfigMaps
-- use a `cue-validator` Filter to only keep the ConfigMaps that we are interested in
+- use a Filter, written in CUE here (a filter that is a single `$( )` is CEL), to only keep the ConfigMaps that we are
+  interested in
 - trigger an `bump-application-revision` Action to update Application.
 
 As a result:

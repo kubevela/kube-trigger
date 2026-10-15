@@ -46,6 +46,61 @@ events that passed the Filter will then trigger an [Action](#Action).
 filter: context.data.status.readyReplicas == context.data.status.replicas
 ```
 
+A filter that is a single `$( )` is a [CEL](https://cel.dev) expression rather than CUE. It reads the same `context`, and
+must evaluate to a bool:
+
+```yaml
+filter: $(context.data.status.readyReplicas == context.data.status.replicas)
+```
+
+Reading a field or map key that is not there is an error, which drops the event and is logged. Guard what only some
+objects carry: `has(x.y)` tests field `y` of `x`, which must itself be there, and `"key" in m` tests a map key, including
+keys such as `app.oam.dev/name`. CEL's `&&` and `||` skip what cannot change the result, so guards chain:
+
+```yaml
+filter: $(has(context.data.metadata.labels) && "tier" in context.data.metadata.labels && context.data.metadata.labels["tier"] == "web")
+```
+
+A CEL filter that does not compile stops kube-trigger at start, naming its trigger.
+
+### Expressions in action properties
+
+Action properties can hold `$( )` CEL expressions over the same `context`, rendered for each event. An expression that is
+a property's whole value keeps its type; one inside text is joined into it:
+
+```yaml
+action:
+  type: patch-resource
+  properties:
+    resource:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: $(context.data.metadata.labels["app"])
+      namespace: $(context.data.metadata.namespace)
+    patch:
+      type: merge
+      data:
+        metadata:
+          annotations:
+            last-trigger: $(context.event.type)-$(context.data.metadata.name)
+```
+
+A literal `$(` in action properties is written `$$(`. This matters for `$(VAR)`, Kubernetes' own syntax for a dependent
+environment variable, and for shell substitution in a command, for example `["sh", "-c", "echo $$(date)"]`. An expression
+that does not compile, including an unescaped `$(date)`, stops kube-trigger at start, naming its trigger and property.
+
+Expressions in action properties are on by default, and can be turned off:
+
+| Running | How to turn them off |
+| --- | --- |
+| A standalone kube-trigger | `--enable-cel-expressions=false` |
+| One TriggerService | The annotation `trigger.oam.dev/cel-expressions: "false"` on it |
+| Every TriggerService | The manager's `--enable-cel-expressions=false` |
+
+The manager's `--require-cel-expression-opt-in` reverses the default: only TriggerServices annotated
+`trigger.oam.dev/cel-expressions: "true"` render expressions. The annotation is read when the TriggerService's worker is
+created, so set it before creating the TriggerService, or delete the worker Deployment to have it recreated.
+
 ### Actions
 
 An Action is a job that does what the user specified when an event happens. For example, the user can send
@@ -362,6 +417,18 @@ Default: `100`
 | CLI               | ENV             | KubeTrigger CRD      |
 |-------------------|-----------------|----------------------|
 | `--registry-size` | `REGISTRY_SIZE` | `.spec.registrySize` |
+
+### CEL Expressions
+
+Render `$( )` CEL expressions in action properties, where a literal `$(` is written `$$(`. See
+[Expressions in action properties](#expressions-in-action-properties). A filter that is a single `$( )` is CEL whatever
+this is set to.
+
+Default: `true`
+
+| CLI                        | ENV    | KubeTrigger CRD                                                           |
+|----------------------------|--------|---------------------------------------------------------------------------|
+| `--enable-cel-expressions` | `ENABLE_CEL_EXPRESSIONS` | `metadata.annotations["trigger.oam.dev/cel-expressions"]` (`"false"` opts out) |
 
 ## Roadmap
 
