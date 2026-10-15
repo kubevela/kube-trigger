@@ -17,12 +17,32 @@ spec:
             apiVersion: parameter.resource.apiVersion
             kind:       parameter.resource.kind
             metadata: {
-              name:      parameter.resource.name
-              namespace: parameter.resource.namespace
+              name:      _name
+              namespace: _namespace
             }
           }
           patch: parameter.patch
         }
+      }
+
+      // The name and namespace are given directly or under metadata; directly
+      // wins.
+      _name: string
+      if parameter.resource.name != _|_ {
+        _name: parameter.resource.name
+      }
+      if parameter.resource.name == _|_ if parameter.resource.metadata.name != _|_ {
+        _name: parameter.resource.metadata.name
+      }
+      _namespace: string
+      if parameter.resource.namespace != _|_ {
+        _namespace: parameter.resource.namespace
+      }
+      if parameter.resource.namespace == _|_ if parameter.resource.metadata.namespace != _|_ {
+        _namespace: parameter.resource.metadata.namespace
+      }
+      if parameter.resource.namespace == _|_ if parameter.resource.metadata.namespace == _|_ {
+        _namespace: "default"
       }
 
       parameter: {
@@ -32,12 +52,14 @@ spec:
           apiVersion: string
           // +usage=The kind of the resource
           kind: string
-          // +usage=The metadata of the resource
-          metadata: {
-            // +usage=The name of the resource
-            name: string
-            // +usage=The namespace of the resource
-            namespace: *"default" | string
+          // +usage=The name of the resource
+          name?: string
+          // +usage=The namespace of the resource; default if not set
+          namespace?: string
+          // +usage=The name and namespace of the resource, as an alternative to name and namespace
+          metadata?: {
+            name?:      string
+            namespace?: string
           }
         }
         // +usage=The patch to be applied to the resource with kubernetes patch
