@@ -127,7 +127,7 @@ func TestIndexerDelayingQueue_ShutDown(t *testing.T) {
 		return
 	}
 
-	item, shutdown = q.Get()
+	_, shutdown = q.Get()
 
 	if !shutdown {
 		t.Errorf("expect queue shutdown, but open")
@@ -168,11 +168,11 @@ func TestBufferCap(t *testing.T) {
 		q.ShutDown()
 	}()
 	q.AddAfter(1000, 0)
-	if time.Now().Sub(start).Seconds() >= 1 {
+	if time.Since(start).Seconds() >= 1 {
 		t.Error("block AddAfter when queue overhead")
 	}
 	q.Add(1000)
-	if time.Now().Sub(start).Seconds() < 1 {
+	if time.Since(start).Seconds() < 1 {
 		t.Error("can't block Add when queue overhead")
 	}
 

@@ -59,7 +59,7 @@ func TestNormalJobs(t *testing.T) {
 	}()
 
 	// Wait for all jobs to run
-	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 1*time.Millisecond, 200*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
 			l += 1
@@ -70,7 +70,7 @@ func TestNormalJobs(t *testing.T) {
 	a.NoError(err)
 
 	// Wait for all jobs to end
-	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 1*time.Millisecond, 200*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
 			l += 1
@@ -120,7 +120,7 @@ func TestQueueSizeLimits(t *testing.T) {
 		close(ch)
 	}()
 
-	err = wait.Poll(10*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, 200*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
 			l += 1
@@ -172,7 +172,7 @@ func TestSameJobRequeuing(t *testing.T) {
 		close(ch)
 	}()
 
-	err = wait.Poll(1*time.Millisecond, 200*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 1*time.Millisecond, 200*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		l := 0
 		e.runningJobs.Range(func(_ any, _ any) bool {
 			l += 1
@@ -184,10 +184,6 @@ func TestSameJobRequeuing(t *testing.T) {
 
 	err = e.AddJob(j3)
 	a.NoError(err)
-
-	err = wait.Poll(1*time.Millisecond, 500*time.Millisecond, func() (done bool, err error) {
-		return e.queue.NumRequeues(j3) >= 2, nil
-	})
 
 	cancel()
 	<-ch
@@ -225,12 +221,12 @@ func TestFailedRequeuing(t *testing.T) {
 
 	// Test the job itself failed
 	// requeued 3 times (max retries)
-	err = wait.Poll(1*time.Millisecond, 500*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 1*time.Millisecond, 500*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		return e.queue.NumRequeues(j1) == 3, nil
 	})
 	a.NoError(err, fmt.Sprint(e.queue.NumRequeues(j1)), "3")
 	// too many requeues, cleared
-	err = wait.Poll(1*time.Millisecond, 500*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 1*time.Millisecond, 500*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		return e.queue.NumRequeues(j1) == 0, nil
 	})
 	a.NoError(err, fmt.Sprint(e.queue.NumRequeues(j1)), "0")
@@ -270,12 +266,12 @@ func TestTimedOutRequeuing(t *testing.T) {
 	}()
 
 	// Test the job timed out
-	err = wait.Poll(10*time.Millisecond, 1000*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, 1000*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		return e.queue.NumRequeues(j2) == 3, nil
 	})
 	a.NoError(err, fmt.Sprint(e.queue.NumRequeues(j2)), "3")
 	// too many requeues, cleared
-	err = wait.Poll(10*time.Millisecond, 1000*time.Millisecond, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 10*time.Millisecond, 1000*time.Millisecond, false, func(_ context.Context) (done bool, err error) {
 		return e.queue.NumRequeues(j2) == 0, nil
 	})
 	a.NoError(err, fmt.Sprint(e.queue.NumRequeues(j2)), "0")

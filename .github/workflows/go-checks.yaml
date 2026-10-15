@@ -17,23 +17,29 @@ env:
   GO_VERSION: '1.27.1'
   # Keep this in sync with build/lint.sh
   GOLANGCI_VERSION: '2.14.0'
+  STATICCHECK_VERSION: 'v0.8.1'
   USE_BUILD_CONTAINER: '1'
 
 jobs:
   detect-noop:
     name: Detect No-op Changes
     runs-on: ubuntu-latest
+    permissions:
+      actions: write # for skip-duplicate-actions to skip or stop workflow runs
+      contents: read # for paths_ignore to read the changed files
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v4.0.0
+        uses: fkirc/skip-duplicate-actions@v5.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           paths_ignore: '["**.md", "**.mdx", "**.png", "**.jpg", "**.svg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
-          concurrent_skipping: false
+          concurrent_skipping: 'never'
+        # A fork PR's token cannot cancel runs; carry on rather than skip every job.
+        continue-on-error: true
 
   checks:
     name: Check Go Code
@@ -42,24 +48,44 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check boilerplate
         run: make checklicense
 
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
       # Use this action instead of running golangci directly because it can comment on pr.
       - name: Lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v${{ env.GOLANGCI_VERSION }}
 
       - name: Check Diff
         run: make checkdiff
+
+  staticcheck:
+    name: Static Check
+    runs-on: ubuntu-latest
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install StaticCheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
+
+      - name: Static Check
+        run: staticcheck ./...
 
   test-build:
     name: Test Container Build
@@ -68,10 +94,10 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Go Caches
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             .go/gomodcache
