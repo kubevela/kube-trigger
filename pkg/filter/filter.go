@@ -42,6 +42,15 @@ func ApplyFilter(ctx context.Context, contextData map[string]interface{}, filter
 	if filterVal.Err() != nil {
 		return false, filterVal.Err()
 	}
+	// A filter that declares context, such as
+	// `context: data: metadata: name: =~"^foo"`, keeps only the events whose
+	// context unifies with it.
+	if filterVal.LookupPath(cue.ParsePath("filter.context")).Exists() {
+		filterVal = filterVal.FillPath(cue.ParsePath("filter.context"), contextData)
+		if filterVal.LookupPath(cue.ParsePath("filter.context")).Validate() != nil {
+			return false, nil
+		}
+	}
 	result := filterVal.LookupPath(cue.ParsePath("filter"))
 	if filterVal.LookupPath(cue.ParsePath("filter.filter")).Exists() {
 		result = filterVal.LookupPath(cue.ParsePath("filter.filter"))
