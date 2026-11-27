@@ -57,3 +57,45 @@ func TestMergeEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestKeySeparatesWatchersByCluster(t *testing.T) {
+	deployments := func(clusters ...string) *Config {
+		return &Config{APIVersion: "apps/v1", Kind: "Deployment", Clusters: clusters}
+	}
+
+	testcases := map[string]struct {
+		first, second *Config
+		same          bool
+	}{
+		"different clusters are watched separately": {
+			first:  deployments("cluster-a"),
+			second: deployments("cluster-b"),
+			same:   false,
+		},
+		"a subset of clusters is watched separately": {
+			first:  deployments("cluster-a", "cluster-b"),
+			second: deployments("cluster-a"),
+			same:   false,
+		},
+		"the order of clusters does not matter": {
+			first:  deployments("cluster-a", "cluster-b"),
+			second: deployments("cluster-b", "cluster-a"),
+			same:   true,
+		},
+		"no clusters means the local cluster": {
+			first:  deployments(),
+			second: deployments("local"),
+			same:   true,
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			if tc.same {
+				assert.Equal(t, tc.first.Key(), tc.second.Key())
+			} else {
+				assert.NotEqual(t, tc.first.Key(), tc.second.Key())
+			}
+		})
+	}
+}

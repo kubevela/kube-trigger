@@ -18,6 +18,7 @@ package types
 
 import (
 	"encoding/json"
+	stdslices "slices"
 	"strings"
 
 	"github.com/kubevela/pkg/util/slices"
@@ -34,7 +35,12 @@ type Config struct {
 	Clusters       []string          `json:"clusters,omitempty"`
 }
 
-// Key returns the identifier of a Config.
+// DefaultCluster is the cluster watched when a Config names none.
+const DefaultCluster = "local"
+
+// Key returns the identifier of a Config. Configs with the same Key share one
+// watcher, so it covers everything that decides which objects are watched:
+// the resource, the namespace, the labels and the clusters.
 func (c *Config) Key() string {
 	var labels string
 	if len(c.MatchingLabels) > 0 {
@@ -42,7 +48,11 @@ func (c *Config) Key() string {
 			labels = string(b)
 		}
 	}
-	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels}, "-")
+	clusters := []string{DefaultCluster}
+	if len(c.Clusters) > 0 {
+		clusters = stdslices.Compact(stdslices.Sorted(stdslices.Values(c.Clusters)))
+	}
+	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels, strings.Join(clusters, ",")}, "-")
 }
 
 // Merge merges two Configs watching the same resources. The merged Events is

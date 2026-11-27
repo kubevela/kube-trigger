@@ -62,7 +62,6 @@ const (
 	TypeClusterGatewaySecret string = "cluster-gateway-secret"
 
 	clusterLabel    string = "cluster.core.oam.dev/cluster-credential-type"
-	defaultCluster  string = "local"
 	clusterCertKey  string = "tls.key"
 	clusterCertData string = "tls.crt"
 	clusterCAData   string = "ca.crt"
@@ -138,7 +137,7 @@ func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 	}
 	for k, config := range w.configs {
 		if len(config.Clusters) == 0 {
-			config.Clusters = []string{defaultCluster}
+			config.Clusters = []string{types.DefaultCluster}
 		}
 		for _, cluster := range config.Clusters {
 			cli, mapper, err := clusterGetter.GetDynamicClientAndMapper(ctx, cluster)
@@ -199,7 +198,7 @@ type clusterGatewaySecretGetter struct {
 }
 
 func (c *clusterGatewaySecretGetter) GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error) {
-	if cluster == defaultCluster {
+	if cluster == types.DefaultCluster {
 		return c.getDynamicClientAndMapperFromConfig(ctx, c.config)
 	}
 	config, err := c.getRestConfigFromSecret(ctx, cluster)
