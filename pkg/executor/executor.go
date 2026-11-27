@@ -42,8 +42,16 @@ type Executor struct {
 	wg           sync.WaitGroup
 	timeout      time.Duration
 	logger       *logrus.Entry
-	runningJobs  sync.Map
 	queue        workqueue.TypedRateLimitingInterface[Job]
+
+	// mu guards lines and waiting.
+	mu sync.Mutex
+	// lines holds, per ID claimed by a job that disallows concurrency, the jobs
+	// waiting behind it in the order they were added. Only the claiming job is
+	// ever in the queue, so a same-ID job cannot start until it is released.
+	lines map[string][]Job
+	// waiting counts the jobs held in lines, which the queue does not see.
+	waiting int
 }
 
 // Job is an Action to be executed by the workers in the Executor.
@@ -88,7 +96,7 @@ func New(c Config) (*Executor, error) {
 	e.maxRetries = c.MaxJobRetries
 	e.allowRetries = c.RetryJobAfterFailure
 	e.wg = sync.WaitGroup{}
-	e.runningJobs = sync.Map{}
+	e.lines = make(map[string][]Job)
 	// Create a rate limited queue, with a token bucket for overall limiting,
 	// and exponential failure for per-item limiting.
 	e.queue = workqueue.NewTypedRateLimitingQueue[Job](
@@ -113,48 +121,58 @@ func New(c Config) (*Executor, error) {
 	return e, nil
 }
 
-func (e *Executor) setJobStatus(j Job, status bool) {
-	if status {
-		e.runningJobs.Store(j.ID(), true)
-	} else {
-		e.runningJobs.Delete(j.ID())
-	}
-}
-
-func (e *Executor) setJobRunning(j Job) {
-	e.setJobStatus(j, true)
-}
-
-func (e *Executor) setJobFinished(j Job) {
-	e.setJobStatus(j, false)
-}
-
-func (e *Executor) getJobStatus(j Job) bool {
-	v, ok := e.runningJobs.Load(j.ID())
-	if !ok {
-		return false
-	}
-	return v.(bool)
-}
-
-func (e *Executor) requeueJob(j Job) {
+// requeueJob schedules a retry of a failed job, reporting false once j has used
+// up its retries.
+func (e *Executor) requeueJob(j Job) bool {
 	if e.queue.NumRequeues(j) < e.maxRetries {
 		e.queue.AddRateLimited(j)
-		return
+		return true
 	}
 	e.logger.Errorf("job %s (%s) cannot be requeued because it failed too many (%d/%d) times", j.Type(), j.ID(), e.queue.NumRequeues(j), e.maxRetries)
 	e.queue.Forget(j)
+	return false
 }
 
-// AddJob adds a job to the queue.
+// release hands j's ID to the next job in its line, or frees the ID if none is
+// waiting.
+func (e *Executor) release(j Job) {
+	if j.AllowConcurrency() {
+		return
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	line := e.lines[j.ID()]
+	if len(line) == 0 {
+		delete(e.lines, j.ID())
+		return
+	}
+	e.lines[j.ID()] = line[1:]
+	e.waiting--
+	e.queue.Add(line[0])
+}
+
+// AddJob adds a job to the queue. A job that disallows concurrency joins the
+// line for its ID when another job holds that ID, and is queued once released.
 func (e *Executor) AddJob(j Job) error {
-	if e.queue.Len() >= e.maxQueueSize {
-		msg := fmt.Sprintf("job %s (%s) cannot be added, queue size full %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	size := e.queue.Len() + e.waiting
+	if size >= e.maxQueueSize {
+		msg := fmt.Sprintf("job %s (%s) cannot be added, queue size full %d/%d", j.Type(), j.ID(), size, e.maxQueueSize)
 		e.logger.Error(msg)
 		return fmt.Errorf("%s", msg)
 	}
+	if !j.AllowConcurrency() {
+		if line, claimed := e.lines[j.ID()]; claimed {
+			e.lines[j.ID()] = append(line, j)
+			e.waiting++
+			e.logger.Debugf("job %s (%s) is waiting for the running job with its ID, %d waiting", j.Type(), j.ID(), len(line)+1)
+			return nil
+		}
+		e.lines[j.ID()] = nil
+	}
 	e.queue.Add(j)
-	e.logger.Debugf("job %s (%s) added to queue, currnet queue size: %d/%d", j.Type(), j.ID(), e.queue.Len(), e.maxQueueSize)
+	e.logger.Debugf("job %s (%s) added to queue, currnet queue size: %d/%d", j.Type(), j.ID(), size+1, e.maxQueueSize)
 	return nil
 }
 
@@ -176,41 +194,36 @@ func (e *Executor) runJob(ctx context.Context) bool {
 
 	e.logger.Debugf("job %s (%s) is picked up by a worker", j.Type(), j.ID())
 
-	// This job does not allow concurrent runs, and it is already running.
-	// Requeue it to run it later.
-	if !j.AllowConcurrency() && e.getJobStatus(j) {
-		e.logger.Infof("job %s (%s) is already running, will be requeued", j.Type(), j.ID())
-		e.requeueJob(j)
-		return true
-	}
-
 	// Add a job timeout
 	timeoutCtx, cancel := context.WithDeadline(ctx, time.Now().Add(e.timeout))
 	defer cancel()
 
 	e.logger.Infof("job %s (%s) started executing", j.Type(), j.ID())
-	e.setJobRunning(j)
 	err := j.Run(timeoutCtx)
-	e.setJobFinished(j)
 
 	if err == nil && timeoutCtx.Err() == nil {
 		e.logger.Infof("job %s (%s) finished", j.Type(), j.ID())
 		e.queue.Forget(j)
+		e.release(j)
 		return true
 	}
 
 	// context cancelled, it is time to die
 	if timeoutCtx.Err() == context.Canceled {
 		e.logger.Infof("job %s (%s) failed because ctx errored: %s, worker will exit soon", j.Type(), j.ID(), timeoutCtx.Err())
+		e.release(j)
 		return false
 	}
 
+	// A retry keeps the job's ID, so the jobs behind it in line wait for it.
 	msg := fmt.Sprintf("job %s (%s) failed because (jobErr=%v, ctxErr=%v)", j.Type(), j.ID(), err, timeoutCtx.Err())
 	if e.allowRetries {
 		msg += fmt.Sprintf(", will retry job %s (%s) later", j.Type(), j.ID())
-		e.requeueJob(j)
 	}
 	e.logger.Error(msg)
+	if !e.allowRetries || !e.requeueJob(j) {
+		e.release(j)
+	}
 
 	return true
 }
@@ -249,4 +262,19 @@ func (e *Executor) RunJobs(ctx context.Context) {
 	case <-time.After(e.timeout):
 		e.logger.Infof("shutdown timed out")
 	}
+	e.dropUnstarted()
+}
+
+// dropUnstarted logs how many jobs never started, those still queued and
+// those waiting in lines, and resets the lines. Workers stop taking jobs once
+// ctx ends, so these are lost on shutdown. After a shutdown timeout, workers
+// may still be finishing, so the counts are approximate.
+func (e *Executor) dropUnstarted() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if queued := e.queue.Len(); queued > 0 || e.waiting > 0 {
+		e.logger.Warnf("shutting down without running %d queued and %d waiting jobs", queued, e.waiting)
+	}
+	e.lines = make(map[string][]Job)
+	e.waiting = 0
 }
