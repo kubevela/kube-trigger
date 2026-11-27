@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,4 +57,34 @@ func TestTriggersOfASingletonSourceShareOne(t *testing.T) {
 	}, sourceregistry.NewWithBuiltinSources(), noopHandler)
 	require.NoError(t, err)
 	assert.Len(t, sources, 1)
+}
+
+func TestATriggerThatCannotBeSetUpIsSkipped(t *testing.T) {
+	testcases := map[string]v1alpha1.TriggerMeta{
+		"its source type does not exist":   trigger("no-such-source", `{}`),
+		"its source cannot be initialized": trigger("cronjob", `{"schedule":"not a schedule"}`),
+	}
+
+	for name, broken := range testcases {
+		t.Run(name, func(t *testing.T) {
+			sources, err := initSources([]v1alpha1.TriggerMeta{
+				broken,
+				trigger("cronjob", `{"schedule":"0 1 * * *"}`),
+			}, sourceregistry.NewWithBuiltinSources(), noopHandler)
+			require.NoError(t, err)
+			assert.Len(t, sources, 1, "the trigger after the broken one still runs")
+		})
+	}
+}
+
+func TestATriggerWhoseHandlerCannotBeBuiltIsAnError(t *testing.T) {
+	failing := func(v1alpha1.TriggerMeta) (eventhandler.EventHandler, error) {
+		return nil, errors.New("filter does not compile")
+	}
+
+	_, err := initSources([]v1alpha1.TriggerMeta{
+		trigger("cronjob", `{"schedule":"0 1 * * *"}`),
+	}, sourceregistry.NewWithBuiltinSources(), failing)
+
+	assert.ErrorContains(t, err, "filter does not compile")
 }
