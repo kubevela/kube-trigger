@@ -8,8 +8,8 @@ spec:
   templates:
     main.cue: |
       import (
+        "list"
         "vela/kube"
-        "strconv"
       )
       meta: {
         apiVersion: "standard.oam.dev/v1alpha1"
@@ -42,7 +42,7 @@ spec:
         originalEvents: get.$returns.events
       }
 
-      events: originalEvents + [{
+      events: list.Concat([originalEvents, [{
         resource: {
           apiVersion: context.data.apiVersion
           kind:       context.data.kind
@@ -51,7 +51,7 @@ spec:
         }
         type:      context.event.type
         timestamp: context.timestamp
-      }]
+      }]])
 
       filter: *events | [...]
 
