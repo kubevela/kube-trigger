@@ -1,5 +1,7 @@
 # Record the events of the Deployments that belong to a WorkflowRun, for the
 # workflow controller to read. Needs the WorkflowRun CRD from kubevela/workflow.
+# The record-event action in the second trigger fails at present:
+# https://github.com/kubevela/kube-trigger/issues/83
 # See README.md in this directory.
 apiVersion: standard.oam.dev/v1alpha1
 kind: TriggerService

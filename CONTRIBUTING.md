@@ -12,8 +12,8 @@ small fix, open or comment on an issue first, so the approach can be agreed befo
 
 - Go, at the version in [go.mod](go.mod).
 - `make`.
-- A kubeconfig file, for the tests. They do not talk to a cluster, but some packages load a kubeconfig when they start
-  and fail without one.
+- A kubeconfig file, for the tests. They do not talk to a cluster, but the `pkg/cmd` tests fail at start when no
+  kubeconfig can be found. Any kubeconfig will do, including one for a cluster that is not running.
 - Docker, only to build the container images.
 
 ## Where things are
@@ -55,15 +55,16 @@ make reviewable
 ```
 
 This regenerates code, checks the licence headers, runs the linter and tidies `go.mod`. The linter is the pinned version
-of golangci-lint, which `make` downloads into `bin/` if yours is a different one. Commit anything it changes. CI runs
-the same checks, plus staticcheck.
+of golangci-lint, which `make` downloads into `bin/` if yours is a different one. Commit anything it changes. CI checks
+the licence headers, runs the linter and staticcheck, and fails if regenerating the code changes anything.
 
 New Go files need the licence header that the other files start with; `make checklicense` checks for it.
 
 ## Pull requests
 
 - **Title.** Start it with what kind of change it is: `Fix: `, `Feat: `, `Docs: `, `Test: `, `Chore: `, `CI: `,
-  `Perf: `, `Refactor: `, `Revert: ` or `Style: `. A check enforces this.
+  `Perf: `, `Refactor: `, `Revert: ` or `Style: `. A scope may follow the word, as in `Fix(watcher): `. A check enforces
+  this; the full list is in [.github/pr-title-checker-config.json](.github/pr-title-checker-config.json).
 - **Sign-off.** Sign every commit with `git commit -s`. The DCO check fails without it.
 - **Issue.** Say which issue the change fixes, with `Fixes #123` in the description.
 - **One change.** Keep a pull request to one fix or one feature. Pull requests are squashed into a single commit when

@@ -1,7 +1,9 @@
 # Examples
 
-Each example here was run against a cluster before it was written down, on main's code. What it needs and what you
-should see are listed with it.
+The examples here were run against a cluster before they were written down, on main's code, and what each needs and
+what you should see are listed with it. There are two exceptions, both marked below: the `record-event` half of
+[Recording events](#recording-events) only works with a fix that is not merged yet, and the example under
+[Not run](#not-run) was not run.
 
 | File | Shows | Needs |
 | --- | --- | --- |
@@ -16,6 +18,9 @@ should see are listed with it.
 kube-trigger.
 
 ## Before you start
+
+Everything here is in the `default` namespace. If that is not your current namespace, add `-n default` to the
+`kubectl` commands.
 
 Install kube-trigger from the root of this repository:
 
@@ -33,12 +38,23 @@ kubectl create configmap settings-audit
 ```
 
 To run a `conf-*.yaml` file instead of a TriggerService, build the binary (see [CONTRIBUTING.md](../CONTRIBUTING.md)) and
-point it at the file. It uses the cluster in your kubeconfig, which needs `config/crd/` and `config/definition/` applied
-in a `vela-system` namespace, but not the manager:
+point it at the file. It uses the cluster in your kubeconfig:
 
 ```shell
 bin/kube-trigger --config examples/conf-audit-configmap.yaml
 ```
+
+A standalone kube-trigger does not need the manager. If you only run `conf-*.yaml` files, create the namespace
+yourself in place of applying `config/manager/`:
+
+```shell
+kubectl apply -f config/crd/
+kubectl create namespace vela-system
+kubectl apply -f config/definition/
+```
+
+After applying a TriggerService, the manager takes a few seconds to create its worker Deployment. If
+`kubectl rollout status` says the Deployment is not found, run it again.
 
 ## Watch, filter, act
 
@@ -163,11 +179,14 @@ It needs the WorkflowRun CRD from [kubevela/workflow](https://github.com/kubevel
 
 ## Cleaning up
 
-Delete what you applied. Deleting a TriggerService removes its worker.
+Deleting a TriggerService removes its worker. The rest is what the walkthroughs above created; skip the lines for those
+you did not run.
 
 ```shell
 kubectl delete triggerservice --all
 kubectl delete configmap app-settings settings-audit
+kubectl delete configmap web-config          # CEL
+kubectl delete -f examples/sample.yaml       # Redeploying a KubeVela Application
 ```
 
 ## Not run

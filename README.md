@@ -37,7 +37,8 @@ Applications do.
 ## Quick start
 
 This trigger records when a ConfigMap was last changed: whenever `app-settings` is updated, it writes the time into
-another ConfigMap, `settings-audit`. It needs a Kubernetes cluster and nothing else.
+another ConfigMap, `settings-audit`. It needs a Kubernetes cluster and nothing else. Everything is in the `default`
+namespace; if that is not your current namespace, add `-n default` to the `kubectl` commands.
 
 1. Install kube-trigger, from a clone of this repository. See [Install](#install) for what these are.
 
@@ -54,7 +55,11 @@ another ConfigMap, `settings-audit`. It needs a Kubernetes cluster and nothing e
    kubectl create configmap settings-audit
    ```
 
-3. Create the trigger.
+3. Create the trigger, which is [examples/triggerservice-audit-configmap.yaml](examples/triggerservice-audit-configmap.yaml):
+
+   ```shell
+   kubectl apply -f examples/triggerservice-audit-configmap.yaml
+   ```
 
    ```yaml
    apiVersion: standard.oam.dev/v1alpha1
@@ -93,6 +98,9 @@ another ConfigMap, `settings-audit`. It needs a Kubernetes cluster and nothing e
    ```shell
    kubectl rollout status deployment/audit-settings-changes
    ```
+
+   The manager creates the Deployment a few seconds after the TriggerService. If the command says it is not found,
+   run it again.
 
 4. Change `app-settings` and look at `settings-audit`.
 
