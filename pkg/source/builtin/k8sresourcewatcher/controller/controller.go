@@ -77,8 +77,11 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 
 	// The list and watch calls keep using ctx rather than the reflector's
 	// context, because ctx carries the target cluster for the multicluster client.
+	// Wrapping the ListWatch lets the reflector see whether cli supports
+	// streaming the initial list over a watch; a client that does not, such as
+	// the fake one in tests, lists instead of waiting for a bookmark.
 	informer := cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListWithContextFunc: func(_ context.Context, options metav1.ListOptions) (runtime.Object, error) {
 				if len(ctrlConf.MatchingLabels) > 0 {
 					options.LabelSelector = labels.FormatLabels(ctrlConf.MatchingLabels)
@@ -91,7 +94,7 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 				}
 				return cli.Resource(mapping.Resource).Namespace(ctrlConf.Namespace).Watch(ctx, options)
 			},
-		},
+		}, cli),
 		&unstructured.Unstructured{},
 		0, // Skip resync
 		cache.Indexers{},
