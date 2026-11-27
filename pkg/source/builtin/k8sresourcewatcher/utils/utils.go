@@ -18,9 +18,16 @@ package utils
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
-// GetObjectMetaData .
-func GetObjectMetaData(obj interface{}) metav1.Object {
-	return obj.(metav1.Object)
+// GetObjectMetaData returns the object an informer event is about, unwrapping
+// the tombstone of a delete seen only on a relist. It reports false when there
+// is no object, which a tombstone can also carry.
+func GetObjectMetaData(obj interface{}) (metav1.Object, bool) {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	o, ok := obj.(metav1.Object)
+	return o, ok
 }

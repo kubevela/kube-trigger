@@ -113,13 +113,16 @@ func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhand
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
 	}
+	// Merge widens ctrlConf's events to the shared watcher's; the handler keeps
+	// this trigger's own.
+	events := ctrlConf.Events
 	if orig, ok := w.configs[ctrlConf.Key()]; ok {
 		orig.Merge(*ctrlConf)
 		w.configs[ctrlConf.Key()] = orig
 	} else {
 		w.configs[ctrlConf.Key()] = ctrlConf
 	}
-	w.eventHandlers[ctrlConf.Key()] = append(w.eventHandlers[ctrlConf.Key()], eh)
+	w.eventHandlers[ctrlConf.Key()] = append(w.eventHandlers[ctrlConf.Key()], controller.ForEvents(events, eh))
 
 	w.logger = logrus.WithField("source-type", v1alpha1.SourceTypeResourceWatcher)
 
