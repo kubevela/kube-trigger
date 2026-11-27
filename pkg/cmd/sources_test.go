@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
+	"github.com/kubevela/kube-trigger/pkg/source/types"
 )
 
 func trigger(sourceType, properties string) v1alpha1.TriggerMeta {
@@ -87,4 +89,34 @@ func TestATriggerWhoseHandlerCannotBeBuiltIsAnError(t *testing.T) {
 	}, sourceregistry.NewWithBuiltinSources(), failing)
 
 	assert.ErrorContains(t, err, "filter does not compile")
+}
+
+// recordingSource records whether it was started, and fails to if told to.
+type recordingSource struct {
+	fail    bool
+	started bool
+}
+
+func (s *recordingSource) New() types.Source { return &recordingSource{} }
+func (s *recordingSource) Init(*runtime.RawExtension, eventhandler.EventHandler) error {
+	return nil
+}
+func (s *recordingSource) Type() string    { return "recording" }
+func (s *recordingSource) Singleton() bool { return false }
+func (s *recordingSource) Run(context.Context) error {
+	if s.fail {
+		return errors.New("cannot start")
+	}
+	s.started = true
+	return nil
+}
+
+func TestASourceThatFailsToStartDoesNotStopTheOthers(t *testing.T) {
+	first, broken, last := &recordingSource{}, &recordingSource{fail: true}, &recordingSource{}
+
+	runSources(context.Background(), []types.Source{first, broken, last})
+
+	assert.True(t, first.started)
+	assert.False(t, broken.started)
+	assert.True(t, last.started)
 }

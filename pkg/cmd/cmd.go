@@ -216,6 +216,16 @@ func run(ctx context.Context) error {
 		return err
 	}
 
+	runSources(ctx, instances)
+
+	// Let the workers run Actions.
+	exe.RunJobs(ctx)
+	return nil
+}
+
+// runSources starts every Source. One that fails to start is logged, and the
+// rest are still started.
+func runSources(ctx context.Context, instances []types.Source) {
 	for _, instance := range instances {
 		err := instance.Run(ctx)
 		if err != nil {
@@ -223,10 +233,6 @@ func run(ctx context.Context) error {
 			continue
 		}
 	}
-
-	// Let the workers run Actions.
-	exe.RunJobs(ctx)
-	return nil
 }
 
 // initSources initializes the Source of every trigger with that trigger's
