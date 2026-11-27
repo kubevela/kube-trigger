@@ -61,18 +61,20 @@ type Controller struct {
 	startTime time.Time
 }
 
-// Setup prepares controllers
-func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler) *Controller {
+// Setup prepares a controller for the resources ctrlConf names. It returns an
+// error when the apiVersion does not parse or the kind is not served; the
+// latter satisfies meta.IsNoMatchError.
+func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler) (*Controller, error) {
 	logger := logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
 	gv, err := schema.ParseGroupVersion(ctrlConf.APIVersion)
 	if err != nil {
-		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
+		return nil, err
 	}
 	gvk := gv.WithKind(ctrlConf.Kind)
 
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gv.Version)
 	if err != nil {
-		logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Fatal(err)
+		return nil, err
 	}
 
 	// The list and watch calls keep using ctx rather than the reflector's
@@ -113,7 +115,7 @@ func Setup(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c
 
 	c.controllerType = v1alpha1.SourceTypeResourceWatcher
 
-	return c
+	return c, nil
 }
 
 func newResourceController(ctx context.Context, logger *logrus.Entry, informer cache.SharedIndexInformer, kind string) *Controller {
@@ -285,6 +287,26 @@ func (c *Controller) callEventHandler(obj metav1.Object, e types.Event, changed 
 		err := fn(p)
 		if err != nil {
 			c.logger.Infof("calling event handler failed: %s", err)
+		}
+	}
+}
+
+// SetupWhenInstalled is Setup for a kind that may not be installed yet, such
+// as a custom resource whose CRD arrives after kube-trigger starts. While the
+// kind is not served it tries again every retry, until ctx ends. Any other
+// error is returned at once.
+func SetupWhenInstalled(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler, retry time.Duration) (*Controller, error) {
+	logger := logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
+	for {
+		c, err := Setup(ctx, cli, mapper, ctrlConf, eh)
+		if err == nil || !meta.IsNoMatchError(err) {
+			return c, err
+		}
+		logger.Warnf("%s %s is not installed, trying again in %s: %s", ctrlConf.APIVersion, ctrlConf.Kind, retry, err)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(retry):
 		}
 	}
 }
