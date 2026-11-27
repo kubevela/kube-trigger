@@ -91,9 +91,11 @@ func TestATriggerWhoseHandlerCannotBeBuiltIsAnError(t *testing.T) {
 	assert.ErrorContains(t, err, "filter does not compile")
 }
 
-// recordingSource records whether it was started, and fails to if told to.
+// recordingSource records whether it was asked to start and whether it did,
+// and fails to if told to.
 type recordingSource struct {
 	fail    bool
+	called  bool
 	started bool
 }
 
@@ -104,6 +106,7 @@ func (s *recordingSource) Init(*runtime.RawExtension, eventhandler.EventHandler)
 func (s *recordingSource) Type() string    { return "recording" }
 func (s *recordingSource) Singleton() bool { return false }
 func (s *recordingSource) Run(context.Context) error {
+	s.called = true
 	if s.fail {
 		return errors.New("cannot start")
 	}
@@ -117,6 +120,7 @@ func TestASourceThatFailsToStartDoesNotStopTheOthers(t *testing.T) {
 	runSources(context.Background(), []types.Source{first, broken, last})
 
 	assert.True(t, first.started)
+	assert.True(t, broken.called, "the failing source was asked to start")
 	assert.False(t, broken.started)
 	assert.True(t, last.started)
 }
