@@ -1,12 +1,15 @@
-  triggers:
-    - source:
-        type: resource-watcher
-        properties:
-          apiVersion: core.oam.dev/v1alpha1
-          kind: WorkflowRun
-          events:
-            - create
-          matchingLabels:
-            trigger.oam.dev/watch: "true"
-      action:
-        type: create-event-listener
+# The first trigger of triggerservice-record-event.yaml, as a config file.
+triggers:
+  # When a WorkflowRun labelled trigger.oam.dev/watch=true is created, create an
+  # EventListener with its name.
+  - source:
+      type: resource-watcher
+      properties:
+        apiVersion: core.oam.dev/v1alpha1
+        kind: WorkflowRun
+        events:
+          - create
+        matchingLabels:
+          trigger.oam.dev/watch: "true"
+    action:
+      type: create-event-listener

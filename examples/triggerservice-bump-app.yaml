@@ -1,11 +1,11 @@
+# Redeploy a KubeVela Application when a ConfigMap it uses changes. Needs KubeVela.
+# See README.md in this directory.
 apiVersion: standard.oam.dev/v1alpha1
 kind: TriggerService
 metadata:
   name: kubetrigger-sample-config
   namespace: default
 spec:
-  # A trigger is a group of Source, Filters, and Actions.
-  # You can add multiple triggers.
   triggers:
     - source:
         type: resource-watcher
@@ -17,13 +17,13 @@ spec:
           # Only watch update event.
           events:
             - update
-      filter: |
-        context: data: metadata: name: =~"this-will-trigger-update-.*"
+      # Keep the ConfigMaps whose names start with this-will-trigger-update-.
+      filter: context.data.metadata.name =~ "^this-will-trigger-update-"
       action:
         # Bump Application Revision to update Application.
         type: bump-application-revision
         properties:
           namespace: default
-          # Select Applications to bump using labels.
+          # The Application to bump is named by this label on the ConfigMap.
           nameSelector:
             fromLabel: "watch-this"

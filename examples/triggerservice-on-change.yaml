@@ -1,0 +1,34 @@
+# Act only when a particular part of an object changes, using context.changed.
+# See README.md in this directory.
+apiVersion: standard.oam.dev/v1alpha1
+kind: TriggerService
+metadata:
+  name: audit-settings-data
+  namespace: default
+spec:
+  triggers:
+    - source:
+        type: resource-watcher
+        properties:
+          apiVersion: v1
+          kind: ConfigMap
+          namespace: default
+          events:
+            - update
+      # context.changed holds only what the update changed. This keeps updates
+      # that changed app-settings' data, and drops those that only touched its
+      # labels or annotations.
+      filter: context.data.metadata.name == "app-settings" && context.changed.data != _|_
+      action:
+        type: patch-resource
+        properties:
+          resource:
+            apiVersion: v1
+            kind: ConfigMap
+            name: settings-audit
+            namespace: default
+          patch:
+            type: merge
+            data:
+              data:
+                dataLastChanged: $(context.timestamp)

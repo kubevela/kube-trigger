@@ -1,0 +1,40 @@
+# A CEL filter, and CEL expressions in action properties.
+# Records the last create or update of any ConfigMap labelled audit=true.
+# See README.md in this directory.
+apiVersion: standard.oam.dev/v1alpha1
+kind: TriggerService
+metadata:
+  name: audit-labelled-configmaps
+  namespace: default
+spec:
+  triggers:
+    - source:
+        type: resource-watcher
+        properties:
+          apiVersion: v1
+          kind: ConfigMap
+          namespace: default
+          events:
+            - create
+            - update
+      # A filter that is a single $( ) is CEL. Reading a label an object does not
+      # have is an error in CEL, so has() and in guard it first; && stops at the
+      # first false.
+      filter: $(has(context.data.metadata.labels) && "audit" in context.data.metadata.labels && context.data.metadata.labels["audit"] == "true")
+      action:
+        type: patch-resource
+        properties:
+          resource:
+            apiVersion: v1
+            kind: ConfigMap
+            name: settings-audit
+            namespace: default
+          patch:
+            type: merge
+            data:
+              data:
+                # A whole-value expression keeps its type; these are strings.
+                lastObject: $(context.data.metadata.name)
+                lastEvent: $(context.event.type)
+                # Expressions inside text are joined into it.
+                summary: $(context.event.type) of $(context.data.metadata.name) at $(context.timestamp)

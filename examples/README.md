@@ -1,73 +1,176 @@
-# Quick Start
+# Examples
 
-kube-trigger can run as standalone or in-cluster. Let's use a real use-case as an exmaple (
-see [#4418](https://github.com/kubevela/kubevela/issues/4418)). TL;DR, the user want the Application to be automatically
-updated whenever the ConfigMaps that are referenced by `ref-objects` are updated.
+Each example here was run against a cluster before it was written down, on main's code. What it needs and what you
+should see are listed with it.
 
-## Prerequisites
+| File | Shows | Needs |
+| --- | --- | --- |
+| [triggerservice-audit-configmap.yaml](triggerservice-audit-configmap.yaml), [conf-audit-configmap.yaml](conf-audit-configmap.yaml) | The basics: watch a resource, filter, patch another resource. | |
+| [triggerservice-cel.yaml](triggerservice-cel.yaml) | A CEL filter, and CEL expressions in action properties. | |
+| [triggerservice-on-change.yaml](triggerservice-on-change.yaml) | Acting only when one part of an object changes. | |
+| [conf-cronjob.yaml](conf-cronjob.yaml) | Running an action on a schedule. | |
+| [triggerservice-bump-app.yaml](triggerservice-bump-app.yaml), [conf-bump-app.yaml](conf-bump-app.yaml), [sample.yaml](sample.yaml) | Redeploying a KubeVela Application when a ConfigMap changes. | KubeVela |
+| [triggerservice-record-event.yaml](triggerservice-record-event.yaml), [conf-create-event-listener.yaml](conf-create-event-listener.yaml), [conf-record-event.yaml](conf-record-event.yaml) | Recording events in an `EventListener`. | The WorkflowRun CRD, and a fix for [#83](https://github.com/kubevela/kube-trigger/issues/83) |
 
-- Install [KubeVela](https://kubevela.net/docs/install) in your cluster
-- Enable the `kube-trigger` addon
-```shell
-vela addon enable kube-trigger
-```
+`triggerservice-*.yaml` files are applied to a cluster. `conf-*.yaml` files hold the same triggers for a standalone
+kube-trigger.
 
-## What we want to achieve?
+## Before you start
 
-- use a `resource-watcher` Source to listen to update events of ConfigMaps
-- use a Filter, written in CUE here (a filter that is a single `$( )` is CEL), to only keep the ConfigMaps that we are
-  interested in
-- trigger an `bump-application-revision` Action to update Application.
-
-As a result:
-
-- Once any of the two ConfigMaps are updated, both Applications will be updated as well.
-
-## Try out
-
-1. **Apply sample resources**
-
-Apply `sample.yaml` to create 2 Applications and 2 ConfigMaps in the default namespace. The changes in 2 ConfigMaps will
-trigger 2 Application updates.
-
-```shell
-kubectl apply -f examples/sample.yaml
-```
-
-2. **Run kube-trigger**
-
-Choose your preferred way: standalone (recommended for quick testing) or in-cluster
-
-Standalone:
-
-```shell
-# Download kube-trigger binaries from releases first
-./kube-trigger --config sampleconf-bump-app.yaml
-```
-
-In-Cluster:
+Install kube-trigger from the root of this repository:
 
 ```shell
 kubectl apply -f config/crd/
-kubectl apply -f config/definition/
 kubectl apply -f config/manager/
+kubectl apply -f config/definition/
 ```
 
-3. **Watch ApplicationRevision changes** so that you can see what it does.
+Most examples use two ConfigMaps, one to change and one to write to:
 
 ```shell
-kubectl get apprev --watch
+kubectl create configmap app-settings --from-literal=color=blue
+kubectl create configmap settings-audit
 ```
 
-4. **Edit any of the two ConfigMaps** (do this in another terminal)
+To run a `conf-*.yaml` file instead of a TriggerService, build the binary (see [CONTRIBUTING.md](../CONTRIBUTING.md)) and
+point it at the file. It uses the cluster in your kubeconfig, which needs `config/crd/` and `config/definition/` applied
+in a `vela-system` namespace, but not the manager:
 
 ```shell
-kubectl edit cm this-will-trigger-update-1
+bin/kube-trigger --config examples/conf-audit-configmap.yaml
 ```
 
-Immediately, you should see the two new ApplicationRevision created. Specifically, Applications all have updated with
-annotation: `app.oam.dev/publishVersion: '2/3/4...'`
+## Watch, filter, act
 
-## Delete resources
+Records when `app-settings` was last changed.
 
-Just replace all `kubectl apply` with `kubectl delete`, and run them in the reverse order.
+```shell
+kubectl apply -f examples/triggerservice-audit-configmap.yaml
+kubectl rollout status deployment/audit-settings-changes
+
+kubectl patch configmap app-settings --type merge -p '{"data":{"color":"green"}}'
+kubectl get configmap settings-audit -o jsonpath='{.data}'
+```
+
+```
+{"lastChanged":"2026-11-27T22:16:18Z"}
+```
+
+Updating any other ConfigMap leaves `settings-audit` as it is.
+
+## CEL
+
+Records the last create or update of any ConfigMap labelled `audit=true`. The filter is CEL, and guards the label with
+`has()` and `in`, because reading a label an object does not have is an error in CEL. The action's properties build
+their values from the event with `$( )`.
+
+```shell
+kubectl apply -f examples/triggerservice-cel.yaml
+kubectl rollout status deployment/audit-labelled-configmaps
+
+kubectl create configmap web-config --from-literal=a=1
+kubectl label configmap web-config audit=true
+kubectl get configmap settings-audit -o jsonpath='{.data}'
+```
+
+```
+{"lastEvent":"update","lastObject":"web-config","summary":"update of web-config at 2026-11-27T22:16:33Z"}
+```
+
+Creating `web-config` without the label changed nothing; adding the label is the update that was recorded.
+
+## Acting on what changed
+
+Records a change to the data of `app-settings`, and ignores changes to its labels or annotations, by testing
+`context.changed`.
+
+```shell
+kubectl apply -f examples/triggerservice-on-change.yaml
+kubectl rollout status deployment/audit-settings-data
+
+kubectl label configmap app-settings touched=yes
+kubectl get configmap settings-audit -o jsonpath='{.data}'    # no dataLastChanged yet
+
+kubectl patch configmap app-settings --type merge -p '{"data":{"color":"orange"}}'
+kubectl get configmap settings-audit -o jsonpath='{.data}'
+```
+
+```
+{"dataLastChanged":"2026-11-27T22:16:49Z"}
+```
+
+## On a schedule
+
+Writes the time into `settings-audit` every minute. This one is a config file, run standalone:
+
+```shell
+bin/kube-trigger --config examples/conf-cronjob.yaml
+```
+
+Within a minute:
+
+```shell
+kubectl get configmap settings-audit -o jsonpath='{.data}'
+```
+
+```
+{"lastTick":"2026-11-27T22:18:00Z"}
+```
+
+## Redeploying a KubeVela Application
+
+Needs [KubeVela](https://kubevela.io) in the cluster; this was run with KubeVela 1.11.2, as a config file with a
+standalone kube-trigger. `triggerservice-bump-app.yaml` holds the same trigger for use in a cluster.
+
+The use case is [kubevela#4418](https://github.com/kubevela/kubevela/issues/4418): an Application should be deployed
+again when a ConfigMap it uses changes. `sample.yaml` creates two ConfigMaps and two Applications. Each ConfigMap names
+its Application in a `watch-this` label, and the trigger bumps that Application's `app.oam.dev/publishVersion`.
+
+```shell
+kubectl apply -f examples/sample.yaml
+bin/kube-trigger --config examples/conf-bump-app.yaml
+```
+
+In another terminal:
+
+```shell
+kubectl patch configmap this-will-trigger-update-1 --type merge -p '{"data":{"content":"edited"}}'
+kubectl get applicationrevision
+```
+
+```
+NAME                        AGE   PUBLISH_VERSION   SUCCEEDED
+this-will-be-updated-1-v1   33s   1                 true
+this-will-be-updated-1-v2   15s   2                 true
+this-will-be-updated-2-v1   33s   1                 true
+```
+
+`this-will-be-updated-1` got a new revision. `this-will-be-updated-2` did not, as its ConfigMap was not edited.
+
+## Recording events
+
+The `record-event` action does not work at present ([#83](https://github.com/kubevela/kube-trigger/issues/83)), so only
+the first half of this example runs on main. With the fix for #83 applied, both halves were seen working.
+
+`triggerservice-record-event.yaml` has two triggers:
+
+1. When a WorkflowRun labelled `trigger.oam.dev/watch=true` is created, `create-event-listener` creates an
+   `EventListener` with its name, owned by it. This works on main.
+2. When a Deployment labelled `trigger.oam.dev/watch=true` becomes fully ready, `record-event` appends the event to the
+   `EventListener` named by the Deployment's `workflowrun.oam.dev/name` label.
+
+It needs the WorkflowRun CRD from [kubevela/workflow](https://github.com/kubevela/workflow).
+
+## Cleaning up
+
+Delete what you applied. Deleting a TriggerService removes its worker.
+
+```shell
+kubectl delete triggerservice --all
+kubectl delete configmap app-settings settings-audit
+```
+
+## Not run
+
+[triggerservice-image-update.yaml](triggerservice-image-update.yaml) watches kpack `Image` resources and needs kpack
+installed. It has not been run as part of checking these examples.
