@@ -1,0 +1,27 @@
+name: PR Title Checker
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: read # to read the checker's configuration
+  pull-requests: read
+  issues: write # to label a PR whose title needs formatting; not granted to PRs from forks
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: thehanimo/pr-title-checker@v1.4.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Fail rather than pass when the GitHub API errors. A fork PR's missing
+          # label permission is handled inside the action either way.
+          pass_on_octokit_error: false
+          configuration_path: ".github/pr-title-checker-config.json"

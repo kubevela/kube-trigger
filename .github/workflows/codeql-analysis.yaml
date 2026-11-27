@@ -1,0 +1,42 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - main
+      - release-*
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # job permissions replace the workflow's, so checkout needs it here
+      actions: read # for github/codeql-action/init to get workflow details
+      security-events: write # for github/codeql-action/analyze to upload results
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

@@ -42,7 +42,7 @@ func TestCELFilterDropsEvents(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			eh, err := NewFromConfig(context.Background(), nil, v1alpha1.ActionMeta{Type: "unused"}, filter, nil, Options{})
 			require.NoError(t, err)
-			assert.EqualError(t, eh("resource-watcher", "update", object()), "event is filtered out")
+			assert.EqualError(t, eh(Payload{SourceType: "resource-watcher", Event: "update", Data: object()}), "event is filtered out")
 		})
 	}
 }
@@ -76,7 +76,43 @@ func TestCELFilterKeepsEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	// Past the filter, the action has no definition in this cluster.
-	err = eh("resource-watcher", "update", object())
+	err = eh(Payload{SourceType: "resource-watcher", Event: "update", Data: object()})
 	require.Error(t, err)
 	assert.NotEqual(t, "event is filtered out", err.Error())
+}
+
+func TestBuildContext(t *testing.T) {
+	data := map[string]interface{}{"generation": int64(2)}
+	changed := map[string]interface{}{"generation": int64(2)}
+
+	testcases := map[string]struct {
+		payload Payload
+		want    []string
+	}{
+		"update carries changed": {
+			payload: Payload{SourceType: "resource-watcher", Event: "event", Data: data, Changed: changed},
+			want:    []string{"sourceType", "event", "data", "timestamp", "changed"},
+		},
+		"create and delete have no changed": {
+			payload: Payload{SourceType: "resource-watcher", Event: "event", Data: data},
+			want:    []string{"sourceType", "event", "data", "timestamp"},
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx := buildContext(tc.payload)
+			var keys []string
+			for k := range ctx {
+				keys = append(keys, k)
+			}
+			assert.ElementsMatch(t, tc.want, keys)
+			assert.Equal(t, "resource-watcher", ctx["sourceType"])
+			assert.Equal(t, "event", ctx["event"])
+			assert.Equal(t, data, ctx["data"])
+			if tc.payload.Changed != nil {
+				assert.Equal(t, changed, ctx["changed"])
+			}
+		})
+	}
 }
