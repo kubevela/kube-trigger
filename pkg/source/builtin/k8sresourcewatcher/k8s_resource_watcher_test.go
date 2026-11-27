@@ -43,3 +43,16 @@ func TestTriggersOnDifferentClustersKeepTheirOwnClusters(t *testing.T) {
 	}
 	assert.Equal(t, map[string]int{"cluster-a": 1, "cluster-b": 1}, watched)
 }
+
+func TestAClusterNamedTwiceIsWatchedOnce(t *testing.T) {
+	w := (&K8sResourceWatcher{}).New().(*K8sResourceWatcher)
+	require.NoError(t, w.Init(&runtime.RawExtension{Raw: []byte(
+		`{"apiVersion":"apps/v1","kind":"Deployment","clusters":["cluster-b","cluster-a","cluster-b"]}`,
+	)}, eventhandler.New()))
+
+	// Run starts one watcher per cluster listed here.
+	require.Len(t, w.configs, 1)
+	for _, config := range w.configs {
+		assert.Equal(t, []string{"cluster-a", "cluster-b"}, config.Clusters)
+	}
+}

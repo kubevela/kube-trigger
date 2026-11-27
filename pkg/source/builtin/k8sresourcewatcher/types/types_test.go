@@ -82,6 +82,11 @@ func TestKeySeparatesWatchersByCluster(t *testing.T) {
 			second: deployments("cluster-b", "cluster-a"),
 			same:   true,
 		},
+		"a cluster named twice counts once": {
+			first:  deployments("cluster-a", "cluster-a"),
+			second: deployments("cluster-a"),
+			same:   true,
+		},
 		"no clusters means the local cluster": {
 			first:  deployments(),
 			second: deployments("local"),

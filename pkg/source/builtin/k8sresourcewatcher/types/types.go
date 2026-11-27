@@ -48,11 +48,16 @@ func (c *Config) Key() string {
 			labels = string(b)
 		}
 	}
-	clusters := []string{DefaultCluster}
-	if len(c.Clusters) > 0 {
-		clusters = stdslices.Compact(stdslices.Sorted(stdslices.Values(c.Clusters)))
+	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels, strings.Join(c.WatchedClusters(), ",")}, "-")
+}
+
+// WatchedClusters returns the clusters to watch: those named, sorted and each
+// once, or the local cluster when none is named.
+func (c *Config) WatchedClusters() []string {
+	if len(c.Clusters) == 0 {
+		return []string{DefaultCluster}
 	}
-	return strings.Join([]string{c.APIVersion, c.Kind, c.Namespace, labels, strings.Join(clusters, ",")}, "-")
+	return stdslices.Compact(stdslices.Sorted(stdslices.Values(c.Clusters)))
 }
 
 // Merge merges two Configs watching the same resources. The merged Events is
