@@ -74,7 +74,7 @@ func (c *CronJob) Init(properties *runtime.RawExtension, eh eventhandler.EventHa
 			Config:    c.config,
 			TimeFired: metav1.Now(),
 		}
-		err := eh(c.Type(), e, e)
+		err := eh(eventhandler.Payload{SourceType: c.Type(), Event: e, Data: e})
 		if err != nil {
 			logger.Infof("calling event handler failed: %s", err)
 		}

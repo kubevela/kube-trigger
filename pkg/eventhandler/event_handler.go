@@ -30,20 +30,29 @@ import (
 	"github.com/kubevela/kube-trigger/pkg/filter"
 )
 
-// EventHandler is given to Source to be called. Source is responsible to call
-// this function.
-//
-// sourceType is what type the Source is.
-//
-// event is what event happened, containing a brief event object. Do not include
-// complex objects in it. For example, a resource-watcher Source may contain
-// what event happened (create, update, delete) in it.
-//
-// data is the detailed event, for machines to process, e.g. passed to filters to
-// do filtering . You may put complex objects in it. For example,
-// a resource-watcher Source may contain the entire object that is changed
-// in it.
-type EventHandler func(sourceType string, event interface{}, data interface{}) error
+// Payload is what a Source hands to its EventHandlers for one event. It is
+// shared by every handler for that event and by the jobs they queue, and its
+// objects may be informer cache entries, so treat it as read-only.
+type Payload struct {
+	// SourceType is what type the Source is.
+	SourceType string
+	// Event is what happened, as a brief object. Do not include complex objects
+	// in it. For example, a resource-watcher Source puts the event type (create,
+	// update, delete) in it.
+	Event interface{}
+	// Data is the detailed event, for machines to process, e.g. passed to
+	// filters. For example, a resource-watcher Source puts the entire object
+	// that changed in it.
+	Data interface{}
+	// Changed is what the event changed in Data, as a JSON merge patch, for
+	// sources that know, e.g. the resource-watcher on an update. It is nil
+	// otherwise.
+	Changed map[string]interface{}
+}
+
+// EventHandler is given to Source to be called once per event. Source is
+// responsible to call this function.
+type EventHandler func(p Payload) error
 
 // Config is the config for trigger
 type Config struct {
@@ -53,7 +62,7 @@ type Config struct {
 
 // New create a new EventHandler that does nothing.
 func New() EventHandler {
-	return func(_ string, _ interface{}, _ interface{}) error {
+	return func(_ Payload) error {
 		return nil
 	}
 }
@@ -62,21 +71,16 @@ func New() EventHandler {
 func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor) EventHandler {
 	filterLogger := logrus.WithField("eventhandler", "applyfilters")
 	actionLogger := logrus.WithField("eventhandler", "addactionjob")
-	return func(sourceType string, event interface{}, data interface{}) error {
+	return func(p Payload) error {
 		// TODO: use handler to handle
 		// Apply filters
-		context := map[string]interface{}{
-			"sourceType": sourceType,
-			"event":      event,
-			"data":       data,
-			"timestamp":  time.Now().Format(time.RFC3339),
-		}
+		context := buildContext(p)
 		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
 		if err != nil {
-			filterLogger.Errorf("error when applying filters to event %v: %s", event, err)
+			filterLogger.Errorf("error when applying filters to event %v: %s", p.Event, err)
 		}
 		if !kept {
-			filterLogger.Debugf("event %v is filtered out", event)
+			filterLogger.Debugf("event %v is filtered out", p.Event)
 			filterLogger.Infof("event is filtered out")
 			return fmt.Errorf("event is filtered out")
 		}
@@ -98,24 +102,39 @@ func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.A
 	}
 }
 
+// buildContext is the context given to filters and actions. It has changed
+// only when the payload does, so CUE can test it with != _|_.
+func buildContext(p Payload) map[string]interface{} {
+	context := map[string]interface{}{
+		"sourceType": p.SourceType,
+		"event":      p.Event,
+		"data":       p.Data,
+		"timestamp":  time.Now().Format(time.RFC3339),
+	}
+	if p.Changed != nil {
+		context["changed"] = p.Changed
+	}
+	return context
+}
+
 // AddHandlerBefore adds a new EventHandler to be called before e is called.
 func (e EventHandler) AddHandlerBefore(eh EventHandler) EventHandler {
-	return func(sourceType string, event interface{}, data interface{}) error {
-		err := eh(sourceType, event, data)
+	return func(p Payload) error {
+		err := eh(p)
 		if err != nil {
 			return err
 		}
-		return e(sourceType, event, data)
+		return e(p)
 	}
 }
 
 // AddHandlerAfter adds a new EventHandler to be called after e is called.
 func (e EventHandler) AddHandlerAfter(eh EventHandler) EventHandler {
-	return func(sourceType string, event interface{}, data interface{}) error {
-		err := e(sourceType, event, data)
+	return func(p Payload) error {
+		err := e(p)
 		if err != nil {
 			return err
 		}
-		return eh(sourceType, event, data)
+		return eh(p)
 	}
 }
