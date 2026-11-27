@@ -28,6 +28,12 @@ type TriggerServiceSpec struct {
 	Triggers []TriggerMeta `json:"triggers"`
 }
 
+// AnnotationCELExpressions sets whether one TriggerService's worker renders $( )
+// expressions in its actions' properties: "false" opts it out, and "true" opts
+// it in where the manager requires opt-in. Any other value leaves the manager's
+// default. It takes effect when the TriggerService's worker is next created.
+const AnnotationCELExpressions = "trigger.oam.dev/cel-expressions"
+
 // +kubebuilder:object:root=true
 
 // TriggerService is the Schema for the kubetriggerconfigs API.

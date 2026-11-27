@@ -19,6 +19,7 @@ package triggerservice
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"cuelang.org/go/cue"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -48,6 +49,29 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// CELExpressions lets workers render $( ) expressions in action
+	// properties. With it on, a literal $( such as Kubernetes' own $(VAR) is
+	// written $$(.
+	CELExpressions bool
+	// RequireCELExpressionOptIn keeps expressions to TriggerServices annotated
+	// for them.
+	RequireCELExpressionOptIn bool
+}
+
+// celExpressionsFor reports whether ts's worker renders $( ) expressions: on
+// while the manager allows them, unless ts opts out, or, where opt-in is
+// required, has not opted in.
+func (r *Reconciler) celExpressionsFor(ts *standardv1alpha1.TriggerService) bool {
+	if !r.CELExpressions {
+		return false
+	}
+	switch ts.Annotations[standardv1alpha1.AnnotationCELExpressions] {
+	case "false":
+		return false
+	case "true":
+		return true
+	}
+	return !r.RequireCELExpressionOptIn
 }
 
 var (
@@ -112,10 +136,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) createWorker(ctx context.Context, ts *standardv1alpha1.TriggerService) error {
 	templateName := "default"
 	opts := make([]cuex.CompileOption, 0)
-	opts = append(opts, cuex.WithExtraData("triggerService", map[string]string{
+	triggerService := map[string]string{
 		"name":      ts.Name,
 		"namespace": ts.Namespace,
-	}))
+	}
+	// The worker's flag defaults to on, so the choice is passed either way.
+	triggerService["celExpressions"] = strconv.FormatBool(r.celExpressionsFor(ts))
+	opts = append(opts, cuex.WithExtraData("triggerService", triggerService))
 	if ts.Spec.Worker != nil {
 		if ts.Spec.Worker.Template != "" {
 			templateName = ts.Spec.Worker.Template

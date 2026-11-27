@@ -18,6 +18,7 @@ package config
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/kubevela/pkg/util/template/definition"
@@ -25,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
+	"github.com/kubevela/kube-trigger/pkg/expression"
 	sourceregistry "github.com/kubevela/kube-trigger/pkg/source/registry"
 	"github.com/kubevela/kube-trigger/pkg/types"
 )
@@ -52,4 +54,23 @@ func (c *Config) Validate(ctx context.Context, cli client.Client, sourceReg *sou
 	}
 
 	return nil
+}
+
+// ValidateExpressions plans every CEL expression the triggers hold, reporting
+// each that does not compile with its trigger. Action properties are read for
+// $( ) only when celExpressions is on.
+func (c *Config) ValidateExpressions(celExpressions bool) error {
+	var errs []error
+	for i, t := range c.Triggers {
+		if _, _, err := expression.NewFilter(t.Filter); err != nil {
+			errs = append(errs, fmt.Errorf("trigger %d: filter: %w", i, err))
+		}
+		if !celExpressions {
+			continue
+		}
+		if _, err := expression.NewProperties(t.Action.Properties); err != nil {
+			errs = append(errs, fmt.Errorf("trigger %d: properties of action %s: %w", i, t.Action.Type, err))
+		}
+	}
+	return stderrors.Join(errs...)
 }

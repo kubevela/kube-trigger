@@ -35,7 +35,9 @@ type option struct {
 	MaxRetry     int
 	RetryDelay   int
 	ActionRetry  bool
-	Timeout      int
+	// CELExpressions renders $( ) expressions in action properties.
+	CELExpressions bool
+	Timeout        int
 
 	RegistrySize int
 }

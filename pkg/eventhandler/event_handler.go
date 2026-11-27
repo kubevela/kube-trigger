@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/action"
 	"github.com/kubevela/kube-trigger/pkg/executor"
+	"github.com/kubevela/kube-trigger/pkg/expression"
 	"github.com/kubevela/kube-trigger/pkg/filter"
 )
 
@@ -67,15 +69,41 @@ func New() EventHandler {
 	}
 }
 
-// NewFromConfig creates a new EventHandler from config.
-func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor) EventHandler {
+// Options adjusts how a trigger's event handler reads its filter and action.
+type Options struct {
+	// CELExpressions renders $( ) expressions in action properties, where a
+	// literal $(, such as Kubernetes' own $(VAR), is written $$(. A filter
+	// that is a single $( ) is CEL either way, as no CUE filter has that form.
+	CELExpressions bool
+}
+
+// NewFromConfig creates a new EventHandler from config. Its CEL filter and
+// action properties are planned here, so one that does not compile is an
+// error now rather than on every event.
+func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.ActionMeta, filterMeta string, executor *executor.Executor, opts Options) (EventHandler, error) {
 	filterLogger := logrus.WithField("eventhandler", "applyfilters")
 	actionLogger := logrus.WithField("eventhandler", "addactionjob")
+	celFilter, isCEL, err := expression.NewFilter(filterMeta)
+	if err != nil {
+		return nil, errors.WithMessage(err, "filter")
+	}
+	var props *expression.Properties
+	if opts.CELExpressions {
+		if props, err = expression.NewProperties(actionMeta.Properties); err != nil {
+			return nil, errors.WithMessagef(err, "properties of action %s", actionMeta.Type)
+		}
+	}
 	return func(p Payload) error {
 		// TODO: use handler to handle
 		// Apply filters
 		context := buildContext(p)
-		kept, err := filter.ApplyFilter(ctx, context, filterMeta)
+		var kept bool
+		var err error
+		if isCEL {
+			kept, err = celFilter.Eval(ctx, context)
+		} else {
+			kept, err = filter.ApplyFilter(ctx, context, filterMeta)
+		}
 		if err != nil {
 			filterLogger.Errorf("error when applying filters to event %v: %s", p.Event, err)
 		}
@@ -87,7 +115,14 @@ func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.A
 		filterLogger.Infof("event passed filters")
 
 		// Run actions
-		newJob, err := action.New(ctx, cli, actionMeta, context)
+		properties := actionMeta.Properties
+		if props != nil {
+			if properties, err = props.Eval(ctx, context); err != nil {
+				actionLogger.Errorf("error when evaluating the properties of action %s: %s", actionMeta.Type, err)
+				return err
+			}
+		}
+		newJob, err := action.New(ctx, cli, actionMeta, properties, context)
 		if err != nil {
 			actionLogger.Errorf("error when creating new job: %s", err)
 			return err
@@ -99,7 +134,7 @@ func NewFromConfig(ctx context.Context, cli client.Client, actionMeta v1alpha1.A
 		}
 
 		return nil
-	}
+	}, nil
 }
 
 // buildContext is the context given to filters and actions. It has changed

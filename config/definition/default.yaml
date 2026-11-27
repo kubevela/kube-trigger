@@ -66,6 +66,10 @@ spec:
                   "--workers=\(parameter.config.workers)",
                   "--log-level=\(parameter.config.logLevel)",
                   "--multi-cluster-config-type=\(parameter.config.multiClusterConfigType)",
+                  // Set by the manager from its CEL switches and the TriggerService's annotation.
+                  if triggerService.celExpressions != _|_ {
+                    "--enable-cel-expressions=\(triggerService.celExpressions)"
+                  },
                 ]
                 image: parameter.image
                 name:  "kube-trigger"

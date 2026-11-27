@@ -50,9 +50,11 @@ import (
 
 // nolint:revive
 const (
-	FlagLogLevel    = "log-level"
-	FlagConfig      = "config"
-	FlagConfigShort = "c"
+	FlagLogLevel = "log-level"
+	// FlagCELExpressions turns on $( ) expressions in action properties.
+	FlagCELExpressions = "enable-cel-expressions"
+	FlagConfig         = "config"
+	FlagConfigShort    = "c"
 
 	FlagQueueSize    = "queue-size"
 	FlagWorkers      = "workers"
@@ -141,6 +143,7 @@ func addFlags(opt *option, f *pflag.FlagSet) {
 	f.IntVar(&opt.Timeout, FlagTimeout, defaultTimeout, "Timeout for running each action")
 	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
 	f.BoolVar(&opt.ActionRetry, FlagActionRetry, defaultActionRetry, "Re-run an action if it fails, up to --max-retry times")
+	f.BoolVar(&opt.CELExpressions, FlagCELExpressions, true, "Render $( ) CEL expressions in action properties, where a literal $( is written $$(. A filter that is a single $( ) is CEL either way")
 	f.StringVar(&k8sresourcewatcher.MultiClusterConfigType, "multi-cluster-config-type", k8sresourcewatcher.TypeClusterGateway, "Multi-cluster config type, supported types: cluster-gateway, cluster-gateway-kubeconfig")
 	f.BoolVar(&enableLeaderElection, FlagLeaderElect, false, "Enable leader election for kube-trigger. Enabling this will ensure there is only one active kube-trigger.")
 	f.DurationVar(&leaseDuration, FlagLeaderElectionLeaseDuration, defaultLeaseDuration, "The duration that non-leader candidates will wait to force acquire leadership.")
@@ -192,6 +195,9 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot validate config")
 	}
+	if err = conf.ValidateExpressions(opt.CELExpressions); err != nil {
+		return errors.Wrapf(err, "cannot validate config")
+	}
 
 	defer utilruntime.HandleCrash()
 
@@ -220,7 +226,10 @@ func run(ctx context.Context) error {
 		}
 
 		// Create a EventHandler
-		eh := eventhandler.NewFromConfig(ctx, cli, w.Action, w.Filter, exe)
+		eh, err := eventhandler.NewFromConfig(ctx, cli, w.Action, w.Filter, exe, eventhandler.Options{CELExpressions: opt.CELExpressions})
+		if err != nil {
+			return errors.Wrapf(err, "cannot set up trigger for source %s", w.Source.Type)
+		}
 
 		// Initialize Source, with user-provided prop and event handler
 		err = source.Init(w.Source.Properties, eh)
