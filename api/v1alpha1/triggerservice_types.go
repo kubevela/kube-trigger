@@ -90,7 +90,3 @@ const (
 	// SourceTypeWebhookTrigger is the source type for WebhookTrigger.
 	SourceTypeWebhookTrigger string = "webhook-trigger"
 )
-
-func init() {
-	SchemeBuilder.Register(&TriggerService{}, &TriggerServiceList{})
-}

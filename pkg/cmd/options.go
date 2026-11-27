@@ -67,7 +67,7 @@ func newOption() *option {
 func (o *option) validate() error {
 	_, err := logrus.ParseLevel(o.LogLevel)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", FlagLogLevel, err)
 	}
 	if o.Config == "" {
 		return fmt.Errorf("%s not specified", FlagConfig)
