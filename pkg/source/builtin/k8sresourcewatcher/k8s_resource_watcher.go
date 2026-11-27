@@ -151,14 +151,7 @@ func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 				return err
 			}
 			multiCtx := multicluster.WithCluster(ctx, cluster)
-			go func(multiCtx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c *types.Config, handlers []eventhandler.EventHandler) {
-				resourceController, err := controller.SetupWhenInstalled(multiCtx, cli, mapper, *c, handlers, kindRetryInterval)
-				if err != nil {
-					w.logger.Errorf("cannot watch %s %s: %s", c.APIVersion, c.Kind, err)
-					return
-				}
-				resourceController.Run(multiCtx.Done())
-			}(multiCtx, cli, mapper, config, w.eventHandlers[k])
+			go controller.RunWhenInstalled(multiCtx, cli, mapper, *config, w.eventHandlers[k], kindRetryInterval)
 		}
 	}
 	return nil

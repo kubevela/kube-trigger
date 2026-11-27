@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -291,22 +292,47 @@ func (c *Controller) callEventHandler(obj metav1.Object, e types.Event, changed 
 	}
 }
 
-// SetupWhenInstalled is Setup for a kind that may not be installed yet, such
-// as a custom resource whose CRD arrives after kube-trigger starts. While the
-// kind is not served it tries again every retry, until ctx ends. Any other
-// error is returned at once.
+// SetupWhenInstalled is Setup for a kind that cannot be mapped yet: a custom
+// resource whose CRD arrives after kube-trigger starts, or any kind while the
+// API server cannot be reached. It tries again every retry until ctx ends.
+// An apiVersion that does not parse can never succeed, and is returned at once.
 func SetupWhenInstalled(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler, retry time.Duration) (*Controller, error) {
 	logger := logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher)
+	if _, err := schema.ParseGroupVersion(ctrlConf.APIVersion); err != nil {
+		return nil, err
+	}
+	var lastErr string
 	for {
 		c, err := Setup(ctx, cli, mapper, ctrlConf, eh)
-		if err == nil || !meta.IsNoMatchError(err) {
-			return c, err
+		if err == nil {
+			return c, nil
 		}
-		logger.Warnf("%s %s is not installed, trying again in %s: %s", ctrlConf.APIVersion, ctrlConf.Kind, retry, err)
+		// Warn when the reason is new, so a kind that never arrives does not
+		// fill the log.
+		log := logger.Debugf
+		if err.Error() != lastErr {
+			log = logger.Warnf
+			lastErr = err.Error()
+		}
+		log("cannot watch %s %s yet, trying again every %s: %s", ctrlConf.APIVersion, ctrlConf.Kind, retry, err)
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-time.After(retry):
 		}
 	}
+}
+
+// RunWhenInstalled sets up a controller with SetupWhenInstalled and runs it
+// until ctx ends. A watcher that cannot be set up is logged; one that was
+// still waiting when ctx was cancelled is not, as that is a normal stop.
+func RunWhenInstalled(ctx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, ctrlConf types.Config, eh []eventhandler.EventHandler, retry time.Duration) {
+	c, err := SetupWhenInstalled(ctx, cli, mapper, ctrlConf, eh, retry)
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			logrus.WithField("source", v1alpha1.SourceTypeResourceWatcher).Errorf("cannot watch %s %s: %s", ctrlConf.APIVersion, ctrlConf.Kind, err)
+		}
+		return
+	}
+	c.Run(ctx.Done())
 }
