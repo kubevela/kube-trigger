@@ -102,7 +102,7 @@ func NewCommand() *cobra.Command {
 		RunE: runCli,
 		PreRunE: func(c *cobra.Command, _ []string) error {
 			logger.Infof("kube-trigger version=%s", version.Version)
-			fromEnv, err := applyEnv(c.Flags())
+			fromEnv, err := applyEnv(c.Flags(), logger.Warnf)
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,9 @@ func addFlags(opt *option, f *pflag.FlagSet) {
 	f.IntVar(&opt.MaxRetry, FlagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
 	f.IntVar(&opt.RetryDelay, FlagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
 	f.IntVar(&opt.Timeout, FlagTimeout, defaultTimeout, "Timeout for running each action")
-	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
+	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Has no effect")
+	// The flag is unknown only if the line above is removed.
+	_ = f.MarkDeprecated(FlagRegistrySize, "it has no effect: the cache it sized no longer exists")
 	f.BoolVar(&opt.ActionRetry, FlagActionRetry, defaultActionRetry, "Re-run an action if it fails, up to --max-retry times")
 	f.BoolVar(&opt.CELExpressions, FlagCELExpressions, true, "Render $( ) CEL expressions in action properties, where a literal $( is written $$(. A filter that is a single $( ) is CEL either way")
 	f.StringVar(&k8sresourcewatcher.MultiClusterConfigType, "multi-cluster-config-type", k8sresourcewatcher.TypeClusterGateway, "Multi-cluster config type, supported types: cluster-gateway, cluster-gateway-kubeconfig")

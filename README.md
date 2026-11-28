@@ -451,13 +451,12 @@ Default: `4`
 
 ### Registry Size
 
-Cache size for filters and actions.
+Deprecated. It sized a cache of filters and actions that no longer exists, so it has no effect. The flag is still
+accepted so existing command lines keep working, and will be removed in a later release.
 
-Default: `100`
-
-| CLI               | ENV             | KubeTrigger CRD      |
-|-------------------|-----------------|----------------------|
-| `--registry-size` | `REGISTRY_SIZE` | `.spec.registrySize` |
+| CLI               | ENV             |
+|-------------------|-----------------|
+| `--registry-size` | `REGISTRY_SIZE` |
 
 ### CEL Expressions
 
