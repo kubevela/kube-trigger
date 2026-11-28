@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -54,6 +55,10 @@ var (
 	// MultiClusterConfigType .
 	MultiClusterConfigType string
 )
+
+// kindRetryInterval is how often a watcher looks again for a kind that is not
+// installed.
+const kindRetryInterval = 30 * time.Second
 
 const (
 	// TypeClusterGateway .
@@ -144,10 +149,7 @@ func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 				return err
 			}
 			multiCtx := multicluster.WithCluster(ctx, cluster)
-			go func(multiCtx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c *types.Config, handlers []eventhandler.EventHandler) {
-				resourceController := controller.Setup(multiCtx, cli, mapper, *c, handlers)
-				resourceController.Run(multiCtx.Done())
-			}(multiCtx, cli, mapper, config, w.eventHandlers[k])
+			go controller.RunWhenInstalled(multiCtx, cli, mapper, *config, w.eventHandlers[k], kindRetryInterval)
 		}
 	}
 	return nil

@@ -137,7 +137,8 @@ func TestWatcherStartingLaterKeepsEarlierWatchersCreates(t *testing.T) {
 
 	var handled int
 	start := func(eh eventhandler.EventHandler) *Controller {
-		c := Setup(ctx, cli, mapper, types.Config{APIVersion: "v1", Kind: "ConfigMap"}, []eventhandler.EventHandler{eh})
+		c, err := Setup(ctx, cli, mapper, types.Config{APIVersion: "v1", Kind: "ConfigMap"}, []eventhandler.EventHandler{eh})
+		a.NoError(err)
 		go c.Run(ctx.Done())
 		a.NoError(wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
 			return c.HasSynced(), nil
@@ -269,12 +270,13 @@ func TestHandlersReceiveChangedOnUpdate(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	c := Setup(ctx, cli, mapper, types.Config{
+	c, err := Setup(ctx, cli, mapper, types.Config{
 		APIVersion: "v1",
 		Kind:       "ConfigMap",
 		Namespace:  "default",
 		Events:     []types.EventType{types.EventTypeCreate, types.EventTypeUpdate, types.EventTypeDelete},
 	}, []eventhandler.EventHandler{eh})
+	a.NoError(err)
 	go c.Run(ctx.Done())
 	a.NoError(wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 5*time.Second, true, func(_ context.Context) (bool, error) {
 		return c.HasSynced(), nil
@@ -291,7 +293,7 @@ func TestHandlersReceiveChangedOnUpdate(t *testing.T) {
 	obj.SetCreationTimestamp(metav1.Now())
 	obj.SetLabels(map[string]string{"version": "1"})
 	res := cli.Resource(gvr).Namespace("default")
-	_, err := res.Create(ctx, obj, metav1.CreateOptions{})
+	_, err = res.Create(ctx, obj, metav1.CreateOptions{})
 	a.NoError(err)
 	obj.SetLabels(map[string]string{"version": "2"})
 	// The fake client leaves resourceVersion to the caller.
