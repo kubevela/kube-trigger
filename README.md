@@ -394,25 +394,27 @@ The container always gets `SOURCE_NAME` and `SOURCE_NAMESPACE`, the name and nam
 #### bump-application-revision
 
 Adds one to the `app.oam.dev/publishVersion` annotation of a KubeVela Application, which makes KubeVela deploy it again
-as a new ApplicationRevision. The Application is named by a label on the source object:
+as a new ApplicationRevision. With no properties, the Application is the one with the source object's name, in the
+source object's namespace. `nameSelector` chooses another way:
 
 ```yaml
 action:
   type: bump-application-revision
   properties:
-    namespace: default
     nameSelector:
       fromLabel: "watch-this"
 ```
 
 | Property | Required | Meaning |
 | --- | --- | --- |
-| `namespace` | yes | Namespace of the Application. |
-| `nameSelector.fromLabel` | yes | The label on the source object that holds the Application's name. |
+| `namespace` | no | Namespace of the Applications. The source object's namespace when left out. |
+| `nameSelector.fromLabel` | no | Bump the Application named by this label on the source object. |
+| `nameSelector.matchingLabels` | no | Bump every Application that has these labels. |
 
-The Application must already carry the annotation, as in [examples/sample.yaml](examples/sample.yaml). The action also
-declares a `nameSelector.matchingLabels`, a default for `namespace`, and a default of the source object's own name;
-none of these work at present ([#85](https://github.com/kubevela/kube-trigger/issues/85)).
+A `nameSelector` takes one of `fromLabel` and `matchingLabels`; one with both, or with neither, is an error.
+
+An Application must already carry the annotation, with an integer as its value, as in
+[examples/sample.yaml](examples/sample.yaml). One that does not is left as it is, without an error.
 
 #### record-event
 
@@ -688,8 +690,6 @@ Default: `true`
   running and what its events led to, read the worker's log.
 - **Worker settings are read once.** `spec.worker.properties` and the CEL annotation take effect when the worker is
   created ([#74](https://github.com/kubevela/kube-trigger/issues/74)).
-- **`bump-application-revision` works only with `nameSelector.fromLabel`**
-  ([#85](https://github.com/kubevela/kube-trigger/issues/85)).
 - **A CUE filter written as a constraint on `context` keeps every event**
   ([#72](https://github.com/kubevela/kube-trigger/issues/72)). Write filters as expressions.
 - **A TriggerService must not share its name with a ConfigMap** in its namespace
