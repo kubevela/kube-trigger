@@ -175,3 +175,49 @@ func TestBumpNamespaceDefaultsToTheSourceObjects(t *testing.T) {
 		})
 	}
 }
+
+// A namespace that is given is the one searched, whatever the source object's
+// is, and the patch goes to the Application where it was found.
+func TestBumpUsesTheNamespaceGiven(t *testing.T) {
+	elsewhere := application("web", "5")
+	elsewhere["metadata"].(map[string]interface{})["namespace"] = "apps"
+
+	testcases := map[string]struct {
+		selector map[string]interface{}
+		path     string
+	}{
+		"by name":            {path: "get.$params.resource.metadata.namespace"},
+		"by a label":         {selector: map[string]interface{}{"fromLabel": "app"}, path: "get.$params.resource.metadata.namespace"},
+		"by matching labels": {selector: map[string]interface{}{"matchingLabels": map[string]interface{}{"team": "blue"}}, path: "list.$params.filter.namespace"},
+	}
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			properties := map[string]interface{}{"namespace": "apps"}
+			if tc.selector != nil {
+				properties["nameSelector"] = tc.selector
+			}
+			v := renderBump(t, properties, elsewhere)
+
+			// deploymentEvent's Deployment is in the namespace shop.
+			assert.Equal(t, "apps", str(t, v, tc.path))
+			assert.Equal(t, "apps", str(t, v, `"patch-0".$params.resource.metadata.namespace`))
+			assert.Equal(t, map[string]string{"web": "6"}, bumps(t, v))
+		})
+	}
+}
+
+// A nameSelector the action cannot act on is an error, not a job that
+// finishes having bumped nothing.
+func TestBumpRefusesANameSelectorItCannotUse(t *testing.T) {
+	testcases := map[string]map[string]interface{}{
+		"neither field":    {},
+		"both fields":      {"fromLabel": "app", "matchingLabels": map[string]interface{}{"team": "blue"}},
+		"an unknown field": {"byName": "web"},
+	}
+	for name, selector := range testcases {
+		t.Run(name, func(t *testing.T) {
+			_, err := renderAction(t, bumpDefinition, map[string]interface{}{"namespace": "shop", "nameSelector": selector}, deploymentEvent())
+			assert.Error(t, err)
+		})
+	}
+}
