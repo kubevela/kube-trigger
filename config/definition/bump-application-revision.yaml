@@ -8,12 +8,24 @@ spec:
   templates:
     main.cue: |
       import (
-        "vela/kube"
         "strconv"
+        "vela/kube"
       )
 
-      items: *[] | [{...}]
+      // The namespace the Applications are in: the one given, or the source
+      // object's. It is settled here, as one value, before it reaches a provider.
+      _namespace: string
+      if parameter.namespace != _|_ {
+        _namespace: parameter.namespace
+      }
+      if parameter.namespace == _|_ {
+        _namespace: context.data.metadata.namespace
+      }
 
+      // The Applications to bump, as the cluster returns them.
+      _apps: [...{...}]
+
+      // Every Application carrying the given labels.
       if parameter.nameSelector != _|_ if parameter.nameSelector.matchingLabels != _|_ {
         list: kube.#List & {
           $params: {
@@ -22,16 +34,15 @@ spec:
               kind:       "Application"
             }
             filter: {
-              namespace: parameter.namespace
-              if parameter.nameSelector.matchingLabels != _|_ {
-                matchingLabels: parameter.nameSelector.matchingLabels
-              }
+              namespace:      _namespace
+              matchingLabels: parameter.nameSelector.matchingLabels
             }
           }
         }
-        items: list.$returns.items
+        _apps: list.$returns.items
       }
 
+      // The Application named by a label on the source object.
       if parameter.nameSelector != _|_ if parameter.nameSelector.fromLabel != _|_ {
         get: kube.#Get & {
           $params: {
@@ -40,14 +51,15 @@ spec:
               kind:       "Application"
               metadata: {
                 name:      context.data.metadata.labels[parameter.nameSelector.fromLabel]
-                namespace: parameter.namespace
+                namespace: _namespace
               }
             }
           }
         }
-        items: [{get.$returns}]
+        _apps: [get.$returns]
       }
 
+      // With no selector, the Application with the source object's own name.
       if parameter.nameSelector == _|_ {
         get: kube.#Get & {
           $params: {
@@ -56,15 +68,17 @@ spec:
               kind:       "Application"
               metadata: {
                 name:      context.data.metadata.name
-                namespace: parameter.namespace
+                namespace: _namespace
               }
             }
           }
         }
-        items: [{get.$returns}]
+        _apps: [get.$returns]
       }
 
-      for index, item in items {
+      // Add one to the publishVersion of each Application that has it as a whole
+      // number. KubeVela deploys an Application again when it changes.
+      for index, item in _apps {
         if item.metadata.annotations["app.oam.dev/publishVersion"] != _|_ {
           if strconv.ParseInt(item.metadata.annotations["app.oam.dev/publishVersion"], 10, 64) != _|_ {
             "patch-\(index)": kube.#Patch & {
@@ -94,13 +108,14 @@ spec:
       }
 
       parameter: {
-        // +usage=The namespace to list the resources
-        namespace: *context.data.metadata.namespace | string
-        // +usage=The name selector to select the app to bump revision
+        // +usage=The namespace of the Applications; the source object's namespace if not set
+        namespace?: string
+        // +usage=Which Applications to bump; the one with the source object's name if not set
         nameSelector?: close({
-          fromLabel?: string
+          // +usage=A label on the source object whose value is the Application's name
+          fromLabel: string
         }) | close({
-          // +usage=The label selector to filter the resources
-          matchingLabels?: {...}
+          // +usage=Bump every Application carrying these labels
+          matchingLabels: {...}
         })
       }
