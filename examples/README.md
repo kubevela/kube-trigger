@@ -1,9 +1,7 @@
 # Examples
 
 The examples here were run against a cluster before they were written down, on main's code, and what each needs and
-what you should see are listed with it. There are two exceptions, both marked below: the `record-event` half of
-[Recording events](#recording-events) only works with a fix that is not merged yet, and the example under
-[Not run](#not-run) was not run.
+what you should see are listed with it. The one exception is the example under [Not run](#not-run).
 
 | File | Shows | Needs |
 | --- | --- | --- |
@@ -12,7 +10,7 @@ what you should see are listed with it. There are two exceptions, both marked be
 | [triggerservice-on-change.yaml](triggerservice-on-change.yaml) | Acting only when one part of an object changes. | |
 | [conf-cronjob.yaml](conf-cronjob.yaml) | Running an action on a schedule. | |
 | [triggerservice-bump-app.yaml](triggerservice-bump-app.yaml), [conf-bump-app.yaml](conf-bump-app.yaml), [sample.yaml](sample.yaml) | Redeploying a KubeVela Application when a ConfigMap changes. | KubeVela |
-| [triggerservice-record-event.yaml](triggerservice-record-event.yaml), [conf-create-event-listener.yaml](conf-create-event-listener.yaml), [conf-record-event.yaml](conf-record-event.yaml) | Recording events in an `EventListener`. | The WorkflowRun CRD, and a fix for [#83](https://github.com/kubevela/kube-trigger/issues/83) |
+| [triggerservice-record-event.yaml](triggerservice-record-event.yaml), [conf-create-event-listener.yaml](conf-create-event-listener.yaml), [conf-record-event.yaml](conf-record-event.yaml) | Recording events in an `EventListener`. | The WorkflowRun CRD |
 
 `triggerservice-*.yaml` files are applied to a cluster. `conf-*.yaml` files hold the same triggers for a standalone
 kube-trigger.
@@ -165,17 +163,17 @@ this-will-be-updated-2-v1   33s   1                 true
 
 ## Recording events
 
-The `record-event` action does not work at present ([#83](https://github.com/kubevela/kube-trigger/issues/83)), so only
-the first half of this example runs on main. With the fix for #83 applied, both halves were seen working.
-
 `triggerservice-record-event.yaml` has two triggers:
 
 1. When a WorkflowRun labelled `trigger.oam.dev/watch=true` is created, `create-event-listener` creates an
-   `EventListener` with its name, owned by it. This works on main.
+   `EventListener` with its name, owned by it.
 2. When a Deployment labelled `trigger.oam.dev/watch=true` becomes fully ready, `record-event` appends the event to the
    `EventListener` named by the Deployment's `workflowrun.oam.dev/name` label.
 
 It needs the WorkflowRun CRD from [kubevela/workflow](https://github.com/kubevela/workflow).
+
+While the Deployment has no ready replica yet, the worker logs `filter: undefined field: readyReplicas` for each of its
+updates. Those events are skipped, and the one where it becomes ready is recorded.
 
 ## Cleaning up
 

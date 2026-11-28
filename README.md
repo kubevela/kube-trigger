@@ -352,7 +352,7 @@ Actions from one trigger run one at a time, in the order their events arrived.
 | [`patch-resource`](#patch-resource) | Patches a Kubernetes resource. | |
 | [`task`](#task) | Runs a container as a Kubernetes Job. | |
 | [`bump-application-revision`](#bump-application-revision) | Makes KubeVela redeploy an Application. | KubeVela |
-| [`record-event`](#record-event) | Appends the event to an `EventListener` object. | A fix for [#83](https://github.com/kubevela/kube-trigger/issues/83) |
+| [`record-event`](#record-event) | Appends the event to an `EventListener` object. | |
 | [`create-event-listener`](#create-event-listener) | Creates the `EventListener` that `record-event` appends to. | |
 
 #### patch-resource
@@ -387,7 +387,7 @@ action:
 | `name` | no | Name of the Job and its container. The source object's name when left out. The Job is created in the source object's namespace. |
 | `restart` | no | Restart policy, `Never` (the default) or `OnFailure`. |
 | `ttlSecondsAfterFinished` | no | Seconds to keep a finished Job. |
-| `env` | no | Extra environment variables, as a list of `name` and `value`. Giving it currently makes the action fail ([#83](https://github.com/kubevela/kube-trigger/issues/83)). |
+| `env` | no | Extra environment variables, as a list of `name` and `value`. |
 
 The container always gets `SOURCE_NAME` and `SOURCE_NAMESPACE`, the name and namespace of the source object.
 
@@ -416,7 +416,7 @@ none of these work at present ([#85](https://github.com/kubevela/kube-trigger/is
 
 #### record-event
 
-This action fails at present ([#83](https://github.com/kubevela/kube-trigger/issues/83)). It appends the event, as the source object's reference, the event type and the time, to the `events` of an `EventListener`
+Appends the event, as the source object's reference, the event type and the time, to the `events` of an `EventListener`
 object. The `EventListener` must already exist; `create-event-listener` makes one.
 
 | Property | Required | Meaning |
@@ -689,9 +689,8 @@ Default: `true`
   running and what its events led to, read the worker's log.
 - **Worker settings are read once.** `spec.worker.properties` and the CEL annotation take effect when the worker is
   created ([#74](https://github.com/kubevela/kube-trigger/issues/74)).
-- **Some built-in actions are broken.** `record-event` fails, as does `task` when `env` is given
-  ([#83](https://github.com/kubevela/kube-trigger/issues/83)), and `bump-application-revision` works only with
-  `nameSelector.fromLabel` ([#85](https://github.com/kubevela/kube-trigger/issues/85)).
+- **`bump-application-revision` works only with `nameSelector.fromLabel`**
+  ([#85](https://github.com/kubevela/kube-trigger/issues/85)).
 - **A CUE filter written as a constraint on `context` keeps every event**
   ([#72](https://github.com/kubevela/kube-trigger/issues/72)). Write filters as expressions.
 - **A TriggerService must not share its name with a ConfigMap** in its namespace
