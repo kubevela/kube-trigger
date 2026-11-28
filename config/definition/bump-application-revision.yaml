@@ -81,8 +81,8 @@ spec:
         _apps: [get.$returns]
       }
 
-      // Add one to the publishVersion of each Application that has it as a whole
-      // number. KubeVela deploys an Application again when it changes.
+      // Add one to the publishVersion of each Application that has it as an
+      // integer. KubeVela deploys an Application again when it changes.
       for index, item in _apps {
         if item.metadata.annotations["app.oam.dev/publishVersion"] != _|_ {
           if strconv.ParseInt(item.metadata.annotations["app.oam.dev/publishVersion"], 10, 64) != _|_ {

@@ -413,7 +413,7 @@ action:
 
 A `nameSelector` takes one of `fromLabel` and `matchingLabels`; one with both, or with neither, is an error.
 
-An Application must already carry the annotation, with a whole number as its value, as in
+An Application must already carry the annotation, with an integer as its value, as in
 [examples/sample.yaml](examples/sample.yaml). One that does not is left as it is, without an error.
 
 #### record-event

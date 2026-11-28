@@ -125,7 +125,7 @@ func TestBumpEveryApplicationMatchingLabels(t *testing.T) {
 		"nameSelector": map[string]interface{}{"matchingLabels": map[string]interface{}{"team": "blue"}},
 	}, application("a", "7"), application("b", "not-a-number"), application("c", ""), application("d", "41"))
 
-	// Only Applications whose publishVersion is a whole number are bumped.
+	// Only Applications whose publishVersion is an integer are bumped.
 	assert.Equal(t, map[string]string{"a": "8", "d": "42"}, bumps(t, v))
 }
 
@@ -220,4 +220,12 @@ func TestBumpRefusesANameSelectorItCannotUse(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+// The version is read as an integer, so a negative one is bumped like any
+// other.
+func TestBumpANegativeVersion(t *testing.T) {
+	v := renderBump(t, nil, application("web", "-1"))
+
+	assert.Equal(t, map[string]string{"web": "0"}, bumps(t, v))
 }
