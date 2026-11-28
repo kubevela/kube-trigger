@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/kubevela/kube-trigger/api/v1alpha1"
 	"github.com/kubevela/kube-trigger/pkg/config"
 	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/executor"
@@ -101,7 +102,7 @@ func NewCommand() *cobra.Command {
 		RunE: runCli,
 		PreRunE: func(c *cobra.Command, _ []string) error {
 			logger.Infof("kube-trigger version=%s", version.Version)
-			fromEnv, err := applyEnv(c.Flags())
+			fromEnv, err := applyEnv(c.Flags(), logger.Warnf)
 			if err != nil {
 				return err
 			}
@@ -141,7 +142,9 @@ func addFlags(opt *option, f *pflag.FlagSet) {
 	f.IntVar(&opt.MaxRetry, FlagMaxRetry, defaultMaxRetry, "Retry count after action failed, valid only when action retrying is enabled")
 	f.IntVar(&opt.RetryDelay, FlagRetryDelay, defaultRetryDelay, "First delay to retry actions in seconds, subsequent delay will grow exponentially")
 	f.IntVar(&opt.Timeout, FlagTimeout, defaultTimeout, "Timeout for running each action")
-	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Cache size for filters and actions")
+	f.IntVar(&opt.RegistrySize, FlagRegistrySize, defaultRegistrySize, "Has no effect")
+	// The flag is unknown only if the line above is removed.
+	_ = f.MarkDeprecated(FlagRegistrySize, "it has no effect: the cache it sized no longer exists")
 	f.BoolVar(&opt.ActionRetry, FlagActionRetry, defaultActionRetry, "Re-run an action if it fails, up to --max-retry times")
 	f.BoolVar(&opt.CELExpressions, FlagCELExpressions, true, "Render $( ) CEL expressions in action properties, where a literal $( is written $$(. A filter that is a single $( ) is CEL either way")
 	f.StringVar(&k8sresourcewatcher.MultiClusterConfigType, "multi-cluster-config-type", k8sresourcewatcher.TypeClusterGateway, "Multi-cluster config type, supported types: cluster-gateway, cluster-gateway-kubeconfig")
@@ -207,10 +210,41 @@ func run(ctx context.Context) error {
 		return errors.Wrap(err, "error when creating executor")
 	}
 
-	instances := make(map[string]types.Source)
+	newHandler := func(w v1alpha1.TriggerMeta) (eventhandler.EventHandler, error) {
+		return eventhandler.NewFromConfig(ctx, cli, w.Action, w.Filter, exe, eventhandler.Options{CELExpressions: opt.CELExpressions})
+	}
+	instances, err := initSources(conf.Triggers, sourceReg, newHandler)
+	if err != nil {
+		return err
+	}
 
-	// Run watchers.
-	for _, w := range conf.Triggers {
+	runSources(ctx, instances)
+
+	// Let the workers run Actions.
+	exe.RunJobs(ctx)
+	return nil
+}
+
+// runSources starts every Source. One that fails to start is logged, and the
+// rest are still started.
+func runSources(ctx context.Context, instances []types.Source) {
+	for _, instance := range instances {
+		err := instance.Run(ctx)
+		if err != nil {
+			logger.Errorf("source %s failed to run: %v", instance.Type(), err)
+			continue
+		}
+	}
+}
+
+// initSources initializes the Source of every trigger with that trigger's
+// event handler, and returns the Sources to run. Triggers of a singleton
+// Source type share one instance; every other trigger gets its own.
+func initSources(triggers []v1alpha1.TriggerMeta, sourceReg *sourceregistry.Registry, newHandler func(v1alpha1.TriggerMeta) (eventhandler.EventHandler, error)) ([]types.Source, error) {
+	var instances []types.Source
+	singletons := make(map[string]types.Source)
+
+	for _, w := range triggers {
 		// Make this Source type exists.
 		s, ok := sourceReg.Get(w.Source.Type)
 		if !ok {
@@ -218,17 +252,15 @@ func run(ctx context.Context) error {
 			continue
 		}
 
-		source := s.New()
-		if s.Singleton() {
-			if s, ok := instances[w.Source.Type]; ok {
-				source = s
-			}
+		source, shared := singletons[w.Source.Type]
+		if !shared {
+			source = s.New()
 		}
 
 		// Create a EventHandler
-		eh, err := eventhandler.NewFromConfig(ctx, cli, w.Action, w.Filter, exe, eventhandler.Options{CELExpressions: opt.CELExpressions})
+		eh, err := newHandler(w)
 		if err != nil {
-			return errors.Wrapf(err, "cannot set up trigger for source %s", w.Source.Type)
+			return nil, errors.Wrapf(err, "cannot set up trigger for source %s", w.Source.Type)
 		}
 
 		// Initialize Source, with user-provided prop and event handler
@@ -238,20 +270,15 @@ func run(ctx context.Context) error {
 			continue
 		}
 
-		instances[w.Source.Type] = source
-	}
-
-	for _, instance := range instances {
-		err := instance.Run(ctx)
-		if err != nil {
-			logger.Errorf("source %s failed to run: %v", instance.Type(), err)
+		if shared {
 			continue
 		}
+		instances = append(instances, source)
+		if s.Singleton() {
+			singletons[w.Source.Type] = source
+		}
 	}
-
-	// Let the workers run Actions.
-	exe.RunJobs(ctx)
-	return nil
+	return instances, nil
 }
 
 // Runner manages the task execution.

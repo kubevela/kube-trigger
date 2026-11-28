@@ -1,9 +1,23 @@
+# Run an action on a schedule. See README.md in this directory.
 triggers:
   - source:
       type: cronjob
       properties:
+        # Every minute. Five fields: minute, hour, day of month, month, day of week.
         schedule: "* * * * *"
-        timeZone: "Asia/Shanghai" # Optional
-    filter: ""
+        timeZone: "UTC" # Optional; the local time zone when left out.
     action:
-      # TODO: add your action here
+      # A cron event is not a Kubernetes object, so there is no
+      # context.data.metadata. context.data holds schedule, timeZone and timeFired.
+      type: patch-resource
+      properties:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          name: settings-audit
+          namespace: default
+        patch:
+          type: merge
+          data:
+            data:
+              lastTick: $(context.data.timeFired)

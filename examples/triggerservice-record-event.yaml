@@ -1,12 +1,17 @@
+# Record the events of the Deployments that belong to a WorkflowRun, for the
+# workflow controller to read. Needs the WorkflowRun CRD from kubevela/workflow.
+# The record-event action in the second trigger fails at present:
+# https://github.com/kubevela/kube-trigger/issues/83
+# See README.md in this directory.
 apiVersion: standard.oam.dev/v1alpha1
 kind: TriggerService
 metadata:
   name: record-event
   namespace: default
 spec:
-  worker: 
-    config: mul
   triggers:
+    # When a WorkflowRun labelled trigger.oam.dev/watch=true is created, create an
+    # EventListener with its name.
     - source:
         type: resource-watcher
         properties:
@@ -18,18 +23,20 @@ spec:
             trigger.oam.dev/watch: "true"
       action:
         type: create-event-listener
+    # When a Deployment becomes fully ready, append the event to the EventListener
+    # named by the Deployment's workflowrun.oam.dev/name label.
     - source:
         type: resource-watcher
         properties:
-          clusters:
-            - "cn-shanghai"
           apiVersion: apps/v1
           kind: Deployment
           events:
             - update
+          matchingLabels:
+            trigger.oam.dev/watch: "true"
       filter: context.data.status.readyReplicas == context.data.status.replicas
       action:
-        type: sae-record-event
+        type: record-event
         properties:
           nameSelector:
             fromLabel: "workflowrun.oam.dev/name"

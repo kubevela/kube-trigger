@@ -92,9 +92,6 @@ func (o *option) validate() error {
 	if o.Timeout <= 0 {
 		return fmt.Errorf("%s must be greater than 0", FlagTimeout)
 	}
-	if o.RegistrySize <= 0 {
-		return fmt.Errorf("%s must be greater than 0", FlagRegistrySize)
-	}
 	return nil
 }
 

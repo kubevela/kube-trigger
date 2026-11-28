@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -55,6 +56,10 @@ var (
 	MultiClusterConfigType string
 )
 
+// kindRetryInterval is how often a watcher looks again for a kind that is not
+// installed.
+const kindRetryInterval = 30 * time.Second
+
 const (
 	// TypeClusterGateway .
 	TypeClusterGateway string = "cluster-gateway"
@@ -62,7 +67,6 @@ const (
 	TypeClusterGatewaySecret string = "cluster-gateway-secret"
 
 	clusterLabel    string = "cluster.core.oam.dev/cluster-credential-type"
-	defaultCluster  string = "local"
 	clusterCertKey  string = "tls.key"
 	clusterCertData string = "tls.crt"
 	clusterCAData   string = "ca.crt"
@@ -113,6 +117,8 @@ func (w *K8sResourceWatcher) Init(properties *runtime.RawExtension, eh eventhand
 	if err != nil {
 		return errors.Wrapf(err, "error when parsing properties for %s", w.Type())
 	}
+	// Run starts one watcher per cluster, so each is listed once.
+	ctrlConf.Clusters = ctrlConf.WatchedClusters()
 	// Merge widens ctrlConf's events to the shared watcher's; the handler keeps
 	// this trigger's own.
 	events := ctrlConf.Events
@@ -137,19 +143,13 @@ func (w *K8sResourceWatcher) Run(ctx context.Context) error {
 		return err
 	}
 	for k, config := range w.configs {
-		if len(config.Clusters) == 0 {
-			config.Clusters = []string{defaultCluster}
-		}
-		for _, cluster := range config.Clusters {
+		for _, cluster := range config.WatchedClusters() {
 			cli, mapper, err := clusterGetter.GetDynamicClientAndMapper(ctx, cluster)
 			if err != nil {
 				return err
 			}
 			multiCtx := multicluster.WithCluster(ctx, cluster)
-			go func(multiCtx context.Context, cli dynamic.Interface, mapper meta.RESTMapper, c *types.Config, handlers []eventhandler.EventHandler) {
-				resourceController := controller.Setup(multiCtx, cli, mapper, *c, handlers)
-				resourceController.Run(multiCtx.Done())
-			}(multiCtx, cli, mapper, config, w.eventHandlers[k])
+			go controller.RunWhenInstalled(multiCtx, cli, mapper, *config, w.eventHandlers[k], kindRetryInterval)
 		}
 	}
 	return nil
@@ -199,7 +199,7 @@ type clusterGatewaySecretGetter struct {
 }
 
 func (c *clusterGatewaySecretGetter) GetDynamicClientAndMapper(ctx context.Context, cluster string) (dynamic.Interface, meta.RESTMapper, error) {
-	if cluster == defaultCluster {
+	if cluster == types.DefaultCluster {
 		return c.getDynamicClientAndMapperFromConfig(ctx, c.config)
 	}
 	config, err := c.getRestConfigFromSecret(ctx, cluster)

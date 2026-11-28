@@ -1,0 +1,27 @@
+# The same trigger as triggerservice-audit-configmap.yaml, as a config file for a standalone kube-trigger.
+triggers:
+  - source:
+      type: resource-watcher
+      properties:
+        apiVersion: v1
+        kind: ConfigMap
+        namespace: default
+        # Only updates; creates and deletes are not watched.
+        events:
+          - update
+    # Keep events for one ConfigMap and drop the rest.
+    filter: context.data.metadata.name == "app-settings"
+    action:
+      # Write the time of the change into another ConfigMap.
+      type: patch-resource
+      properties:
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          name: settings-audit
+          namespace: default
+        patch:
+          type: merge
+          data:
+            data:
+              lastChanged: $(context.timestamp)
