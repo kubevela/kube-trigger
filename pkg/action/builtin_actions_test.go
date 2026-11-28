@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"cuelang.org/go/cue"
@@ -125,9 +126,12 @@ func TestTaskPassesTheSourceAndExtraEnv(t *testing.T) {
 	}
 }
 
-// Every built-in action must at least compile for an ordinary event.
+// Every built-in action must at least compile for an ordinary event. The
+// actions are found in config/definition, so one added there without a case
+// here fails this test instead of going unchecked.
 func TestBuiltinActionsCompile(t *testing.T) {
-	testcases := map[string]map[string]interface{}{
+	// The properties each action is compiled with.
+	properties := map[string]map[string]interface{}{
 		"bump-application-revision.yaml": {},
 		"create-event-listener.yaml":     {},
 		"patch-resource.yaml": {
@@ -138,10 +142,29 @@ func TestBuiltinActionsCompile(t *testing.T) {
 		"task.yaml":         {"image": "busybox", "cmd": []interface{}{"true"}},
 	}
 
-	for file, properties := range testcases {
-		t.Run(file, func(t *testing.T) {
-			_, err := renderAction(t, "../../config/definition/"+file, properties, deploymentEvent())
+	files, err := filepath.Glob("../../config/definition/*.yaml")
+	require.NoError(t, err)
+	actions := 0
+	for _, file := range files {
+		b, err := os.ReadFile(file)
+		require.NoError(t, err)
+		var def struct {
+			Spec struct {
+				Type string `json:"type"`
+			} `json:"spec"`
+		}
+		require.NoError(t, yaml.Unmarshal(b, &def))
+		if def.Spec.Type != "trigger-action" {
+			continue
+		}
+		actions++
+		name := filepath.Base(file)
+		t.Run(name, func(t *testing.T) {
+			props, ok := properties[name]
+			require.True(t, ok, "add the properties to compile %s with to this test", name)
+			_, err := renderAction(t, file, props, deploymentEvent())
 			assert.NoError(t, err)
 		})
 	}
+	assert.Equal(t, len(properties), actions, "a case here has no definition in config/definition")
 }
