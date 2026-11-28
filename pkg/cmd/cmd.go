@@ -101,7 +101,7 @@ func NewCommand() *cobra.Command {
 		RunE: runCli,
 		PreRunE: func(c *cobra.Command, _ []string) error {
 			logger.Infof("kube-trigger version=%s", version.Version)
-			fromEnv, err := applyEnv(c.Flags())
+			fromEnv, err := applyEnv(c.Flags(), logger.Warnf)
 			if err != nil {
 				return err
 			}

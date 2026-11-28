@@ -17,6 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -43,7 +45,7 @@ func parse(t *testing.T, args ...string) (*option, error) {
 	fs := pflag.NewFlagSet("kubetrigger", pflag.ContinueOnError)
 	addFlags(o, fs)
 	require.NoError(t, fs.Parse(args))
-	_, err := applyEnv(fs)
+	_, err := applyEnv(fs, func(string, ...interface{}) {})
 	return o, err
 }
 
@@ -119,4 +121,24 @@ func TestActionRetry(t *testing.T) {
 	o, err = parse(t)
 	require.NoError(t, err)
 	assert.True(t, o.ActionRetry)
+}
+
+// A deprecated option says so however it is given. pflag's own notice for a
+// flag set after parsing goes to a buffer cobra never prints.
+func TestEnvWarnsForADeprecatedFlag(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("REGISTRY_SIZE", "0")
+	t.Setenv("MAX_RETRY", "9")
+	fs := pflag.NewFlagSet("kubetrigger", pflag.ContinueOnError)
+	addFlags(newOption(), fs)
+	fs.SetOutput(io.Discard)
+	require.NoError(t, fs.Parse(nil))
+	var warned []string
+
+	_, err := applyEnv(fs, func(format string, args ...interface{}) {
+		warned = append(warned, fmt.Sprintf(format, args...))
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"$REGISTRY_SIZE is deprecated, it has no effect: the cache it sized no longer exists"}, warned)
 }

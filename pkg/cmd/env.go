@@ -27,8 +27,10 @@ import (
 
 // applyEnv sets each flag not given on the command line from its environment
 // variable, so the order is command line, then environment, then default. It
-// returns the variables it applied.
-func applyEnv(fs *pflag.FlagSet) ([]string, error) {
+// returns the variables it applied. A deprecated flag set this way is reported
+// to warn: pflag's own notice goes to an output cobra prints only while it
+// parses the command line.
+func applyEnv(fs *pflag.FlagSet, warn func(format string, args ...interface{})) ([]string, error) {
 	var applied []string
 	var errs []error
 	fs.VisitAll(func(f *pflag.Flag) {
@@ -43,6 +45,9 @@ func applyEnv(fs *pflag.FlagSet) ([]string, error) {
 		if err := fs.Set(f.Name, v); err != nil {
 			errs = append(errs, fmt.Errorf("$%s: %w", name, err))
 			return
+		}
+		if f.Deprecated != "" {
+			warn("$%s is deprecated, %s", name, f.Deprecated)
 		}
 		applied = append(applied, "$"+name)
 	})
