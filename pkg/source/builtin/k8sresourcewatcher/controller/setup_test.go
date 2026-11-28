@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,10 +29,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
+	"github.com/kubevela/kube-trigger/pkg/eventhandler"
 	"github.com/kubevela/kube-trigger/pkg/source/builtin/k8sresourcewatcher/types"
 )
 
@@ -179,4 +183,43 @@ func TestRunWhenInstalledLogsAWatcherItCannotSetUp(t *testing.T) {
 	RunWhenInstalled(context.Background(), cli, meta.NewDefaultRESTMapper(nil), types.Config{APIVersion: "a/b/c", Kind: "Image"}, nil, 10*time.Millisecond)
 
 	assert.Equal(t, 1, entriesAt(hook, logrus.ErrorLevel))
+}
+
+// An object created after the worker started, while its kind could not be
+// watched yet, is new to the worker and must be reported as a create.
+func TestRunWhenInstalledReportsCreatesMadeWhileItWaited(t *testing.T) {
+	gvr := imageKind.GroupVersion().WithResource("images")
+	cli := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{gvr: "ImageList"})
+	// The kind appears about two seconds in.
+	mapper := newLateMapper(20)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var mu sync.Mutex
+	var created []string
+	eh := func(p eventhandler.Payload) error {
+		mu.Lock()
+		defer mu.Unlock()
+		created = append(created, p.Data.(metav1.Object).GetName())
+		return nil
+	}
+	go RunWhenInstalled(ctx, cli, mapper, types.Config{APIVersion: "kpack.io/v1alpha2", Kind: "Image"}, []eventhandler.EventHandler{eh}, 100*time.Millisecond)
+
+	// Past the second precision of creationTimestamp, and before the kind
+	// can be watched.
+	time.Sleep(1100 * time.Millisecond)
+	require.LessOrEqual(t, mapper.asked.Load(), int32(20), "the kind was watched before the object was created")
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(imageKind)
+	obj.SetNamespace("default")
+	obj.SetName("made-while-waiting")
+	obj.SetCreationTimestamp(metav1.Now())
+	_, err := cli.Resource(gvr).Namespace("default").Create(ctx, obj, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(created) == 1 && created[0] == "made-while-waiting"
+	}, 6*time.Second, 50*time.Millisecond)
 }

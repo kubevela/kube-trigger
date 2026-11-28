@@ -57,8 +57,9 @@ type Controller struct {
 	listenEvents   map[types.EventType]bool
 	controllerType string
 	cluster        string
-	// startTime is when Run started; creates of objects older than it are
-	// skipped, as the initial list reports them too.
+	// startTime is when the watcher was first asked for: when Run started,
+	// or the first attempt of SetupWhenInstalled. Creates of objects older
+	// than it are skipped, as the initial list reports them too.
 	startTime time.Time
 }
 
@@ -200,7 +201,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		"cluster":    c.cluster,
 	})
 	c.logger.Info("starting watch k8s resources...")
-	c.startTime = time.Now().Local()
+	if c.startTime.IsZero() {
+		c.startTime = time.Now().Local()
+	}
 
 	go c.informer.Run(stopCh)
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
@@ -301,10 +304,14 @@ func SetupWhenInstalled(ctx context.Context, cli dynamic.Interface, mapper meta.
 	if _, err := schema.ParseGroupVersion(ctrlConf.APIVersion); err != nil {
 		return nil, err
 	}
+	// An object created while this waits is new to the worker, so the clock
+	// for creates starts now, not when the watch does.
+	asked := time.Now().Local()
 	var lastErr string
 	for {
 		c, err := Setup(ctx, cli, mapper, ctrlConf, eh)
 		if err == nil {
+			c.startTime = asked
 			return c, nil
 		}
 		// Warn when the reason is new, so a kind that never arrives does not
