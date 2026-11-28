@@ -1,14 +1,19 @@
-  triggers:
-    - source:
-        type: resource-watcher
-        properties:
-          apiVersion: apps/v1
-          kind: Deployment
-          events:
-            - update
-      filter: context.data.status.readyReplicas == context.data.status.replicas
-      action:
-        type: record-event
-        properties:
-          nameSelector:
-            fromLabel: "workflowrun.oam.dev/name"
+# The second trigger of triggerservice-record-event.yaml, as a config file.
+triggers:
+  # When a Deployment becomes fully ready, append the event to the EventListener
+  # named by the Deployment's workflowrun.oam.dev/name label.
+  - source:
+      type: resource-watcher
+      properties:
+        apiVersion: apps/v1
+        kind: Deployment
+        events:
+          - update
+        matchingLabels:
+          trigger.oam.dev/watch: "true"
+    filter: context.data.status.readyReplicas == context.data.status.replicas
+    action:
+      type: record-event
+      properties:
+        nameSelector:
+          fromLabel: "workflowrun.oam.dev/name"
